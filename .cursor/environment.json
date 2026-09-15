@@ -1,0 +1,5 @@
+{
+  "name": "MaterialLogix",
+  "install": "if [ -f package-lock.json ]; then npm ci; fi\nif [ -f package-lock.json ]; then npx playwright-core install --with-deps chromium; fi",
+  "start": "if [ -f tests/browser/engine-stub.mjs ]; then exec node tests/browser/engine-stub.mjs 8188; fi"
+}
