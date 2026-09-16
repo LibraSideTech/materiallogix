@@ -25,33 +25,42 @@
   <main id="main-content" class="usage-main">
     <section class="usage-hero" aria-labelledby="usage-heading">
       <div>
-        <p class="eyebrow">Account usage</p>
+        <p class="eyebrow">Your account</p>
         <h1 id="usage-heading">Production activity</h1>
       </div>
-      <p class="note usage-intro">See exactly what your plan covered, what was purchased separately, and what is waiting to be released.</p>
+      <p class="note usage-intro">See what your plan covered, what you bought on top, and what is still finishing.</p>
     </section>
 
-    <p class="usage-status" id="usageStatus" role="status" aria-live="polite">Loading verified usage…</p>
+    <p class="usage-status" id="usageStatus" role="status" aria-live="polite">Checking your account…</p>
 
     <section aria-labelledby="allowance-heading">
-      <div class="usage-section-heading"><p class="eyebrow">Current period</p><h2 id="allowance-heading">Allowance and balance</h2></div>
+      <div class="usage-section-heading"><p class="eyebrow">This month</p><h2 id="allowance-heading">What you have left</h2></div>
       <div class="usage-grid" id="usageCards"></div>
     </section>
 
+    <section class="usage-panel" aria-labelledby="billingHeading">
+      <div class="usage-section-heading"><p class="eyebrow">Plan and billing</p><h2 id="billingHeading">Manage your plan</h2></div>
+      <p class="note">Change your card, read past invoices, or cancel. Cancelling stops the next renewal — you keep everything you have paid for until the term ends, and nothing you have made is affected.</p>
+      <div class="wallet-actions">
+        <button class="btn primary" id="managePlan" type="button">Manage plan and billing</button>
+      </div>
+      <p class="wallet-status note" id="billingStatus" role="status" aria-live="polite"></p>
+    </section>
+
     <section class="usage-panel" aria-labelledby="breakdownHeading">
-      <div class="usage-section-heading"><p class="eyebrow">Transparent accounting</p><h2 id="breakdownHeading">Where your usage went</h2></div>
-      <p class="note">Every production operation is shown as reserved, used, returned, or release pending. Plan allowance and purchased add-on units stay separate.</p>
+      <div class="usage-section-heading"><p class="eyebrow">Nothing hidden</p><h2 id="breakdownHeading">Where your usage went</h2></div>
+      <p class="note">Every job shows as held, used, returned, or still finishing. What your plan includes and what you bought separately are counted apart.</p>
       <div id="usageBreakdown" class="usage-table-wrap" tabindex="0" aria-label="Usage breakdown table"></div>
     </section>
 
     <section class="usage-panel" aria-labelledby="walletHeading">
-      <div class="usage-section-heading"><p class="eyebrow">Prepaid cloud capacity</p><h2 id="walletHeading">Cloud wallet</h2></div>
-      <p class="wallet-balance" id="walletBalance">Loading wallet…</p>
-      <p class="note" id="cloudPhotoPricing">Loading Cloud Photo pricing…</p>
+      <div class="usage-section-heading"><p class="eyebrow">Paid up front</p><h2 id="walletHeading">Cloud wallet</h2></div>
+      <p class="wallet-balance" id="walletBalance">Checking your balance…</p>
+      <p class="note" id="cloudPhotoPricing">Checking Cloud Photo rates…</p>
 
       <div class="usage-subsection" aria-labelledby="manual-refill-heading">
-        <h3 id="manual-refill-heading">One-time refill</h3>
-        <p class="note">Choose an exact amount. Manual refills never enable automatic top-up. Local Photo work never uses this balance.</p>
+        <h3 id="manual-refill-heading">Add funds once</h3>
+        <p class="note">Choose the exact amount. Adding funds by hand never switches on automatic top-up. Photo work on your own computer never touches this balance.</p>
         <div class="suggestions" aria-label="Suggested refill amounts">
           <button class="btn" type="button" data-wallet-suggestion="10">$10</button>
           <button class="btn" type="button" data-wallet-suggestion="25">$25</button>
@@ -59,20 +68,20 @@
           <button class="btn" type="button" data-wallet-suggestion="100">$100</button>
         </div>
         <div class="wallet-controls wallet-controls-manual">
-          <label><span>Refill amount (USD)</span><input id="walletAmount" type="number" min="5" max="500" step="0.01" value="10.00" inputmode="decimal"></label>
+          <label><span>Amount (USD)</span><input id="walletAmount" type="number" min="10" max="500" step="0.01" value="10.00" inputmode="decimal"></label>
           <button class="btn primary" id="walletRefill" type="button">Review $10.00 refill</button>
         </div>
-        <p class="note" id="walletEstimate">Calculating the current Video-time estimate…</p>
+        <p class="note" id="walletEstimate">Working out how much Video time that buys…</p>
       </div>
 
       <div class="usage-subsection" aria-labelledby="auto-topup-heading">
-        <div class="usage-section-heading compact"><p class="status-chip">Off by default</p><h3 id="auto-topup-heading">Optional automatic top-up</h3></div>
+        <div class="usage-section-heading compact"><p class="status-chip">Off by default</p><h3 id="auto-topup-heading">Automatic top-up</h3></div>
         <div class="wallet-controls">
-          <label><span>Trigger below</span><input id="autoThreshold" type="number" min="1" max="499" step="0.01" value="5.00"></label>
-          <label><span>Refill amount</span><input id="autoRefill" type="number" min="5" max="500" step="0.01" value="10.00"></label>
-          <label><span>Monthly maximum</span><input id="autoCap" type="number" min="5" max="2000" step="0.01" value="50.00"></label>
+          <label><span>When my balance drops below</span><input id="autoThreshold" type="number" min="1" max="499" step="0.01" value="5.00"></label>
+          <label><span>Add this much</span><input id="autoRefill" type="number" min="10" max="500" step="0.01" value="10.00"></label>
+          <label><span>Never more than this a month</span><input id="autoCap" type="number" min="10" max="2000" step="0.01" value="50.00"></label>
         </div>
-        <p class="wallet-rules" id="autoRules">Off by default. Set all three limits, review the exact rule, save a payment method through Stripe, then explicitly enable it. Stripe may require confirmation. Every refill creates a receipt and account notification.</p>
+        <p class="wallet-rules" id="autoRules">Off until you turn it on. Set the three limits, read the exact rule back, then save a card and switch it on. Your bank may ask you to confirm. Every top-up sends you a receipt and a notification.</p>
         <div class="wallet-actions">
           <button class="btn" id="autoSetup" type="button">Save payment method with Stripe</button>
           <button class="btn primary" id="autoEnable" type="button">Enable after review</button>
@@ -82,19 +91,19 @@
       </div>
 
       <div class="usage-subsection" aria-labelledby="transactions-heading">
-        <h3 id="transactions-heading">Recent wallet transactions</h3>
-        <div id="walletTransactions" class="usage-table-wrap" tabindex="0" aria-label="Recent wallet transactions tables"></div>
+        <h3 id="transactions-heading">Recent wallet activity</h3>
+        <div id="walletTransactions" class="usage-table-wrap" tabindex="0" aria-label="Recent wallet activity"></div>
       </div>
     </section>
 
     <details class="usage-panel usage-details">
-      <summary>Recent usage details</summary>
-      <p class="note">Open this only when you want the operation-by-operation record.</p>
-      <div id="usageTable" class="usage-table-wrap" tabindex="0" aria-label="Recent usage details table"></div>
+      <summary>Every job, one by one</summary>
+      <p class="note">Open this if you want the full record.</p>
+      <div id="usageTable" class="usage-table-wrap" tabindex="0" aria-label="Every job, one by one"></div>
     </details>
   </main>
 
-  <footer class="usage-footer"><span>MaterialLogix Studio™ · Customer usage</span><a href="../legal/privacy.html">Privacy</a><a href="../legal/terms.html">Terms</a><a href="../legal/refunds.html">Refunds</a></footer>
+  <footer class="usage-footer"><span>MaterialLogix Studio™ · Your usage</span><a href="../legal/privacy.html">Privacy</a><a href="../legal/terms.html">Terms</a><a href="../legal/refunds.html">Refunds</a></footer>
   <script type="module" src="js/usage.js"></script>
 </body>
 </html>

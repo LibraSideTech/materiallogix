@@ -31,36 +31,36 @@
         <p class="eyebrow">Authorized team view</p>
         <h1 id="ops-heading">Usage operations</h1>
       </div>
-      <p class="note ops-intro">A privacy-minimized view of production activity, billing reconciliation, and controlled failures.</p>
+      <p class="note ops-intro">A privacy-minimized view of activity, billing, and failed jobs.</p>
     </section>
 
-    <p class="ops-status" id="opsStatus" role="status" aria-live="polite">Loading privacy-minimized operational data…</p>
+    <p class="ops-status" id="opsStatus" role="status" aria-live="polite">Loading operational data…</p>
 
     <section class="ops-filter-panel" aria-labelledby="filter-heading">
       <div>
         <p class="eyebrow">Reporting scope</p>
-        <h2 id="filter-heading">Filter the ledger</h2>
+        <h2 id="filter-heading">Filter records</h2>
       </div>
       <div class="ops-filters">
         <label><span>Billing period</span><input id="periodFilter" type="month"></label>
-        <label><span>Product</span><select id="productFilter"><option value="">All products</option><option>photo</option><option>video</option><option>voice</option></select></label>
+        <label><span>Product</span><select id="productFilter"><option value="">All products</option><option>photo</option><option>video</option><option>voice</option><option>music</option></select></label>
         <label><span>Status</span><select id="statusFilter"><option value="">All statuses</option><option>authorized</option><option>settled</option><option>voided</option></select></label>
         <button class="btn" id="exportCsv" type="button">Export filtered CSV</button>
       </div>
     </section>
 
     <section aria-labelledby="overview-heading">
-      <div class="ops-section-heading"><p class="eyebrow">Current period</p><h2 id="overview-heading">Operational overview</h2></div>
+      <div class="ops-section-heading"><p class="eyebrow">Current period</p><h2 id="overview-heading">Overview</h2></div>
       <div class="ops-grid" id="opsCards"></div>
     </section>
 
     <section class="ops-data-section" aria-labelledby="comparison-heading">
-      <div class="ops-section-heading"><p class="eyebrow">Trend</p><h2 id="comparison-heading">Period comparison</h2></div>
-      <div id="comparisonTable" class="ops-table-wrap" tabindex="0" aria-label="Period comparison table"></div>
+      <div class="ops-section-heading"><p class="eyebrow">Trend</p><h2 id="comparison-heading">Compared with last period</h2></div>
+      <div id="comparisonTable" class="ops-table-wrap" tabindex="0" aria-label="Comparison with last period"></div>
     </section>
 
     <section class="ops-data-section" aria-labelledby="anomaly-heading">
-      <div class="ops-section-heading"><p class="eyebrow">Review queue</p><h2 id="anomaly-heading">Anomaly signals</h2></div>
+      <div class="ops-section-heading"><p class="eyebrow">Requires action</p><h2 id="anomaly-heading">Billing and spend alarms</h2></div>
       <div id="anomalyList"></div>
     </section>
 
@@ -127,7 +127,7 @@
     </section>
 
     <section class="ops-data-section privacy-support" aria-labelledby="privacy-support-heading">
-      <div class="ops-section-heading"><p class="eyebrow">Customer rights</p><h2 id="privacy-support-heading">Privacy request support</h2></div>
+      <div class="ops-section-heading"><p class="eyebrow">Customer rights</p><h2 id="privacy-support-heading">Privacy requests</h2></div>
       <p class="note">Review pseudonymous requests with structured actions only. Ticket references are hashed before storage; do not enter names, email addresses, or case details.</p>
       <div class="privacy-support-controls">
         <label><span>Queue</span><select id="privacyStatusFilter"><option value="active">Active</option><option value="open">Open</option><option value="in_review">In review</option><option value="completed">Completed</option><option value="denied">Denied</option><option value="all">All</option></select></label>
@@ -140,8 +140,8 @@
     </section>
 
     <section class="ops-data-section" aria-labelledby="reconciliation-heading">
-      <div class="ops-section-heading"><p class="eyebrow">Money movement</p><h2 id="reconciliation-heading">Revenue and ledger reconciliation</h2></div>
-      <div id="reconciliationTable" class="ops-table-wrap" tabindex="0" aria-label="Revenue and ledger reconciliation table"></div>
+      <div class="ops-section-heading"><p class="eyebrow">Money</p><h2 id="reconciliation-heading">Revenue reconciliation</h2></div>
+      <div id="reconciliationTable" class="ops-table-wrap" tabindex="0" aria-label="Revenue reconciliation table"></div>
     </section>
 
     <section class="ops-data-section" aria-labelledby="cloud-photo-heading">
@@ -151,13 +151,20 @@
     </section>
 
     <section class="ops-data-section" aria-labelledby="activity-heading">
-      <div class="ops-section-heading"><p class="eyebrow">Workload</p><h2 id="activity-heading">Product activity</h2></div>
-      <div id="productTable" class="ops-table-wrap" tabindex="0" aria-label="Product activity table"></div>
+      <div class="ops-section-heading"><p class="eyebrow">Workload</p><h2 id="activity-heading">Activity by Studio</h2></div>
+      <div id="productTable" class="ops-table-wrap" tabindex="0" aria-label="Activity by Studio table"></div>
     </section>
 
     <section class="ops-data-section" aria-labelledby="failure-heading">
-      <div class="ops-section-heading"><p class="eyebrow">Recovery</p><h2 id="failure-heading">Controlled failure reasons</h2></div>
-      <div id="failureTable" class="ops-table-wrap" tabindex="0" aria-label="Controlled failure reasons table"></div>
+      <div class="ops-section-heading"><p class="eyebrow">Recovery</p><h2 id="failure-heading">Why jobs failed</h2></div>
+      <div id="failureTable" class="ops-table-wrap" tabindex="0" aria-label="Why jobs failed table"></div>
+    </section>
+
+    <section class="ops-data-section" aria-labelledby="research-heading">
+      <div class="ops-section-heading"><p class="eyebrow">Product research</p><h2 id="research-heading">What customers told us</h2></div>
+      <p class="note">Only customers who opted in, only the choices they picked from a fixed list, and never an account. Any group smaller than the reporting minimum is counted and withheld, so no row can describe one person.</p>
+      <p class="ops-status" id="researchStatus" role="status" aria-live="polite">Loading research trends…</p>
+      <div id="researchTables" class="ops-table-wrap" tabindex="0" aria-label="Product research trends"></div>
     </section>
 
     <section class="ops-data-section" aria-labelledby="accounts-heading">

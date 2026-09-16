@@ -37,18 +37,44 @@ function open() {
   return dbPromise;
 }
 
-function tx(store, mode, fn) {
+function transaction(stores, mode, fn) {
   return open().then(db => new Promise((resolve, reject) => {
-    const t = db.transaction(store, mode);
-    const req = fn(t.objectStore(store));
-    t.onabort = t.onerror = () => reject(t.error);
-    if (req) {
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    } else {
-      t.oncomplete = () => resolve();
+    let settled = false;
+    let result;
+    let t;
+
+    const fail = error => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+
+    try {
+      t = db.transaction(stores, mode);
+      t.oncomplete = () => {
+        if (settled) return;
+        settled = true;
+        resolve(result);
+      };
+      t.onabort = () => fail(t.error || new Error('IndexedDB transaction aborted.'));
+
+      const req = fn(t);
+      if (req) {
+        // A request may succeed before another request aborts the transaction.
+        // Capture its result now, but expose it only once the transaction commits.
+        req.addEventListener('success', () => { result = req.result; });
+      }
+    } catch (error) {
+      if (t) {
+        try { t.abort(); } catch { /* transaction already inactive */ }
+      }
+      fail(error);
     }
   }));
+}
+
+function tx(store, mode, fn) {
+  return transaction(store, mode, t => fn(t.objectStore(store)));
 }
 
 // --- projects --------------------------------------------------------------
@@ -64,10 +90,21 @@ export function saveProject(project) {
   return tx('projects', 'readwrite', s => s.put(project)).then(() => project);
 }
 
-export async function deleteProject(id) {
-  const assets = await listAssets(id);
-  for (const a of assets) await deleteAsset(a.id);
-  return tx('projects', 'readwrite', s => s.delete(id));
+export function deleteProject(id) {
+  return transaction(['projects', 'assets', 'blobs'], 'readwrite', t => {
+    const projects = t.objectStore('projects');
+    const assets = t.objectStore('assets');
+    const blobs = t.objectStore('blobs');
+
+    const assetsReq = assets.index('projectId').getAll(id);
+    assetsReq.onsuccess = () => {
+      for (const asset of assetsReq.result) {
+        blobs.delete(asset.id);
+        assets.delete(asset.id);
+      }
+      projects.delete(id);
+    };
+  });
 }
 
 // --- assets ----------------------------------------------------------------
@@ -81,14 +118,18 @@ export const getAsset = id => tx('assets', 'readonly', s => s.get(id));
 export const saveAsset = asset =>
   tx('assets', 'readwrite', s => s.put(asset)).then(() => asset);
 
-export async function addAsset(asset, file) {
-  await tx('blobs', 'readwrite', s => s.put(file, asset.id));
-  return saveAsset(asset);
+export function addAsset(asset, file) {
+  return transaction(['assets', 'blobs'], 'readwrite', t => {
+    t.objectStore('blobs').put(file, asset.id);
+    t.objectStore('assets').put(asset);
+  }).then(() => asset);
 }
 
-export async function deleteAsset(id) {
-  await tx('blobs', 'readwrite', s => s.delete(id));
-  return tx('assets', 'readwrite', s => s.delete(id));
+export function deleteAsset(id) {
+  return transaction(['assets', 'blobs'], 'readwrite', t => {
+    t.objectStore('blobs').delete(id);
+    t.objectStore('assets').delete(id);
+  });
 }
 
 export const getBlob = id => tx('blobs', 'readonly', s => s.get(id));

@@ -1,0 +1,341 @@
+/* Voice Studio: the console surface.
+ *
+ * The rest of Studio is near-black because Photo needs it to be. Judging
+ * colour against a coloured surround shifts the judgement, so the photo editor
+ * keeps a dark neutral ground and always will. Audio has no such requirement -
+ * it inherited the dark neutral by habit, and a pure neutral near-black with
+ * white text is the one screen everybody has already seen a thousand times.
+ *
+ * A mixing desk has never looked like that. Neve panels are a marbled warm
+ * grey, API is blue-grey, Studer is grey-green; the black is in the rack rails,
+ * not the work surface. What reads as "console" is a matte warm-grey panel, the
+ * repeated vertical rhythm of channel strips, small engraved silkscreen labels,
+ * and colour held back until it means something - the meter.
+ *
+ * So Voice gets its own ground: warm graphite, brushed panel faces, engraved
+ * gold labels, and saturated colour only where a meter earns it. Scoped to
+ * body.voice-studio so Photo and Video are untouched.
+ */
+
+/* ---------- the room ---------- */
+
+html:not([data-theme="light"]) body.voice-studio {
+  --ground: #191715;      /* the control room wall, warm rather than neutral */
+  --panel: #211e1b;       /* the desk */
+  --raised: #2a2622;      /* a channel strip module face */
+  --hair: #3b352e;        /* the engraved seam between modules */
+  --hair-soft: #2b2723;
+  --ink: #f3ede1;         /* silkscreen cream, not white */
+  --ink-2: #c6bdac;
+  --muted: #9c9280;
+  --faint: #93897a;
+  --glass: rgba(33, 30, 27, .74);
+  --glass-2: rgba(33, 30, 27, .68);
+  --glass-3: rgba(38, 34, 30, .8);
+  --glass-4: rgba(33, 30, 27, .62);
+  --glass-solid: rgba(25, 23, 21, .95);
+
+  /* The desk surface itself: a shallow brushed grain, barely there until the
+   * light catches it. Two stops rather than a texture file, so it costs
+   * nothing and scales with the panel. */
+  /* A warmer, lighter ground costs the alarm red some separation, so the lamp
+   * colours are re-struck for this surface rather than inherited. */
+  --bad: #d07a71;
+  --bad-wash: rgba(208, 122, 113, .13);
+
+  --console-grain: repeating-linear-gradient(101deg,
+    rgba(255, 255, 255, .015) 0 1px, rgba(0, 0, 0, .012) 1px 3px);
+  --console-face: linear-gradient(176deg, rgba(255, 255, 255, .026), rgba(0, 0, 0, .06));
+  --engrave: 0 1px 0 rgba(0, 0, 0, .55);
+}
+
+/* Light is a different desk, not an inversion: brushed aluminium and warm
+ * paper, the way a mastering room looks with the blinds open. */
+html[data-theme="light"] body.voice-studio {
+  --ground: #efeade;
+  --panel: #f7f3e9;
+  --raised: #fdfaf2;
+  --hair: #cbc3b2;
+  --hair-soft: #ded7c9;
+  --ink: #201d18;
+  --ink-2: #454036;
+  --muted: #625b4e;
+  --faint: #67604f;
+  /* Paper needs the accents struck darker to hold the same legibility. */
+  --gold: #7b5b2a;
+  --gold-dim: #74582f;
+  --warn: #7f5a1f;
+  --ok: #3f6242;
+  --bad: #8f3b34;
+
+  --console-grain: repeating-linear-gradient(101deg,
+    rgba(255, 255, 255, .5) 0 1px, rgba(0, 0, 0, .022) 1px 3px);
+  --console-face: linear-gradient(176deg, rgba(255, 255, 255, .55), rgba(0, 0, 0, .035));
+  --engrave: 0 1px 0 rgba(255, 255, 255, .6);
+}
+
+body.voice-studio {
+  background: var(--ground);
+  background-image: var(--console-grain);
+}
+
+/* ---------- panel faces ---------- */
+
+body.voice-studio .studio > section,
+body.voice-studio .voice-mix-import,
+body.voice-studio .voice-mix-tracks,
+body.voice-studio .voice-mix-processing,
+body.voice-studio .voice-mix-locked {
+  background-image: var(--console-face), var(--console-grain);
+}
+
+/* The seam between modules reads as a machined edge, not a border. */
+body.voice-studio .studio {
+  background: linear-gradient(180deg, var(--hair), var(--hair-soft));
+}
+
+body.voice-studio .topbar {
+  background-image: var(--console-face), var(--console-grain);
+  border-bottom-color: var(--hair);
+}
+
+/* ---------- engraved lettering ---------- */
+
+/* The gold goes on the identity and the instrument labels - headings, engraved
+ * field names, meter ticks - and never on running copy. Silkscreen on a desk
+ * is a label, never a paragraph, and gold body text is both harder to read and
+ * cheaper-looking than the thing it is imitating. */
+body.voice-studio .studio h2,
+body.voice-studio .voice-mix-import h2,
+body.voice-studio .voice-mix-section-head h2,
+body.voice-studio .voice-mix-locked h2 {
+  color: var(--gold);
+  text-shadow: var(--engrave);
+}
+
+body.voice-studio label.field > span,
+body.voice-studio .eyebrow,
+body.voice-studio .panel-label small {
+  color: var(--gold-dim);
+  text-shadow: var(--engrave);
+}
+
+/* A hairline under each module name, the way a desk separates a section from
+ * its controls. */
+body.voice-studio .studio h2 {
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--hair-soft);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .028);
+}
+
+/* Numbers belong in the machine face: monospaced, aligned, unemphatic. */
+body.voice-studio .planline .meta,
+body.voice-studio .knob .v,
+body.voice-studio .loudness-figures b {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- the take report reads like a meter bridge ---------- */
+
+body.voice-studio #loudnessReadout {
+  margin-top: 16px;
+  padding: 15px 16px 14px;
+  border: 1px solid var(--hair);
+  border-top: 2px solid var(--gold-dim);
+  background: var(--raised);
+  background-image: var(--console-face), var(--console-grain);
+}
+
+body.voice-studio .take-verdict {
+  font: 400 14.5px/1.45 var(--serif);
+  color: var(--ink);
+}
+
+body.voice-studio .loudness-figures {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 1px; margin: 12px 0; background: var(--hair-soft);
+  border: 1px solid var(--hair-soft);
+}
+body.voice-studio .loudness-figures > span {
+  display: grid; gap: 3px; padding: 9px 10px; background: var(--panel);
+}
+body.voice-studio .loudness-figures b {
+  font: 400 15px/1 var(--mono); color: var(--ink); letter-spacing: -.01em;
+}
+body.voice-studio .loudness-figures .note {
+  font: 400 8.5px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--gold-dim);
+}
+
+body.voice-studio .loudness-targets { display: grid; gap: 1px; margin: 0 0 12px; list-style: none; padding: 0; }
+body.voice-studio .loudness-targets li {
+  display: grid; grid-template-columns: minmax(84px, auto) 1fr auto; gap: 4px 12px;
+  align-items: baseline; padding: 8px 10px; background: var(--panel);
+  border-left: 2px solid var(--hair);
+}
+body.voice-studio .loudness-targets li > b { font: 500 11.5px/1.3 var(--sans); color: var(--ink-2); }
+body.voice-studio .loudness-targets li > .note:last-child { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; }
+body.voice-studio .loudness-targets .ok { color: var(--ok); }
+body.voice-studio .loudness-targets .warn { color: var(--warn); }
+body.voice-studio .loudness-targets li:has(.ok) { border-left-color: var(--ok); }
+body.voice-studio .loudness-targets li:has(.warn) { border-left-color: var(--warn); }
+
+/* A problem is a lamp on the desk: you see it before you read it. */
+body.voice-studio .take-flags li {
+  padding: 9px 10px 9px 11px;
+  background: var(--panel);
+  border-left: 2px solid var(--warn);
+}
+body.voice-studio .take-flags li.warn { border-left-color: var(--bad); }
+body.voice-studio .take-flags li > b { font: 500 12.5px/1.45 var(--sans); color: var(--ink); }
+body.voice-studio .take-flags li > .note { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+body.voice-studio .take-clean { border-left: 2px solid var(--ok); padding: 8px 10px; background: var(--panel); }
+
+/* ---------- channel strips ---------- */
+
+/* The repeated module is what makes a desk look like a desk, so the mixer's
+ * rows get a strip face and a number rather than sitting as plain cards. */
+body.voice-studio .voice-mix-track {
+  background-image: var(--console-face), var(--console-grain);
+  border-left-width: 3px;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, .04);
+}
+body.voice-studio .voice-mix-track-list { counter-reset: strip; }
+body.voice-studio .voice-mix-track > header::before {
+  counter-increment: strip; content: counter(strip, decimal-leading-zero);
+  font: 400 9px/1 var(--mono); letter-spacing: .1em; color: var(--gold-dim);
+  align-self: center; text-shadow: var(--engrave);
+}
+
+/* ---------- transport and meters ---------- */
+
+body.voice-studio #waveform,
+body.voice-studio #levelMeter {
+  border: 1px solid var(--hair);
+  background: #14120f;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .5);
+}
+html[data-theme="light"] body.voice-studio #waveform,
+html[data-theme="light"] body.voice-studio #levelMeter { background: #d9d3c5; }
+
+body.voice-studio .voice-workspace-tabs {
+  background-image: var(--console-face);
+  border-bottom: 1px solid var(--hair);
+}
+body.voice-studio .voice-workspace-tabs button.on {
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
+/* The one control that is a real knob gets a real knob's feel. */
+body.voice-studio .knob input[type=range] { accent-color: var(--gold); }
+body.voice-studio .knob > label,
+body.voice-studio .knob > span:first-child {
+  color: var(--gold-dim); text-shadow: var(--engrave);
+  font: 400 9px/1.3 var(--sans); letter-spacing: .18em; text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.voice-studio * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+
+/* ---------- the meter bridge ---------- */
+
+/* The one place on a desk that is allowed saturated colour, because the colour
+ * is the reading: safe below -18, hot to -6, clipping above it. The markup
+ * carries those thresholds as the meter's own low/high/optimum, so the zones
+ * here are the browser's semantics rather than a decoration painted over them.
+ */
+body.voice-studio .voice-mix-meters meter {
+  -webkit-appearance: none; appearance: none;
+  height: 13px;
+  border: 1px solid var(--hair);
+  background: #100e0c;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6);
+}
+html[data-theme="light"] body.voice-studio .voice-mix-meters meter { background: #cec6b5; }
+
+/* The scale: a mark every 6 dB across the 60 dB the meter spans. */
+body.voice-studio .voice-mix-meters meter::-webkit-meter-bar {
+  border: 0; background: transparent;
+  background-image: repeating-linear-gradient(90deg,
+    transparent 0 calc(10% - 1px), rgba(255, 255, 255, .13) calc(10% - 1px) 10%);
+}
+body.voice-studio .voice-mix-meters meter::-webkit-meter-optimum-value { background: linear-gradient(180deg, #93c48d, #5f8f60); }
+body.voice-studio .voice-mix-meters meter::-webkit-meter-suboptimum-value { background: linear-gradient(180deg, #e3bc6c, #ac8433); }
+body.voice-studio .voice-mix-meters meter::-webkit-meter-even-less-good-value { background: linear-gradient(180deg, #e58274, #a8483f); }
+
+body.voice-studio .voice-mix-meters label > span {
+  color: var(--gold-dim); text-shadow: var(--engrave);
+  font: 400 9px/1.3 var(--sans); letter-spacing: .16em; text-transform: uppercase;
+}
+body.voice-studio .voice-mix-meters output { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* The strip's own values line up in a column, the way engraved scales do. */
+body.voice-studio .voice-mix-processing output,
+body.voice-studio .voice-mix-track output { font-variant-numeric: tabular-nums; }
+
+/* ---------- placement, and what this licence does not include ---------- */
+
+/* Where a track starts. The pair sits across the full width of the strip
+   because a sweep and an exact figure need more room than a single fader. */
+body.voice-studio .voice-mix-track-controls .voice-mix-placement { grid-column: 1 / -1; }
+body.voice-studio .voice-mix-placement input[type="number"] {
+  width: 100%; min-width: 0; padding: 3px 5px;
+  font: 400 9.5px/1.2 var(--mono); text-align: right;
+}
+
+/* A level this licence does not hold is shown, not hidden. Hiding it leaves
+   the price list as the only description of what Pro is for, and leaves anyone
+   who reads about a control in the manual looking at a blank panel. So the
+   surfaces stay on screen, dimmed, tagged, and inert, and each says what it
+   does when it is clicked.
+
+   Dimming the whole block would wash out the sentence explaining what the
+   block is, which is the one part a Standard customer is meant to read: at .5
+   over this panel it lands near 3.4:1. So the controls are the part held back
+   and the words stay at a colour that passes. */
+body.voice-studio[data-voice-tier="standard"] .voice-locked { position: relative; cursor: help; }
+/* :not(:disabled), because a control that is already disabled carries its own
+   heavier dimming and this would lighten it back up. */
+body.voice-studio[data-voice-tier="standard"] .voice-locked
+  :is(input, select, button, textarea, canvas, meter, progress, audio, video):not(:disabled) { opacity: .5; }
+body.voice-studio[data-voice-tier="standard"] .voice-locked
+  :is(p, span, label, h1, h2, h3, li, output, summary, legend, b) { color: var(--muted); }
+body.voice-studio[data-voice-tier="standard"] .voice-locked .voice-locked-note { color: var(--gold-dim); }
+body.voice-studio[data-voice-tier="standard"] .voice-locked::after {
+  content: "PRO"; position: absolute; top: 2px; right: 2px; z-index: 2;
+  padding: 1px 5px; border: 1px solid var(--gold-dim); border-radius: 2px;
+  background: var(--ground); color: var(--gold);
+  font: 500 8px/1.5 var(--sans); letter-spacing: .18em; pointer-events: none;
+}
+body.voice-studio[data-voice-tier="standard"] .voice-locked
+  :is(input, select, button, textarea, a) { pointer-events: none; }
+body.voice-studio .voice-locked-note { margin: 9px 0 0; color: var(--gold-dim); font-size: 11.5px; line-height: 1.5; }
+body.voice-studio:not([data-voice-tier="standard"]) .voice-locked-note { display: none; }
+
+body.voice-studio #voiceProNotice {
+  max-width: 1460px; margin: 10px auto 0; padding: 9px 13px;
+  border-left: 2px solid var(--gold-dim); background: var(--glass-2);
+  color: var(--ink-2); font-size: 12px; line-height: 1.55;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  body.voice-studio .voice-mix-placement input[type="number"] { min-height: 44px; }
+}
+
+/* A canvas is inline by default, which leaves a baseline gap under it. Setting
+   that on the element hid nothing: an inline display beats the sheet's
+   [hidden] rule, so the empty waveform box sat under the take controls from the
+   moment the page opened and never went away when a take was cleared. */
+body.voice-studio #waveform:not([hidden]) {
+  display: block; width: 100%; margin: 10px 0 2px; border-radius: 4px;
+}
+
+/* The locked panel used to be the only thing on this screen, so it was centred
+   in 60px of air. Now the desk it describes is right underneath it, and that
+   air reads as two unrelated screens with a hole between them. */
+body.voice-studio .voice-mix-locked {
+  max-width: none; margin: 4px 0 18px; padding: 18px 20px;
+  border-left: 2px solid var(--gold-dim);
+}
+body.voice-studio .voice-mix-locked h2 { font-size: 20px; }

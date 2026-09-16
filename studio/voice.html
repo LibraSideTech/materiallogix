@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/voice-console.css">
 <style>
   .studio { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr) 264px; gap: 1px; background: var(--hair); flex: 1; min-height: 0; }
   .studio > section { background: var(--ground); padding: 26px 28px; overflow-y: auto; }
@@ -30,9 +31,12 @@
   .voice-consent { border:1px solid var(--hair); padding:12px; margin:0 0 14px; }
   .voice-consent label { display:flex; align-items:flex-start; gap:9px; min-height:44px; padding:8px 0; font-size:12px; line-height:1.45; cursor:pointer; }
   .voice-consent input[type=checkbox] { width:18px; height:18px; margin-top:1px; }
+  .voice-consent .voice-subject { display:grid; grid-template-columns:150px minmax(0,1fr); align-items:center; cursor:default; }
+  .voice-consent .voice-subject select { min-width:0; width:100%; }
   .voice-more-status { margin:0; padding:6px 8px; color:var(--muted); font-size:11px; line-height:1.45; }
   .topbar-more-menu a.btn { color:var(--ink-2); }
   body[data-voice-mode="guided"] .voice-advanced { display:none !important; }
+  body.voice-recording #recBtn, body.voice-recording #cancelRec { display:inline-flex !important; }
   @media (max-width: 1280px) { .studio { grid-template-columns: minmax(0,1fr) minmax(280px,1fr); } }
   @media (pointer:coarse) {
     .knob input[type=range] { min-height:44px; touch-action:pan-y; }
@@ -50,7 +54,7 @@
   }
 </style>
 </head>
-<body class="voice-studio">
+<body class="voice-studio" data-voice-tier="standard">
 <div id="app">
   <header class="topbar">
     <a class="brand" href="index.html" aria-label="MaterialLogix Studio home">
@@ -69,14 +73,22 @@
     </details>
   </header>
 
-  <div class="studio">
+  <div class="voice-workspace-tabs" role="tablist" aria-label="Voice workspace">
+    <button id="voiceDirectionTab" class="on" type="button" role="tab" aria-selected="true" aria-controls="voiceDirectionWorkspace">Direction editor</button>
+    <button id="voiceMixTab" type="button" role="tab" aria-selected="false" aria-controls="voiceMixWorkspace" tabindex="-1">Pro Mix</button>
+    <span id="voiceMixEntitlement" role="status" aria-live="polite">Verifying Voice Pro access…</span>
+  </div>
+  <p id="voiceProNotice" role="status" aria-live="polite" hidden></p>
+
+  <div class="studio" id="voiceDirectionWorkspace" role="tabpanel" aria-labelledby="voiceDirectionTab">
     <section>
       <h2>Script</h2>
       <p class="lead">Use <b>*stars*</b> for emphasis and blank lines for pauses.</p>
       <div class="seg editor-mode" id="voiceMode" role="group" aria-label="Voice editing mode" style="margin-bottom:8px"><button class="on" type="button" data-mode="guided">Guided</button><button type="button" data-mode="advanced">Advanced</button></div>
       <p class="lead" id="voiceModeDescription" style="font-size:11.5px">Simple controls for a finished voiceover.</p>
+      <p class="lead voice-direction-boundary">Guided and Advanced shape the read. Pro Mix is where you mix the finished audio.</p>
       <label class="eyebrow" for="script">Performance script</label>
-      <textarea id="script" placeholder="Paste the voiceover copy here…">A strong idea deserves a finished presentation. MaterialLogix™ brings photo, video, and voice into one focused production workflow.
+      <textarea id="script" placeholder="Paste the voiceover copy here…">A strong idea deserves a finished presentation. MaterialLogix™ brings photo, video, voice, and music into one focused production workflow.
 
 Create with freedom. Finish with *confidence*.</textarea>
 
@@ -107,27 +119,52 @@ Create with freedom. Finish with *confidence*.</textarea>
         <label class="eyebrow" for="spanishScript">Approved Spanish performance copy</label>
         <textarea id="spanishScript" style="width:100%;min-height:130px;margin-top:8px" placeholder="Paste the final Spanish written or reviewed by a fluent human translator. MaterialLogix will not auto-translate publishable copy."></textarea>
         <label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;font-size:12px;color:var(--muted)"><input id="spanishApproved" type="checkbox"> I confirm a fluent human reviewed this Spanish for meaning, locale, tone, names, numbers, and pronunciation.</label>
-        <p class="lead" style="margin:8px 0 0">The approval is recorded in the project workflow. Keep the translator or reviewer credit and date with the campaign records.</p>
+        <p class="lead" style="margin:8px 0 0">We keep this approval with the project. Keep the reviewer’s name and the date with your own records.</p>
       </div>
       <div class="knob">
         <label class="eyebrow" for="pack" style="width:110px">House profile</label>
         <select id="pack" style="flex:1"><option value="">House performance profile</option></select>
-        <button class="btn voice-advanced" id="recBtn" type="button" title="Record 20-30s of natural speech">Record a reference</button>
+        <button class="btn voice-advanced" id="recBtn" type="button" title="Record 20-30s of natural speech" aria-pressed="false">Record a reference</button>
+        <button class="btn" id="cancelRec" type="button" hidden>Cancel recording</button>
         <button class="btn voice-advanced" id="packUpload" type="button" title="Upload audio with documented voice consent">Import reference</button>
-        <input type="file" id="packFile" accept=".wav,.mp3,.m4a,.aac,.ogg,.oga,.webm,.flac,audio/*" multiple hidden>
+        <button class="btn voice-advanced" id="deletePack" type="button" hidden>Delete selected profile</button>
+        <input type="file" id="packFile" accept="audio/*" multiple hidden>
       </div>
-      <p class="lead" id="recState" style="margin:-4px 0 12px;font-size:11.5px">A personal voice profile needs at least 10 clean seconds from a live recording or supported audio file; 20–30 seconds is recommended for better quality. Reference audio, conditioning, synthesis, and finishing remain on this computer.</p>
+      <p class="lead" id="packDescription" style="margin:-4px 0 8px;font-size:11.5px"></p>
+      <p class="lead" id="recState" role="status" aria-live="polite" aria-atomic="true" style="margin:0 0 12px;font-size:11.5px">A personal voice profile needs at least 10 clean seconds from a live recording or supported audio file; 20–30 seconds is recommended for better quality. Reference audio, conditioning, synthesis, and finishing remain on this computer.</p>
       <fieldset class="voice-advanced voice-consent"><legend class="eyebrow">Voice-reference authorization</legend>
-        <label><input id="voiceRights" type="checkbox"> <span>I own this recording or have a signed release permitting voice conditioning.</span></label>
+        <p id="voiceNotice" style="margin:0 0 10px;font-size:11.5px;white-space:pre-line"></p>
+        <p style="margin:0 0 10px;font-size:11.5px">Full detail: <a href="../legal/biometric.html">Voice and biometric data</a>.</p>
+        <label class="voice-subject" for="voiceSubject"><span>Whose voice is in this reference?</span><select id="voiceSubject" required aria-describedby="voiceNotice"><option value="">Choose a relationship</option><option value="self">My voice</option><option value="third_party">Another adult's voice</option></select></label>
+        <label><input id="voiceAdult" type="checkbox"> <span id="voiceAdultLabel">The person whose voice this is is 18 or older.</span></label>
+        <label><input id="voiceRights" type="checkbox"> <span id="voiceRightsLabel">I am that person, or I have their informed consent to record and use their voice.</span></label>
+        <label><input id="voicePurpose" type="checkbox"> <span id="voicePurposeLabel">I have read the notice above and agree to the purpose and retention it describes.</span></label>
         <label><input id="voiceRetention" type="checkbox"> <span>I accept local retention until I delete this reference.</span></label>
       </fieldset>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn primary" id="render" disabled>Render voice</button>
         <button class="btn voice-advanced" id="humanizeOnly" title="Apply the local voice-finishing chain to an audio file">Enhance imported audio…</button>
         <input type="file" id="wavIn" accept="audio/*" hidden>
-        <span class="note" id="status" role="status" aria-live="polite"></span>
+        <span class="note" id="status" role="status" aria-live="polite" aria-atomic="true"></span>
       </div>
       <audio id="player" controls hidden aria-label="Rendered voice preview"></audio>
+      <fieldset id="premiumVoiceSection" class="voice-consent voice-locked" data-pro-explains="Premium voice reads your script in a hosted studio voice, as an alternative to the house profiles that run on this computer. Pro Studio, or Single Studio Pro for Voice, includes a monthly allowance of it."><legend class="eyebrow">Premium voice</legend>
+        <p id="premiumVoiceNotice" style="margin:0 0 10px;font-size:11.5px"></p>
+        <p class="voice-locked-note">Included with Pro Studio, or Single Studio Pro for Voice. The house profiles above render on this computer at every level and need no allowance.</p>
+        <label><input id="premiumVoiceConsent" type="checkbox"> <span>I understand the script text above is sent to Inworld to generate this reading.</span></label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <select id="premiumVoiceId" aria-label="Premium voice"><option value="Sarah">Sarah</option></select>
+          <button class="btn primary" id="premiumVoiceRender" type="button" disabled>Generate premium narration</button>
+          <span class="note" id="premiumVoiceStatus" role="status" aria-live="polite" aria-atomic="true"></span>
+        </div>
+        <audio id="premiumVoicePlayer" controls hidden aria-label="Premium voice narration preview"></audio>
+      </fieldset>
+      <canvas id="waveform" height="72" hidden aria-label="Waveform of the rendered take"></canvas>
+      <div id="levelMeterBlock" class="voice-locked" hidden style="margin:0 0 10px" data-pro-explains="Live metering tracks peak and RMS while the take plays, and runs the playhead along the waveform, so a level problem is visible where it happens instead of only in the summary. Included with Pro Studio, or Single Studio Pro for Voice.">
+        <canvas id="levelMeter" height="10" style="width:100%;display:block;margin:0;border-radius:2px" aria-label="Live peak and RMS level meter"></canvas>
+        <p class="voice-locked-note">Live peak and RMS metering during playback, with the playhead on the waveform. Included with Pro Studio, or Single Studio Pro for Voice.</p>
+      </div>
+      <div id="loudnessReadout" hidden aria-live="polite"></div>
       <div id="dl"></div>
     </section>
 
@@ -136,26 +173,140 @@ Create with freedom. Finish with *confidence*.</textarea>
       <p class="lead" id="planSummary"></p>
       <div id="plan"></div>
       <h2 style="margin-top:26px">Voice quality analysis</h2>
-      <p class="lead">Every render is evaluated for room tone, dynamics, pause variation, clipping, transients, sibilance, and compression before delivery.</p>
-      <div id="tells"><p class="lead">Render or import audio to begin quality analysis.</p></div>
+      <p class="lead">Every take is checked for room tone, dynamics, pause variation, clipping, transients, sibilance and compression.</p>
+      <div id="tells"><p class="lead">Render or import a take and the report appears here.</p></div>
     </section>
     <aside class="activity-rail" id="activityRail" aria-label="Jobs, execution location, progress, and usage"></aside>
   </div>
+
+  <section id="voiceMixWorkspace" class="voice-mix-workspace" role="tabpanel" aria-labelledby="voiceMixTab" hidden>
+    <header class="voice-mix-head">
+      <div>
+        <span class="eyebrow">Voice Pro · local multitrack</span>
+        <h1>Pro Mix</h1>
+        <p>Mix finished voice, music beds and sound effects on this computer. Nothing you import is uploaded, and it is gone when you close the page.</p>
+      </div>
+      <div class="voice-mix-safety" aria-label="Mix safety status">
+        <b>48 kHz · stereo WAV</b>
+        <span>Same result every time</span>
+        <span>True-peak ceiling enabled</span>
+      </div>
+    </header>
+
+    <div id="voiceMixLocked" class="voice-mix-locked">
+      <h2>What Pro Mix adds</h2>
+      <p>The desk below is the real one. Lay voice, music and effects on one timeline, run the voice through a broadcast channel strip, let the bed duck itself under the read, and export a finished stereo WAV. Writing, rendering and the take report stay open at every level.</p>
+    </div>
+
+    <div id="voiceMixSurface" class="voice-locked" data-pro-explains="Pro Mix lays voice, music beds and sound effects on one timeline on this computer: place each source, run the voice through a broadcast channel strip, duck the bed under the read, and export a true-peak-limited stereo WAV. Included with Pro Studio, or with Single Studio Pro for Voice.">
+      <section class="voice-mix-import" aria-labelledby="voiceMixImportHeading">
+        <div>
+          <h2 id="voiceMixImportHeading">Add local tracks</h2>
+          <p id="voiceMixPrivacy">Say what the track is, then pick the file. Everything after that happens here.</p>
+        </div>
+        <div class="voice-mix-import-actions">
+          <button class="btn" type="button" data-mix-import="voice">Import voice</button>
+          <button class="btn" type="button" data-mix-import="bed">Import music bed</button>
+          <button class="btn" type="button" data-mix-import="sfx">Import SFX</button>
+          <input id="voiceMixFiles" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac,.webm" multiple hidden aria-describedby="voiceMixPrivacy">
+        </div>
+      </section>
+
+      <div class="voice-mix-grid">
+        <section class="voice-mix-tracks" aria-labelledby="voiceMixTracksHeading">
+          <div class="voice-mix-section-head">
+            <div><h2 id="voiceMixTracksHeading" tabindex="-1">Tracks</h2><p>Place each source on the timeline, then mute, solo, balance and send it into the room.</p></div>
+            <button id="voiceMixReset" class="btn sm" type="button">Reset mix</button>
+          </div>
+          <div id="voiceMixTrackList" class="voice-mix-track-list">
+            <p class="voice-mix-empty">No tracks loaded. Start with a voice track, then add a bed or SFX if the production needs them.</p>
+          </div>
+        </section>
+
+        <aside class="voice-mix-processing" aria-label="Mix processing">
+          <details open>
+            <summary>Voice channel strip</summary>
+            <div class="voice-mix-control-stack">
+              <label class="toggle" for="mixStripBypass"><input id="mixStripBypass" type="checkbox"> Bypass voice strip</label>
+              <label for="mixHighPass"><span>High-pass</span><input id="mixHighPass" type="range" min="20" max="180" step="5" value="80"><output>80 Hz</output></label>
+              <label for="mixLowEq"><span>Low EQ</span><input id="mixLowEq" type="range" min="-12" max="12" step="0.5" value="0"><output>0 dB</output></label>
+              <label for="mixMidEq"><span>Mid EQ</span><input id="mixMidEq" type="range" min="-12" max="12" step="0.5" value="1"><output>1 dB</output></label>
+              <label for="mixHighEq"><span>High EQ</span><input id="mixHighEq" type="range" min="-12" max="12" step="0.5" value="-1"><output>-1 dB</output></label>
+              <label for="mixGate"><span>Gate threshold</span><input id="mixGate" type="range" min="-80" max="-20" step="1" value="-55"><output>-55 dB</output></label>
+              <label for="mixCompThreshold"><span>Compressor</span><input id="mixCompThreshold" type="range" min="-40" max="0" step="1" value="-18"><output>-18 dB</output></label>
+              <label for="mixCompRatio"><span>Comp ratio</span><input id="mixCompRatio" type="range" min="1" max="12" step="0.5" value="3"><output>3:1</output></label>
+              <label for="mixDeEsser"><span>De-esser</span><input id="mixDeEsser" type="range" min="0" max="100" step="1" value="35"><output>35%</output></label>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Bed ducking</summary>
+            <div class="voice-mix-control-stack">
+              <label class="toggle" for="mixDuckEnabled"><input id="mixDuckEnabled" type="checkbox" checked> Duck beds under the voice</label>
+              <label for="mixDuckDepth"><span>Duck depth</span><input id="mixDuckDepth" type="range" min="-40" max="0" step="0.5" value="-12"><output>-12.0 dB</output></label>
+              <label for="mixDuckThreshold"><span>Voice threshold</span><input id="mixDuckThreshold" type="range" min="-70" max="-10" step="1" value="-38"><output>-38 dB</output></label>
+              <label for="mixDuckAttack"><span>Duck in</span><input id="mixDuckAttack" type="range" min="1" max="400" step="1" value="18"><output>18 ms</output></label>
+              <label for="mixDuckHold"><span>Hold</span><input id="mixDuckHold" type="range" min="0" max="2000" step="10" value="220"><output>220 ms</output></label>
+              <label for="mixDuckRelease"><span>Duck out</span><input id="mixDuckRelease" type="range" min="20" max="4000" step="10" value="420"><output>420 ms</output></label>
+            </div>
+          </details>
+
+          <details open>
+            <summary>Ambience and master</summary>
+            <div class="voice-mix-control-stack">
+              <label for="mixRoomReturn"><span>Room return</span><input id="mixRoomReturn" type="range" min="-40" max="0" step="1" value="-18"><output>-18 dB</output></label>
+              <label for="mixRoomSize"><span>Room size</span><input id="mixRoomSize" type="range" min="0" max="100" step="1" value="45"><output>45%</output></label>
+              <label for="mixMasterGain"><span>Master gain</span><input id="mixMasterGain" type="range" min="-18" max="6" step="0.5" value="0"><output>0 dB</output></label>
+              <label for="mixLimiterCeiling"><span>True-peak ceiling</span><input id="mixLimiterCeiling" type="range" min="-3" max="-0.1" step="0.1" value="-1"><output>-1.0 dBTP</output></label>
+              <label class="toggle" for="mixLimiterBypass"><input id="mixLimiterBypass" type="checkbox"> Bypass peak limiter</label>
+              <label class="toggle" for="mixProcessingBypass"><input id="mixProcessingBypass" type="checkbox"> Bypass strip, room, and limiter</label>
+            </div>
+          </details>
+        </aside>
+      </div>
+
+      <footer class="voice-mix-transport">
+        <div class="voice-mix-meters" aria-label="Master meters">
+          <label for="mixInputMeter"><span>Master input</span><meter id="mixInputMeter" min="-60" max="0" low="-18" high="-6" optimum="-24" value="-60"></meter><output id="mixInputMeterValue">−∞ dBFS</output></label>
+          <label for="mixOutputMeter"><span>Master output</span><meter id="mixOutputMeter" min="-60" max="0" low="-18" high="-3" optimum="-24" value="-60"></meter><output id="mixOutputMeterValue">−∞ dBFS</output></label>
+        </div>
+        <div class="voice-mix-transport-actions">
+          <button id="voiceMixPreview" class="btn primary" type="button" disabled>Preview mix</button>
+          <button id="voiceMixStop" class="btn" type="button" disabled>Stop</button>
+          <button id="voiceMixExport" class="btn" type="button" disabled>Export WAV</button>
+        </div>
+        <p id="voiceMixStatus" class="voice-mix-status" role="status" aria-live="polite" aria-atomic="true">Add at least one local track to begin.</p>
+      </footer>
+    </div>
+  </section>
 </div>
 
 <script type="module" src="js/studio-nav.js"></script>
-<script type="module" src="js/activity.js?v=9"></script>
+<script type="module" src="js/activity.js?v=10"></script>
+<script type="module" src="js/voice-mix-ui.js"></script>
+<script type="module" src="js/premium-voice-ui.js"></script>
 <script type="module">
-import { performancePlan, planDuration, humanizeBuffer, voiceTells, stampPreview } from './js/voice.js';
+import { performancePlan, planDuration, humanizeBuffer, voiceTells, stampPreview, breathPlacements, FINISH_HEAD_S } from './js/voice.js';
 import { activeLicense, covers } from './js/license.js';
+import { RECORDING_WITHDRAWN_MESSAGE, recordingConsentWithdrawn } from './js/recording-consent.js';
 import { authorizeOutbound, settleOutbound, voidOutbound } from './js/billing-client.js';
 import { bridgeFetch } from './js/generate.js';
 import { HOUSE_VOICES, HOUSE_VOICE_BY_ID } from './js/house-voices.js';
 import { voiceReferenceConsent } from './js/voice-quality.js';
-import { ensureGuardianAck } from './js/capture-guidance.js';
-import { assessVoiceReference, audioBufferToWav, supportedVoiceReference } from './js/voice-reference.js';
+import { CONFIRMATIONS, NOTICE_TEXT, NOTICE_VERSION, consentComplete, consentRecord } from './js/biometric-notice.js';
+import { apiUrl } from './js/api-root.js';
+import { ensureAdultAck } from './js/capture-guidance.js';
+import { assessVoiceReference, audioBufferToWav, supportedVoiceReference, validateVoiceProfileName,
+  validVoiceConsentReceipt, validVoiceProfileDeletion } from './js/voice-reference.js';
 import { voiceGuidance } from './js/capture-guidance.js';
 import { listAssets } from './js/store.js';
+import { hasProAccess } from './js/pricing.js';
+import { computeWaveformPeaks, drawStaticWaveform, attachLiveMeter, markJoins } from './js/audio-visualizer.js';
+import { DELIVERY_TARGETS, channelsOf, complianceAgainst } from './js/loudness.js';
+import { analyseTake } from './js/voice-take-analysis.js';
+import { SEAM_THRESHOLDS } from './js/seam-check.js';
+import { encodeAudioBuffer } from './js/wav-export.js';
+import { APP_VERSION } from './js/app-version.js';
 
 const $ = s => document.querySelector(s);
 const BRIDGE_HOST = /^(localhost$|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(location.hostname) ? location.hostname : '127.0.0.1';
@@ -174,13 +325,46 @@ async function releaseVoiceUsage(authorizationId, reason) {
   }
 }
 
+function selectedPersonalVoice() {
+  const value = $('#pack')?.value || '';
+  return value.startsWith('pack:') ? value.slice(5) : '';
+}
+
+function selectedHouseProfile() {
+  const value = $('#pack')?.value || '';
+  return value.startsWith('house:') ? HOUSE_VOICE_BY_ID[value.slice(6)] : null;
+}
+
+// The engine multiplies a house profile's own pace into every segment's rate,
+// so the read-time estimate and the fit advice have to carry it as well or
+// they answer for a voice nobody chose. It spans 0.86 to 1.15 across the
+// house, which is the difference between a read that lands on the cut and one
+// that runs a second and a half over it. A personal reference has no pace
+// parameter, so it stays at the base rate.
+const selectedProfilePace = () => selectedHouseProfile()?.pace || 1;
+
+// The house voice a page with no stored choice opens on, and the one the
+// engine falls back to when a request names none. Both have to be the same
+// profile or the estimate on screen is for a different voice than the render.
+const DEFAULT_PROFILE_BY_LANGUAGE = { en: 'studio-clear', es: 'sol-bilingual' };
+
+function syncPackActions() {
+  const name = selectedPersonalVoice();
+  const button = $('#deletePack');
+  if (!button) return;
+  button.hidden = !name;
+  button.disabled = !name;
+  button.setAttribute('aria-label', name ? `Delete personal voice profile ${name}` : 'Delete selected personal voice profile');
+}
+
 function rebuildVoiceOptions() {
   const sel = $('#pack');
   const current = sel.value;
   const language = $('#lang').value;
   const compatible = HOUSE_VOICES.filter(profile => profile.engineLanguage === language);
   const options = HOUSE_VOICES.map(profile => {
-    const option = new Option(`${profile.name} — ${profile.region}, ${profile.register}`, `house:${profile.id}`);
+    const statusNote = String(profile.status || '').includes('candidate') ? ' (candidate)' : '';
+    const option = new Option(`${profile.name} — ${profile.region}, ${profile.register}${statusNote}`, `house:${profile.id}`);
     option.disabled = profile.engineLanguage !== language;
     return option;
   });
@@ -189,10 +373,37 @@ function rebuildVoiceOptions() {
   sel.value = current;
   const currentProfile = sel.value.startsWith('house:') ? HOUSE_VOICE_BY_ID[sel.value.slice(6)] : null;
   if (!sel.value || (currentProfile && currentProfile.engineLanguage !== language)) {
-    sel.value = `house:${compatible[0].id}`;
+    const preferred = HOUSE_VOICE_BY_ID[DEFAULT_PROFILE_BY_LANGUAGE[language]];
+    const fallback = preferred?.engineLanguage === language ? preferred : compatible[0];
+    if (fallback) sel.value = `house:${fallback.id}`;
   }
   sel.dispatchEvent(new Event('change'));
+  syncPackActions();
 }
+
+// --- what this licence includes, and what it does not ----------------------
+//
+// Tier and mode are separate axes: mode decides how much detail is spelled out,
+// tier decides which features this licence covers. Neither hides the other's
+// work. A Pro surface stays on screen for a Standard customer, dimmed, tagged,
+// and inert, and says what it is for when it is clicked — hiding it would leave
+// the price list as the only description of what Pro does.
+function applyVoiceTier(license) {
+  const pro = hasProAccess(license, 'voice');
+  document.body.dataset.voiceTier = pro ? 'pro' : 'standard';
+  return pro;
+}
+
+document.addEventListener('click', event => {
+  if (document.body.dataset.voiceTier !== 'standard') return;
+  const block = event.target?.closest?.('.voice-locked[data-pro-explains]');
+  if (!block) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const notice = $('#voiceProNotice');
+  notice.textContent = block.dataset.proExplains;
+  notice.hidden = false;
+}, true);
 
 const setVoiceMode = mode => {
   const value = mode === 'advanced' ? 'advanced' : 'guided';
@@ -204,8 +415,8 @@ const setVoiceMode = mode => {
     button.setAttribute('aria-pressed', String(selected));
   });
   $('#voiceModeDescription').textContent = value === 'guided'
-    ? 'A focused path from script to finished voiceover with balanced performance settings.'
-    : 'Expanded language review, custom reference, imported-audio finishing, and quality controls.';
+    ? 'Script in, finished voiceover out, with the performance already balanced.'
+    : 'Everything Guided does, plus language review, your own reference voice, finishing for audio you bring, and the numbers behind the take.';
 };
 document.querySelectorAll('#voiceMode button').forEach(button => { button.onclick = () => setVoiceMode(button.dataset.mode); });
 setVoiceMode(localStorage.getItem('mlx:voice-mode'));
@@ -213,9 +424,11 @@ setVoiceMode(localStorage.getItem('mlx:voice-mode'));
 async function checkEngine() {
   try {
     const r = await fetch(BRIDGE + '/health', { signal: AbortSignal.timeout(1500) });
+    if (!r.ok) throw new Error(`bridge ${r.status}`);
     const j = await r.json();
     engineReady = !!j.voice?.available;
-    knownVoicePacks = j.voice?.packs || [];
+    knownVoicePacks = [...new Set((Array.isArray(j.voice?.packs) ? j.voice.packs : [])
+      .filter(name => validateVoiceProfileName(name).ok))];
     rebuildVoiceOptions();
     $('#engineState').textContent = engineReady
       ? (j.voice.warm ? 'engine warm — renders are fast' : 'engine installed — first render loads the model (~30s)')
@@ -256,22 +469,30 @@ async function checkEngine() {
     rebuildVoiceOptions();
   }
   $('#render').disabled = !engineReady;
+  // The header note explaining a greyed-out Render sits in the top corner,
+  // a screen away from the button it explains. Say it beside the button too,
+  // in the status slot that already lives there, or the control reads as dead.
+  if (!engineReady) $('#status').textContent = $('#engineState').textContent;
+  else if ($('#status').textContent === $('#engineState').textContent) $('#status').textContent = '';
 }
 
 function activeScriptText() {
   return $('#lang').value === 'es' ? $('#spanishScript').value : $('#script').value;
 }
 
-// The reference blurb states this plan's real limit, not a fixed sentence.
-async function paintVoiceGuidance() {
-  try {
-    const license = await activeLicense();
-    const guide = voiceGuidance(license?.plan);
-    const line = $('#recState');
-    if (line) line.textContent = `${guide.target} ${guide.graded} Reference audio, conditioning, synthesis, and finishing remain on this computer.`;
-  } catch { /* leave the static line */ }
+// The reference blurb states this plan's real limit, not a fixed sentence, and
+// the tier styling is settled before anything is rendered so a Standard
+// customer sees what Pro adds from the moment the page opens rather than after
+// their first take.
+async function paintVoiceLicence() {
+  let license = null;
+  try { license = await activeLicense(); } catch { /* unverified reads as Standard */ }
+  applyVoiceTier(license);
+  const guide = voiceGuidance(license?.plan);
+  const line = $('#recState');
+  if (line && guide) line.textContent = `${guide.target} ${guide.graded} Reference audio, conditioning, synthesis, and finishing remain on this computer.`;
 }
-paintVoiceGuidance();
+paintVoiceLicence();
 
 // The fit target is the project's own videos - pick one and the read is
 // sized and rendered to land on that exact cut. Custom seconds stays for
@@ -308,12 +529,13 @@ $('#fitSeconds').addEventListener('input', () => paintPlan());
 
 function paintPlan() {
   const plan = performancePlan(activeScriptText());
+  const pace = selectedProfilePace();
+  const planned = planDuration(plan, pace);
   $('#planSummary').textContent =
-    `${plan.segments.length} segment(s), ${plan.totalWords} words, ~${planDuration(plan)}s read.`;
+    `${plan.segments.length} segment(s), ${plan.totalWords} words, ~${planned}s read.`;
   const target = fitSecondsValue();
   const fitStatus = $('#fitStatus');
   if (target > 0) {
-    const planned = planDuration(plan);
     const ratio = planned / target;
     fitStatus.textContent = ratio > 1.12
       ? `cut ~${Math.ceil(plan.totalWords - plan.totalWords / ratio)} words`
@@ -335,7 +557,7 @@ function paintPlan() {
 
 let lastTells = null;
 
-async function analyse(buffer) {
+function analyse(buffer) {
   const t = voiceTells(buffer);
   lastTells = t;
   const rows = [];
@@ -357,19 +579,267 @@ async function analyse(buffer) {
   $('#tells').replaceChildren(...rows);
 }
 
+let currentPlaybackUrl = '';
+
+function clearRenderedAudio() {
+  const player = $('#player');
+  player.pause();
+  player.removeAttribute('src');
+  player.load();
+  player.hidden = true;
+  $('#waveform').hidden = true;
+  $('#levelMeterBlock').hidden = true;
+  $('#loudnessReadout').hidden = true;
+  delete $('#loudnessReadout').dataset.state;
+  // A take report still being measured must not land on the take that replaced it.
+  takeReportToken++;
+  if (currentPlaybackUrl) URL.revokeObjectURL(currentPlaybackUrl);
+  currentPlaybackUrl = '';
+  $('#dl').replaceChildren();
+  document.getElementById('earTeach')?.remove();
+  lastTells = null;
+  $('#tells').replaceChildren(Object.assign(document.createElement('p'), {
+    className: 'lead', textContent: 'Render or import a take and the report appears here.'
+  }));
+}
+
+// The live meter attaches an AnalyserNode to the <audio> element via
+// createMediaElementSource, which a browser permits exactly once per
+// element for its whole lifetime - a second call throws. So this attaches
+// lazily on the first Pro render and is left running for every render after
+// that; the analyser reads whatever is currently playing through #player
+// regardless of which take's .src is loaded, so it does not need to be
+// re-created when the source changes.
+let liveMeterAttached = false;
+
+function drawRenderedWaveform(buffer, license, source, plannedPausesMs) {
+  const waveformCanvas = $('#waveform');
+  waveformCanvas.hidden = false;
+  drawStaticWaveform(waveformCanvas, computeWaveformPeaks(buffer.getChannelData(0), 800));
+  const pro = applyVoiceTier(license);
+  // The meter is on screen at every level, live only where the licence covers
+  // it; a Standard customer can see what it is for and what it would do.
+  $('#levelMeterBlock').hidden = false;
+  if (pro && !liveMeterAttached) {
+    liveMeterAttached = true;
+    attachLiveMeter($('#player'), waveformCanvas, $('#levelMeter'));
+  }
+  // Every tier gets the take report. Knowing whether a take is broken is what
+  // finishing a project needs, not a professional extra; Pro adds the depth.
+  return showTakeReport(buffer, source || buffer, plannedPausesMs);
+}
+
+// Every voice file this page hands over says what made it and how. Required
+// of synthetic audio since 2 August 2026, and promised by our own Acceptable
+// Use policy long before that.
+const VOICE_PROVENANCE = { software: `MaterialLogix Studio Voice ${APP_VERSION}` };
+
+// --- take measurement, off this thread -------------------------------------
+
+let takeReportToken = 0;
+let analysisWorker = null;
+let analysisWorkerUnavailable = false;
+let analysisSequence = 0;
+const pendingAnalysis = new Map();
+
+function failPendingAnalysis(reason) {
+  for (const settle of pendingAnalysis.values()) settle.reject(new Error(reason));
+  pendingAnalysis.clear();
+}
+
+function takeAnalysisWorker() {
+  if (analysisWorker || analysisWorkerUnavailable) return analysisWorker;
+  try {
+    analysisWorker = new Worker(new URL('./js/voice-take-analysis-worker.js', import.meta.url), { type: 'module' });
+    analysisWorker.onmessage = event => {
+      const settle = pendingAnalysis.get(event.data.id);
+      if (!settle) return;
+      pendingAnalysis.delete(event.data.id);
+      if (event.data.error) settle.reject(new Error(event.data.error));
+      else settle.resolve(event.data.result);
+    };
+    analysisWorker.onerror = () => {
+      analysisWorker?.terminate();
+      analysisWorker = null;
+      analysisWorkerUnavailable = true;
+      failPendingAnalysis('analysis_worker_failed');
+    };
+  } catch {
+    analysisWorkerUnavailable = true;
+  }
+  return analysisWorker;
+}
+
+/**
+ * Measure a take in the worker, and on this thread if a worker cannot start.
+ * The fallback is slower, never wrong: it is the same module either way.
+ */
+async function measureTake(take) {
+  const worker = takeAnalysisWorker();
+  if (!worker) return analyseTake(take);
+  const id = ++analysisSequence;
+  try {
+    return await new Promise((resolve, reject) => {
+      pendingAnalysis.set(id, { resolve, reject });
+      // Copied rather than transferred: transferring detaches the audio here,
+      // and a worker that dies mid-measurement would leave the fallback with
+      // nothing to measure. The copy costs a fraction of what it saves.
+      worker.postMessage({ id, take });
+    });
+  } catch {
+    pendingAnalysis.delete(id);
+    return analyseTake(take);
+  }
+}
+
+const dbLabel = (value, unit) => Number.isFinite(value) ? `${value.toFixed(1)} ${unit}` : 'n/a';
+const escapeHtml = value => String(value).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+/**
+ * Draw the joins on the waveform the customer is looking at, and colour the
+ * ones that do not flow. A level step or a gap that runs long is easier to see
+ * than to hear on one listen, so the eye lands on the cut instead of hunting.
+ */
+function markSeamsOnWaveform(buffer, seams) {
+  const canvas = $('#waveform');
+  if (!canvas || canvas.hidden || !seams.seams.length) return;
+  try {
+    markJoins(canvas, seams.seams.map(seam => ({
+      // The seams are measured in the source; the waveform is the finished
+      // take, which finishing padded at the head by exactly this much.
+      atSeconds: seam.atSeconds + FINISH_HEAD_S,
+      pauseMs: seam.pauseMs,
+      flagged: Math.abs(seam.levelStepDb) > SEAM_THRESHOLDS.levelStepDb
+        || seam.timbreStepPercent > SEAM_THRESHOLDS.timbreStepPercent
+        || seam.clickRatio > SEAM_THRESHOLDS.clickRatio
+    })), buffer.duration);
+  } catch { /* the report is worth more than the overlay */ }
+}
+
+/**
+ * The take report: is it physically sound, and will it be accepted where it is
+ * going. Both modes are always rendered and the mode chooses which is shown, so
+ * switching Guided to Advanced is instant and never re-measures. Guided gets a
+ * sentence and the fixes; Advanced gets the figures behind them.
+ *
+ * The measuring itself runs off this thread. A six-minute take is over ten
+ * seconds of arithmetic — loudness gating alone is most of it — and ten seconds
+ * of a window that will not scroll or answer a click is not something to hand a
+ * customer at the end of every render.
+ */
+async function showTakeReport(buffer, source, plannedPausesMs) {
+  const readout = $('#loudnessReadout');
+  if (!readout) return;
+  const token = takeReportToken;
+  readout.hidden = false;
+  // Measuring runs off this thread, so the readout is on screen before it has
+  // anything to say. Anything reading this report — a person, or the release
+  // suite — has to be able to tell the two apart.
+  readout.dataset.state = 'measuring';
+  readout.replaceChildren(Object.assign(document.createElement('p'), {
+    className: 'take-verdict', textContent: 'Measuring this take…'
+  }));
+  let measured, defects, longForm, seams;
+  try {
+    // Two different questions, so two different buffers. Delivery loudness is
+    // a property of what gets published, which is the finished take. Physical
+    // defects are properties of what was recorded, and our own finishing pass
+    // destroys the evidence for them: the mic-bus compressor reshapes clipped
+    // plateaus until they are no longer flat, so a take clipped on 9.8% of its
+    // samples measured clean after finishing and the customer was told it was
+    // fine. Compression does not repair clipping - the distortion is already
+    // in the samples - it only hides it from the detector. So defects and
+    // long-form drift read the source.
+    //
+    // The seam check reads the source for the same reason plus one of its own:
+    // finishing opens the take with room tone and a breath before the first
+    // word, and that breath reads as a phrase. Measured on the finished take,
+    // the first join reported a 24 dB step on a take that was even throughout.
+    // The overlay puts these back on the drawn timeline by adding the head
+    // padding. Long-form drift is only meaningful past a minute, so short takes
+    // report nothing from it.
+    const heard = source || buffer;
+    ({ measured, defects, longForm, seams } = await measureTake({
+      finished: channelsOf(buffer),
+      finishedRate: buffer.sampleRate,
+      heard: heard.getChannelData(0),
+      heardRate: heard.sampleRate,
+      plannedPausesMs
+    }));
+  } catch {
+    readout.hidden = true;
+    delete readout.dataset.state;
+    return;
+  }
+  if (token !== takeReportToken) return;
+  delete readout.dataset.state;
+  if (!Number.isFinite(measured.integratedLufs)) {
+    readout.innerHTML = '<p class="take-verdict">There is no measurable speech in this take.</p>';
+    return;
+  }
+
+  const verdicts = DELIVERY_TARGETS.map(target => complianceAgainst(target, measured));
+  const streaming = verdicts[0];
+  const problems = [...defects.flags, ...longForm.flags, ...seams.flags];
+
+  // Where the take was cut, drawn on the waveform it was cut from: a level
+  // step or a gap that runs long is easier to see than to hear on one listen.
+  markSeamsOnWaveform(buffer, seams);
+
+  // One plain sentence first, whichever mode is on.
+  const verdict = problems.length
+    ? `${problems.length} thing${problems.length === 1 ? '' : 's'} to fix before you publish this take.`
+    : streaming.pass
+      // "No problems found" rather than "this take is clean": we inspect a
+      // defined set of defects, and a take can fail for something outside it.
+      // Report the finding, never assert a property of the whole take.
+      ? 'No problems found, and the level is right for streaming.'
+      : `No problems found. Its level is ${Math.abs(streaming.offsetLu).toFixed(1)} LU ${streaming.offsetLu > 0 ? 'above' : 'below'} streaming, which the export can set.`;
+
+  const figures = `
+    <div class="loudness-figures voice-advanced">
+      <span><b>${dbLabel(measured.integratedLufs, 'LUFS')}</b><span class="note">integrated</span></span>
+      <span><b>${dbLabel(measured.truePeakDbtp, 'dBTP')}</b><span class="note">true peak</span></span>
+      <span class="voice-locked"><b>${dbLabel(measured.loudnessRangeLu, 'LU')}</b><span class="note">range</span></span>
+      <span class="voice-locked"><b>${dbLabel(measured.shortTermMaxLufs, 'LUFS')}</b><span class="note">short-term max</span></span>
+    </div>`;
+
+  const targets = `
+    <ul class="loudness-targets voice-locked">
+      ${verdicts.map(v => `
+        <li>
+          <b>${escapeHtml(v.target.label)}</b>
+          <span class="note voice-advanced">${v.target.lufs} LUFS · ceiling ${v.target.ceilingDbtp} dBTP</span>
+          <span class="${v.pass ? 'ok' : 'warn'}">${v.pass ? 'on target' : 'off target'}</span>
+          <span class="note">${escapeHtml(v.advice)}</span>
+        </li>`).join('')}
+    </ul>`;
+
+  // Each defect says what it is and what to do; the measurement sits behind Advanced.
+  const flags = problems.length ? `
+    <ul class="take-flags">
+      ${problems.map(flag => `
+        <li class="${flag.severity === 'bad' ? 'warn' : ''}">
+          <b>${escapeHtml(flag.text)}</b>
+          <span class="note">${escapeHtml(flag.fix)}</span>
+        </li>`).join('')}
+    </ul>` : `
+    <p class="note take-clean">No clipping, room echo, mains hum or dropouts found.
+      <span class="voice-advanced">Clipping ${(defects.clipRatio * 100).toFixed(3)}% · echo ${defects.echoCorrelation} · tail ${defects.decayMs} ms · ${defects.humHz} Hz hum ${defects.humDb} dB · ${defects.dropouts} dropouts.${longForm.longForm ? ` Over ${Math.round(longForm.seconds)}s: level ${longForm.levelDriftLu > 0 ? '+' : ''}${longForm.levelDriftLu.toFixed(1)} LU, emphasis ${longForm.startVariationLu.toFixed(1)} to ${longForm.endVariationLu.toFixed(1)} LU.` : ''}</span>
+    </p>`;
+
+  readout.innerHTML = `<p class="take-verdict">${escapeHtml(verdict)}</p>${figures}${targets}${flags}`;
+}
+
+function usePlaybackUrl(url) {
+  if (currentPlaybackUrl && currentPlaybackUrl !== url) URL.revokeObjectURL(currentPlaybackUrl);
+  currentPlaybackUrl = url;
+  return url;
+}
+
 function offerDownload(buffer) {
-  // AudioBuffer -> 16-bit wav
-  const len = buffer.length, sr = buffer.sampleRate;
-  const bytes = new ArrayBuffer(44 + len * 2);
-  const v = new DataView(bytes);
-  const w = (o, s2) => { for (let i = 0; i < s2.length; i++) v.setUint8(o + i, s2.charCodeAt(i)); };
-  w(0, 'RIFF'); v.setUint32(4, 36 + len * 2, true); w(8, 'WAVEfmt ');
-  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true);
-  v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, len * 2, true);
-  const d = buffer.getChannelData(0);
-  for (let i = 0; i < len; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d[i])) * 32767, true);
-  const url = URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' }));
+  const bytes = encodeAudioBuffer(buffer, { provenance: VOICE_PROVENANCE });
+  const url = usePlaybackUrl(URL.createObjectURL(new Blob([bytes], { type: 'audio/wav' })));
   const a = Object.assign(document.createElement('a'), {
     href: url, download: 'voiceover.wav', className: 'btn sm', textContent: 'Download wav', style: 'margin-top:10px;display:inline-block;text-decoration:none'
   });
@@ -377,7 +847,11 @@ function offerDownload(buffer) {
   return url;
 }
 
-async function playAndCheck(arrayBuffer) {
+// `plannedPausesMs` is the gaps the performance direction asked for and
+// `breathBefore` the phrases it draws breath in front of. Both are null for
+// imported audio, which has no direction to be judged against or performed.
+async function playAndCheck(arrayBuffer, { plannedPausesMs = null, breathBefore = null } = {}) {
+  clearRenderedAudio();
   const ctx = new AudioContext();
   try {
   let decoded = await ctx.decodeAudioData(arrayBuffer);
@@ -392,25 +866,51 @@ async function playAndCheck(arrayBuffer) {
       preview = true;
     }
   }
+  let stampBuf = null;
   if (preview || !covers(lic, 'voice')) {
     // Free tier: spoken stamps at start, middle, and end - uncroppable by design.
+    // Fetched here so an unstampable preview is refused before anything plays;
+    // applied after finishing, for the reason given below.
     try {
       const stampRes = await fetch('assets/preview-stamp.wav');
       if (!stampRes.ok) throw new Error(`preview_stamp_${stampRes.status}`);
-      const stampBuf = await ctx.decodeAudioData(await stampRes.arrayBuffer());
-      decoded = await stampPreview(decoded, stampBuf);
+      stampBuf = await ctx.decodeAudioData(await stampRes.arrayBuffer());
       preview = true;
     } catch {
+      clearRenderedAudio();
       $('#status').textContent = 'Preview unavailable because the required audible preview mark could not be applied. No unstamped audio was played or offered.';
-      $('#player').hidden = true;
       $('#dl').replaceChildren(Object.assign(document.createElement('p'), { className: 'note', textContent: 'Start the packaged app again or repair the installation before previewing.' }));
       return;
     }
   }
   $('#status').textContent = 'applying voice finishing…';
-  const humanized = await humanizeBuffer(decoded);
+  // `humanized` is the customer's take, finished and unmarked, and it is what
+  // every measurement below reads. The preview mark is our own speech spliced
+  // into theirs at head, middle and tail, so measuring the marked version
+  // reports our stamp's level as their level, pollutes long-form drift with
+  // three loud interruptions, and hides a clipped take behind the stamp's
+  // peak - a free user would be told a broken take was fine. So the mark goes
+  // on afterwards, and only on the copy that plays.
+  // The direction's breaths are placed into the pauses it already asked for,
+  // located in the rendered audio rather than guessed at from the plan's
+  // arithmetic, because the engine trims each phrase's own silence.
+  const breaths = breathBefore
+    ? breathPlacements(decoded.getChannelData(0), decoded.sampleRate, breathBefore)
+    : [];
+  const humanized = await humanizeBuffer(decoded, { breaths });
+  let playable = humanized;
+  if (stampBuf) {
+    try {
+      playable = await stampPreview(humanized, stampBuf);
+    } catch {
+      clearRenderedAudio();
+      $('#status').textContent = 'Preview unavailable because the required audible preview mark could not be applied. No unstamped audio was played or offered.';
+      $('#dl').replaceChildren(Object.assign(document.createElement('p'), { className: 'note', textContent: 'Start the packaged app again or repair the installation before previewing.' }));
+      return;
+    }
+  }
   if (preview) $('#planSummary').textContent += ' · PREVIEW (licensed renders are clean)';
-  await analyse(humanized);
+  analyse(humanized);
   let url = null;
   if (authorization?.ok) {
     try {
@@ -425,20 +925,14 @@ async function playAndCheck(arrayBuffer) {
   }
   if (!url) {
     // Playback remains local and is not an outbound artifact.
-    const len = humanized.length, sr = humanized.sampleRate;
-    const wav = new ArrayBuffer(44 + len * 2), view = new DataView(wav);
-    const write = (offset, value) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
-    write(0, 'RIFF'); view.setUint32(4, 36 + len * 2, true); write(8, 'WAVEfmt ');
-    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
-    view.setUint32(24, sr, true); view.setUint32(28, sr * 2, true); view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true); write(36, 'data'); view.setUint32(40, len * 2, true);
-    const channel = humanized.getChannelData(0);
-    for (let i = 0; i < len; i++) view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, channel[i])) * 32767, true);
-    url = URL.createObjectURL(new Blob([wav], { type: 'audio/wav' }));
+    const wav = encodeAudioBuffer(playable, { provenance: VOICE_PROVENANCE });
+    url = usePlaybackUrl(URL.createObjectURL(new Blob([wav], { type: 'audio/wav' })));
   }
   $('#player').src = url;
   $('#player').hidden = false;
-  $('#status').textContent = 'quality analysis complete — review the finished take below';
+  $('#status').textContent = 'measuring the take…';
+  await drawRenderedWaveform(humanized, lic, decoded, plannedPausesMs);
+  $('#status').textContent = 'measured — the report is below';
 
   // Every keep/reject is a labeled example: the gate's thresholds learn
   // the owner's taste from these.
@@ -480,6 +974,7 @@ async function playAndCheck(arrayBuffer) {
 }
 
 $('#render').onclick = async () => {
+  clearRenderedAudio();
   if ($('#lang').value === 'es' && !$('#spanishApproved').checked) {
     $('#status').textContent = 'Spanish needs a fluent human review and approval before rendering.';
     $('#spanishApproved').focus();
@@ -508,22 +1003,35 @@ $('#render').onclick = async () => {
         languageId: lang,
         voicePack: $('#pack').value.startsWith('pack:') ? $('#pack').value.slice(5) : undefined,
         voiceProfile: $('#pack').value.startsWith('house:') ? $('#pack').value.slice(6) : undefined,
+        // Only what the engine performs. The plan's intent label, its emphasis
+        // list and its breath marks shape the request and the finishing pass on
+        // this side - exaggeration is computed from emphasis right here, and the
+        // breaths are placed after the render - but tools/tts_render.py reads
+        // none of the three, so none of the three are sent.
         segments: segments.map(s => ({
           text: s.text,
           pauseAfterMs: s.pauseAfterMs,
           rate: s.rate,
           pitch: s.pitch,
           energy: s.energy,
-          breathBefore: s.breathBefore,
-          intent: s.intent,
-          emphasis: s.emphasis,
           exaggeration: +(exag * (s.emphasis.length ? 1.15 : 1)).toFixed(2)
         }))
       })
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `bridge ${res.status}`);
-    await playAndCheck(await res.arrayBuffer());
+    // The gaps the engine will lay down: after every rendered phrase but the
+    // last, and only those long enough to read as a pause rather than a
+    // breath. This is what the seam check judges the finished take against.
+    const rendered = segments.filter(segment => (segment.text || '').trim());
+    const plannedPauses = rendered.slice(0, -1)
+      .map(segment => Number(segment.pauseAfterMs) || 0)
+      .filter(pauseMs => pauseMs >= SEAM_THRESHOLDS.minPauseMs);
+    await playAndCheck(await res.arrayBuffer(), {
+      plannedPausesMs: plannedPauses,
+      breathBefore: rendered.map(segment => segment.breathBefore === true)
+    });
   } catch (err) {
+    clearRenderedAudio();
     $('#status').textContent = 'Voice render failed: ' + err.message;
   } finally {
     $('#render').disabled = !engineReady;
@@ -535,33 +1043,143 @@ $('#wavIn').onchange = async e => {
   const f = e.target.files[0];
   e.target.value = '';
   if (!f) return;
+  clearRenderedAudio();
   try {
     await playAndCheck(await f.arrayBuffer());
   } catch {
+    clearRenderedAudio();
     $('#status').textContent = 'Could not decode that audio file. Use a supported, playable format.';
   }
 };
 $('#exag').oninput = () => { $('#exagV').textContent = Number($('#exag').value).toFixed(2); };
 $('#cfg').oninput = () => { $('#cfgV').textContent = Number($('#cfg').value).toFixed(2); };
+// The description belongs to the voice, not to the last thing that happened,
+// so it has its own line. Writing it into the status line meant that rebuilding
+// the voice list — which every save, delete and engine check does — erased
+// whatever the customer had just been told.
 $('#pack').onchange = () => {
-  const id = $('#pack').value.startsWith('house:') ? $('#pack').value.slice(6) : '';
-  const profile = HOUSE_VOICE_BY_ID[id];
-  if (!profile) return;
+  syncPackActions();
+  const profile = selectedHouseProfile();
+  if (!profile) {
+    const personal = selectedPersonalVoice();
+    $('#packDescription').textContent = personal
+      ? `Personal profile "${personal}". Delete it here when it is no longer needed.`
+      : '';
+    paintPlan();
+    return;
+  }
   $('#cfg').value = String(profile.cfgWeight);
   $('#exag').value = String(profile.exaggeration);
   $('#cfg').dispatchEvent(new Event('input'));
   $('#exag').dispatchEvent(new Event('input'));
-  $('#recState').textContent = `${profile.name}: ${profile.region} · ${profile.register}. ${profile.description}`;
+  $('#packDescription').textContent = `${profile.name}: ${profile.region} · ${profile.register}. ${profile.description}`;
+  // Each profile reads at its own pace, so the estimate and the fit advice
+  // change with the voice.
+  paintPlan();
 };
 
-async function savePack(blob, assessment) {
-  if (!assessment || assessment.status !== 'pass') {
-    $('#recState').textContent = `Voice reference blocked: ${(assessment?.reasons || ['quality_check_required']).join(', ').replaceAll('_', ' ')}.`;
+// Show the written notice the release is given against, so the words on
+// screen are the words that get recorded.
+const voiceNoticeNode = $('#voiceNotice');
+if (voiceNoticeNode) voiceNoticeNode.textContent = NOTICE_TEXT;
+const confirmationLabels = {
+  adult: $('#voiceAdultLabel'), rights: $('#voiceRightsLabel'), purpose: $('#voicePurposeLabel')
+};
+for (const confirmation of CONFIRMATIONS) {
+  if (confirmationLabels[confirmation.id]) confirmationLabels[confirmation.id].textContent = confirmation.label;
+}
+
+function voiceConsentSnapshot() {
+  return {
+    noticeVersion: NOTICE_VERSION,
+    subject: $('#voiceSubject').value,
+    confirmations: {
+      adult: $('#voiceAdult').checked,
+      rights: $('#voiceRights').checked,
+      purpose: $('#voicePurpose').checked
+    },
+    retentionAccepted: $('#voiceRetention').checked
+  };
+}
+
+function voiceConsentSignature(snapshot = voiceConsentSnapshot()) {
+  return JSON.stringify(snapshot);
+}
+
+function voiceConsentProblem(snapshot) {
+  if (!['self', 'third_party'].includes(snapshot.subject)) {
+    return { node: $('#voiceSubject'), message: 'Choose whose voice is in the reference before continuing.' };
+  }
+  for (const confirmation of CONFIRMATIONS) {
+    if (!snapshot.confirmations[confirmation.id]) {
+      return { node: $(`#voice${confirmation.id[0].toUpperCase()}${confirmation.id.slice(1)}`), message: 'Read the voice notice and complete every authorization confirmation before continuing.' };
+    }
+  }
+  if (!snapshot.retentionAccepted) {
+    return { node: $('#voiceRetention'), message: 'Confirm the local-retention choice before continuing.' };
+  }
+  const release = voiceReferenceConsent({
+    ownerConfirmed: snapshot.subject === 'self' && snapshot.confirmations.rights,
+    releaseConfirmed: snapshot.subject === 'third_party' && snapshot.confirmations.rights,
+    purpose: snapshot.confirmations.purpose ? 'voice_conditioning' : '',
+    retentionAccepted: snapshot.retentionAccepted
+  });
+  if (!consentComplete(snapshot) || release.status !== 'pass') {
+    return { node: $('#voiceSubject'), message: 'Voice-reference authorization is incomplete.' };
+  }
+  return null;
+}
+
+let preparedVoiceConsent = null;
+for (const control of [$('#voiceSubject'), $('#voiceAdult'), $('#voiceRights'), $('#voicePurpose'), $('#voiceRetention')]) {
+  control.addEventListener('change', () => { preparedVoiceConsent = null; });
+}
+
+async function recordVoiceConsent(snapshot) {
+  const record = await consentRecord(snapshot);
+  const response = await fetch(apiUrl('/api/consent/biometric'), {
+    method: 'POST',
+    credentials: 'include',
+    cache: 'no-store',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...record, operationId: `voice:${crypto.randomUUID()}` })
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(result?.error || `consent_${response.status}`);
+  if (!validVoiceConsentReceipt(result) || result.noticeSha256 !== record.noticeSha256) {
+    throw new Error('invalid_consent_receipt');
+  }
+  return { signature: voiceConsentSignature(snapshot), receipt: result };
+}
+
+async function prepareVoiceReferenceConsent({ reusePrepared = false } = {}) {
+  const snapshot = voiceConsentSnapshot();
+  const problem = voiceConsentProblem(snapshot);
+  if (problem) {
+    $('#recState').textContent = problem.message;
+    problem.node.focus();
+    return null;
+  }
+  const signature = voiceConsentSignature(snapshot);
+  if (reusePrepared && preparedVoiceConsent?.signature === signature) return preparedVoiceConsent;
+  $('#recState').textContent = 'Recording voice-reference authorization before any audio is captured or processed…';
+  try {
+    preparedVoiceConsent = await recordVoiceConsent(snapshot);
+    return preparedVoiceConsent;
+  } catch {
+    preparedVoiceConsent = null;
+    $('#recState').textContent = 'Voice reference blocked: authorization could not be recorded and verified. Sign in, check the connection, and try again.';
+    return null;
+  }
+}
+
+async function savePack(blob, assessment, consentToken) {
+  if (!consentToken?.signature) {
+    $('#recState').textContent = 'Voice reference blocked: verified authorization is required before processing.';
     return;
   }
-  const consent = voiceReferenceConsent({ ownerConfirmed: $('#voiceRights').checked, purpose: 'voice_conditioning', retentionAccepted: $('#voiceRetention').checked });
-  if (consent.status !== 'pass') {
-    $('#recState').textContent = 'Voice reference blocked: confirm source rights and local-retention terms first.';
+  if (!assessment || assessment.status !== 'pass') {
+    $('#recState').textContent = `Voice reference blocked: ${(assessment?.reasons || ['quality_check_required']).join(', ').replaceAll('_', ' ')}.`;
     return;
   }
   const license = await activeLicense();
@@ -569,8 +1187,16 @@ async function savePack(blob, assessment) {
     $('#recState').textContent = 'Voice Starter allows one active personal voice profile. Discard the current profile or upgrade before adding another.';
     return;
   }
-  const name = prompt('Name this voice reference (letters and dashes):', 'my-voice');
-  if (!name) return;
+  const requestedName = prompt('Name this voice reference (letters, numbers, dashes, or underscores):', 'my-voice');
+  if (requestedName === null) return;
+  const nameCheck = validateVoiceProfileName(requestedName, knownVoicePacks);
+  if (!nameCheck.ok) {
+    $('#recState').textContent = nameCheck.reason === 'duplicate_name'
+      ? `A personal profile named "${nameCheck.name}" already exists. Choose a different name or delete the existing profile first.`
+      : 'Use 1–40 characters: start with a letter or number, then use only letters, numbers, dashes, or underscores.';
+    return;
+  }
+  const name = nameCheck.name;
   const authorization = await authorizeOutbound({ product: 'voice', artifactKind: 'upload', quantity: 1 });
   if (!authorization.ok) {
     $('#recState').textContent = `Online voice-reference authorization failed (${authorization.reason || 'authorization_required'}). Nothing was uploaded.`;
@@ -615,58 +1241,158 @@ async function savePack(blob, assessment) {
   drop.className = 'btn'; drop.type = 'button'; drop.textContent = 'Discard';
   drop.style.marginLeft = '6px';
   drop.onclick = async () => {
-    await bridgeFetch(`${BRIDGE}/voicepack/delete?name=${encodeURIComponent(name)}`, { method: 'POST' });
-    holder.textContent = 'Reference discarded. Record in a quieter space with a closer microphone and natural delivery.';
-    checkEngine();
+    drop.disabled = true;
+    keep.disabled = true;
+    try {
+      const response = await bridgeFetch(`${BRIDGE}/voicepack/delete?name=${encodeURIComponent(name)}`, { method: 'POST' });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !validVoiceProfileDeletion(result, name)) throw new Error(`delete_${response.status}`);
+      preparedVoiceConsent = null;
+      holder.textContent = 'Reference discarded and deleted from this computer.';
+      await checkEngine();
+    } catch {
+      drop.disabled = false;
+      keep.disabled = false;
+      holder.textContent = `The profile "${name}" could not be deleted. It is still stored on this computer; retry before reusing the name.`;
+    }
   };
   const row = document.createElement('div');
   row.append(keep, drop);
   holder.append(note, player, row);
 }
 
-let rec = null, chunks = [];
-$('#recBtn').onclick = async () => {
-  if (rec) {   // stop
-    rec.stop();
-    return;
-  }
-  if (!(await ensureGuardianAck())) return;
+$('#deletePack').onclick = async () => {
+  const name = selectedPersonalVoice();
+  if (!name) return;
+  if (!confirm(`Delete the personal voice profile "${name}" from this computer? This cannot be undone.`)) return;
+  const button = $('#deletePack');
+  button.disabled = true;
+  $('#recState').textContent = `Deleting "${name}"…`;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
-    rec = new MediaRecorder(stream);
-    chunks = [];
-    rec.ondataavailable = e => chunks.push(e.data);
-    rec.onstop = async () => {
-      stream.getTracks().forEach(t => t.stop());
-      $('#recBtn').textContent = 'Record a reference';
-      // decode + re-encode to wav so the engine gets clean PCM
-      const ab = await new Blob(chunks).arrayBuffer();
-      const ctx = new AudioContext();
-      try {
-        const buf = await ctx.decodeAudioData(ab);
-        const assessment = assessVoiceReference(buf, { plan: (await activeLicense())?.plan });
-        await savePack(audioBufferToWav(buf), assessment);
-      } finally {
-        ctx.close().catch(() => {});
-      }
-      rec = null;
-    };
-    rec.start();
-    $('#recBtn').textContent = 'Stop recording';
-    $('#recState').textContent = 'Recording — use a natural speaking style and select Stop when complete.';
-  } catch (e) {
-    $('#recState').textContent = 'Microphone unavailable: ' + e.message;
-    rec = null;
+    const response = await bridgeFetch(`${BRIDGE}/voicepack/delete?name=${encodeURIComponent(name)}`, { method: 'POST' });
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !validVoiceProfileDeletion(result, name)) throw new Error(`delete_${response.status}`);
+    preparedVoiceConsent = null;
+    knownVoicePacks = knownVoicePacks.filter(existing => existing !== name);
+    rebuildVoiceOptions();
+    $('#recState').textContent = `Personal profile "${name}" was deleted from this computer.`;
+  } catch {
+    button.disabled = false;
+    $('#recState').textContent = `Personal profile "${name}" could not be deleted and remains stored on this computer.`;
   }
 };
+
+let rec = null, recordingStream = null, chunks = [], recordingConsent = null, recordingCancelled = false;
+
+function resetRecorderUi() {
+  if (recordingStream) recordingStream.getTracks().forEach(track => track.stop());
+  recordingStream = null;
+  rec = null;
+  chunks = [];
+  recordingConsent = null;
+  recordingCancelled = false;
+  document.body.classList.remove('voice-recording');
+  $('#recBtn').textContent = 'Record a reference';
+  $('#recBtn').setAttribute('aria-pressed', 'false');
+  $('#cancelRec').hidden = true;
+  $('#cancelRec').disabled = false;
+}
+
+function stopActiveRecording({ cancel = false } = {}) {
+  if (!rec || rec.state === 'inactive') return;
+  recordingCancelled = cancel;
+  $('#recState').textContent = cancel ? 'Cancelling recording…' : 'Finishing recording…';
+  rec.stop();
+}
+
+$('#recBtn').onclick = async () => {
+  if (rec) {
+    stopActiveRecording();
+    return;
+  }
+  // First of all the checks, not after them. Withdrawing voice consent has to
+  // actually stop the recording rather than be recorded as a preference — this
+  // went straight to getUserMedia with no check of any kind — and someone who
+  // has switched recording off should not be walked through an age
+  // acknowledgement before being told. Imported audio is untouched: the
+  // product never recorded it.
+  if (recordingConsentWithdrawn()) {
+    // Say where it is turned back on, or the block is a dead end.
+    $('#recState').textContent = `${RECORDING_WITHDRAWN_MESSAGE} Turn it back on under privacy in your account.`;
+    return;
+  }
+  if (!(await ensureAdultAck())) return;
+  const consentToken = await prepareVoiceReferenceConsent({ reusePrepared: true });
+  if (!consentToken) return;
+  try {
+    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false } });
+    recordingConsent = consentToken;
+    rec = new MediaRecorder(recordingStream);
+    chunks = [];
+    rec.ondataavailable = event => { if (event.data?.size) chunks.push(event.data); };
+    rec.onerror = event => {
+      const message = event.error?.message || 'recorder_error';
+      resetRecorderUi();
+      $('#recState').textContent = `Recording failed: ${message}. No voice reference was saved.`;
+    };
+    rec.onstop = async () => {
+      const cancelled = recordingCancelled;
+      const captured = [...chunks];
+      const capturedConsent = recordingConsent;
+      resetRecorderUi();
+      if (cancelled) {
+        $('#recState').textContent = 'Recording cancelled. No voice reference was processed or saved.';
+        return;
+      }
+      if (!captured.length) {
+        $('#recState').textContent = 'Recording produced no playable audio. No voice reference was saved.';
+        return;
+      }
+      const context = new AudioContext();
+      try {
+        const buffer = await context.decodeAudioData(await new Blob(captured).arrayBuffer());
+        const currentConsent = voiceConsentSignature();
+        if (capturedConsent?.signature !== currentConsent) {
+          $('#recState').textContent = 'Authorization changed while recording. No voice reference was processed or saved.';
+          return;
+        }
+        const assessment = assessVoiceReference(buffer, { plan: (await activeLicense())?.plan });
+        await savePack(audioBufferToWav(buffer), assessment, capturedConsent);
+      } catch (error) {
+        $('#recState').textContent = `Recorded audio could not be processed: ${error.message || 'decode_failed'}. No voice reference was saved.`;
+      } finally {
+        context.close().catch(() => {});
+      }
+    };
+    rec.start();
+    document.body.classList.add('voice-recording');
+    $('#recBtn').textContent = 'Stop recording';
+    $('#recBtn').setAttribute('aria-pressed', 'true');
+    $('#cancelRec').hidden = false;
+    $('#recState').textContent = 'Recording — use a natural speaking style, then choose Stop or Cancel.';
+  } catch (error) {
+    resetRecorderUi();
+    $('#recState').textContent = `Microphone unavailable: ${error.message || 'permission_or_device_error'}`;
+  }
+};
+$('#cancelRec').onclick = () => stopActiveRecording({ cancel: true });
+window.addEventListener('pagehide', () => {
+  if (rec && rec.state !== 'inactive') {
+    recordingCancelled = true;
+    try { rec.stop(); } catch { /* tracks are still stopped below */ }
+  }
+  if (recordingStream) recordingStream.getTracks().forEach(track => track.stop());
+});
 $('#packUpload').onclick = () => $('#packFile').click();
 $('#packFile').onchange = async e => {
   const files = [...e.target.files];
   e.target.value = '';
   if (!files.length) return;
+  const consentToken = await prepareVoiceReferenceConsent({ reusePrepared: true });
+  if (!consentToken) return;
   const license = await activeLicense();
-  if (files.length > 1 && license?.plan === 'voice_starter') {
-    $('#recState').textContent = 'Voice Starter supports one personal voice source, not composite or multi-source packs. Upgrade to Voice Studio for advanced pack features.';
+  if (files.length > 1) {
+    $('#recState').textContent = 'Choose one file containing one adult voice. Multi-person composite profiles are disabled because each speaker needs a separate verified authorization.';
     return;
   }
   if (files.length === 1) {
@@ -677,7 +1403,11 @@ $('#packFile').onchange = async e => {
     const context = new AudioContext();
     try {
       const decoded = await context.decodeAudioData(await files[0].arrayBuffer());
-      return await savePack(audioBufferToWav(decoded), assessVoiceReference(decoded, { plan: license?.plan }));
+      if (consentToken.signature !== voiceConsentSignature()) {
+        $('#recState').textContent = 'Authorization changed before processing. Choose the file again after completing the current authorization.';
+        return;
+      }
+      return await savePack(audioBufferToWav(decoded), assessVoiceReference(decoded, { plan: license?.plan }), consentToken);
     } catch {
       $('#recState').textContent = 'Could not decode that reference. Choose a supported, playable audio file.';
       return;
@@ -686,56 +1416,32 @@ $('#packFile').onchange = async e => {
     }
   }
 
-  // Composite pack: several cleared voices blended into one reference that is
-  // no single person. Sources must be consented or CC0 (e.g. Common Voice) -
-  // blending does not launder unlicensed audio.
-  $('#recState').textContent = `Blending ${files.length} voices into one composite pack…`;
-  const ctx = new AudioContext();
-  const buffers = [];
-  try {
-    for (const f of files) {
-      try { buffers.push(await ctx.decodeAudioData(await f.arrayBuffer())); }
-      catch { $('#recState').textContent = `Could not decode ${f.name}`; return; }
-    }
-  } finally {
-    ctx.close().catch(() => {});
-  }
-  const sr = 24000;
-  const perClip = 9;                       // seconds of each voice
-  const gap = Math.round(sr * 0.25);
-  const clipLen = sr * perClip;
-  const total = buffers.length * (clipLen + gap);
-  const off = new OfflineAudioContext(1, total, sr);
-  let at = 0;
-  for (const b of buffers) {
-    // rough loudness match so no donor dominates the conditioning
-    let sum = 0;
-    const d = b.getChannelData(0);
-    for (let i = 0; i < d.length; i += 97) sum += d[i] * d[i];
-    const rms = Math.sqrt(sum / Math.ceil(d.length / 97)) || 1;
-    const src = off.createBufferSource();
-    src.buffer = b;
-    const g = off.createGain();
-    g.gain.value = Math.min(4, 0.08 / rms);
-    src.connect(g).connect(off.destination);
-    src.start(at / sr, 0, Math.min(perClip, b.duration));
-    at += clipLen + gap;
-  }
-  const mixed = await off.startRendering();
-  const len = mixed.length;
-  const bytes = new ArrayBuffer(44 + len * 2);
-  const v = new DataView(bytes);
-  const wstr = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
-  wstr(0, 'RIFF'); v.setUint32(4, 36 + len * 2, true); wstr(8, 'WAVEfmt ');
-  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true);
-  v.setUint16(34, 16, true); wstr(36, 'data'); v.setUint32(40, len * 2, true);
-  const d2 = mixed.getChannelData(0);
-  for (let i = 0; i < len; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, d2[i])) * 32767, true);
-  await savePack(new Blob([bytes], { type: 'audio/wav' }), assessVoiceReference(mixed, { plan: license?.plan }));
 };
-$('#script').oninput = paintPlan;
-$('#spanishScript').oninput = paintPlan;
+// The script is the work. Losing a voiceover someone wrote in this window to a
+// stray reload or a crash is the one failure that costs more than a re-render,
+// so the draft is kept on this computer between sessions, alongside the mode
+// and workspace choices that were already kept. Nothing about it leaves here.
+const SCRIPT_DRAFT_KEY = 'mlx:voice-script-draft';
+
+function saveScriptDraft() {
+  try {
+    localStorage.setItem(SCRIPT_DRAFT_KEY, JSON.stringify({
+      script: $('#script').value, spanish: $('#spanishScript').value
+    }));
+  } catch { /* a full or blocked store must never stop someone typing */ }
+}
+
+function restoreScriptDraft() {
+  let draft = null;
+  try { draft = JSON.parse(localStorage.getItem(SCRIPT_DRAFT_KEY) || 'null'); } catch { return; }
+  if (!draft || typeof draft !== 'object') return;
+  if (typeof draft.script === 'string' && draft.script.trim()) $('#script').value = draft.script;
+  if (typeof draft.spanish === 'string') $('#spanishScript').value = draft.spanish;
+}
+restoreScriptDraft();
+
+$('#script').oninput = () => { saveScriptDraft(); paintPlan(); };
+$('#spanishScript').oninput = () => { saveScriptDraft(); paintPlan(); };
 $('#lang').onchange = () => {
   const spanish = $('#lang').value === 'es';
   $('#spanishReview').hidden = !spanish;

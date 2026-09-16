@@ -19,12 +19,16 @@ function make(tag, props = {}, ...children) {
 }
 
 function toast(message, bad = false) {
-  document.querySelectorAll('.toast').forEach(node => node.remove());
+  // Clear only this surface's own notices. Clearing every .toast on the page
+  // took down whatever the workspace had just told the customer, before they
+  // had a chance to read it.
+  document.querySelectorAll('.toast[data-shell-toast]').forEach(node => node.remove());
   const node = make('div', {
     className: 'toast' + (bad ? ' bad' : ''),
     textContent: message,
     role: 'status'
   });
+  node.dataset.shellToast = 'true';
   node.setAttribute('aria-live', bad ? 'assertive' : 'polite');
   document.body.append(node);
   setTimeout(() => node.remove(), bad ? 7000 : 3200);
@@ -129,15 +133,19 @@ function applyStudioServices() {
   const secondaryTools = sidebar.querySelector('[data-secondary-tools] > .panel-body');
   if (!secondaryTools) return;
 
+  const studioLink = (href, label) => make('a', {
+    className: 'btn',
+    href,
+    textContent: label,
+    style: 'display:block;text-align:center;text-decoration:none;margin-bottom:6px'
+  });
   const body = make('div', { className: 'panel-body' },
     make('p', { className: 'hint' },
-      'Move between the Review and Voice services, or bring the brand artwork this project must follow.'),
-    make('a', {
-      className: 'btn',
-      href: 'voice.html',
-      textContent: 'Open Voice Studio',
-      style: 'display:block;text-align:center;text-decoration:none;margin-bottom:6px'
-    }),
+      'Move between Studios, or bring the brand artwork this project must follow.'),
+    // Named two of the four Studios, and called this one "Review".
+    studioLink('#studio-entry', 'All Studios'),
+    studioLink('voice.html', 'Open Voice Studio'),
+    studioLink('music.html', 'Open Music Studio'),
     (() => {
       const button = make('button', {
         className: 'btn',

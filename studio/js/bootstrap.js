@@ -24,5 +24,8 @@ window.addEventListener('storage', event => {
   }
 });
 
+// Stripe returns the buyer to this page, so the claim has to be redeemed here
+// before the product renders with the new plan.
+await import('./checkout-result.js');
 await import('./app.js');
 await import('./studio-shell.js');

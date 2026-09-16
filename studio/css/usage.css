@@ -29,7 +29,7 @@
 
 .usage-topbar { position: sticky; top: 0; min-height: 64px; height: auto; justify-content: space-between; }
 .usage-brand { min-height: 44px; align-items: center; color: var(--ink); text-decoration: none; }
-.usage-brand strong { color: var(--gold); letter-spacing: .08em; }
+.usage-brand strong { letter-spacing: -.02em; }
 .usage-brand span { color: var(--ink-2); letter-spacing: .18em; }
 .usage-topbar > .btn { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; text-decoration: none; }
 
@@ -106,10 +106,16 @@
 
 @media (max-width: 560px) {
   .usage-topbar { padding: 9px 12px; gap: 10px; }
-  .usage-brand span { display: none; }
+  /* Only the trailing page label needs the width. This hid every span in
+     the lockup, so the wordmark itself vanished on mobile and the bar was
+     left empty. */
+  .usage-brand .brand-suffix { display: none; }
   .usage-topbar > .btn { padding: 8px 10px; font-size: 11.5px; }
   .usage-main { padding-top: 34px; }
-  .usage-main h1 { font-size: clamp(40px, 15vw, 58px); }
+  /* 15vw put "Production activity" at 56px on a 375px screen, which broke it
+     across two lines and pushed the cards below the fold. This is the largest
+     size that still sets the longest heading on one line at 375px. */
+  .usage-main h1 { font-size: clamp(34px, 11.7vw, 58px); text-wrap: balance; }
   .usage-grid { gap: 8px; }
   .usage-card { min-height: 108px; padding: 15px; }
   .usage-card b { font-size: 25px; }
@@ -137,3 +143,5 @@
   .usage-panel,
   .usage-table-wrap { break-inside: avoid; border-color: #bbb; background: #fff; }
 }
+
+.brand-word{display:inline-flex;align-items:baseline;font:400 19px/1.15 var(--serif);letter-spacing:-.02em}.brand-material{color:var(--ink,#f4efe4)}.brand-logix{color:transparent;background:var(--brand-gleam);-webkit-background-clip:text;background-clip:text}

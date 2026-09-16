@@ -13,22 +13,15 @@ const isPrivateIpv4 = h => /^\d{1,3}(\.\d{1,3}){3}$/.test(h)
   && h.split('.').every(octet => Number(octet) <= 255)
   && /^(127\.|192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
 const BRIDGE_HOST = (typeof location !== 'undefined' && isPrivateIpv4(location.hostname)) ? location.hostname : '127.0.0.1';
-const DEFAULT_BASE = 'http://127.0.0.1:8188';
+export const DEFAULT_BASE = 'http://127.0.0.1:8188';
 
 export const NATURAL_PHOTO_GUIDANCE = [
   'photographic naturalism',
   'believable skin texture and tonal variation when people are present',
   'physically plausible anatomy, posture, gaze, and expression',
   'realistic fabric weave, seams, weight, drape, and material response',
-  'coherent environmental lighting, contact shadows, and reflections'
-].join(', ');
-
-export const HUMAN_SCENE_GUIDANCE = [
-  'natural task-focused body language rather than mannequin posing',
-  'independent believable gaze and attention between people',
-  'complete anatomically credible hands or hands naturally outside the frame',
-  'relaxed facial muscles and a natural closed mouth unless another expression is requested',
-  'candid environmental composition unless a posed or centered portrait is requested'
+  'coherent environmental lighting, contact shadows, and reflections',
+  'objects resting only where they could actually be placed or held'
 ].join(', ');
 
 export const NATURAL_PHOTO_AVOID = [
@@ -60,7 +53,11 @@ const DIRECTIVES = {
   framing: /\b(close[- ]?up|wide shot|full[- ]body|headshot|overhead|top[- ]down|low angle|high angle|macro|crop(?:ped)?)\b/i,
   optics: /\b(\d{2,3}\s?mm|wide[- ]angle|telephoto|bokeh|depth of field|f\/\d|shallow focus|deep focus|fisheye|tilt[- ]shift)\b/i,
   medium: /\b(grain|grainy|film|analog|35mm|polaroid|clean|pristine|no grain)\b/i,
-  pose: /\b(posed|formal portrait|studio portrait|headshot|fashion pose)\b/i,
+  // Formal-portrait language AND any already-specific described action both
+  // count: either way the requester has already decided what the body is
+  // doing, so injecting "task-focused body language" on top would compete
+  // with, not support, what they asked for.
+  pose: /\b(posed|formal portrait|studio portrait|headshot|fashion pose|standing|sitting|kneeling|crouching|walking|running|dancing|jumping|holding|gripping|leaning|gesturing|performing)\b/i,
   expression: /\b(smile|smiling|laugh|laughing|open mouth|speaking|talking|shouting|singing|serious|neutral expression|frown|frowning|crying|angry|surprised)\b/i,
   handsHidden: /\b(hands? (?:hidden|concealed|outside|out of) (?:the )?frame|no hands?|hands? not visible)\b/i
 };
@@ -68,6 +65,23 @@ const DIRECTIVES = {
 // Optical and medium character. Absence of these is a strong synthetic tell.
 export const CAMERA_GUIDANCE = 'natural lens perspective with believable depth of field and focus falloff';
 export const MEDIUM_GUIDANCE = 'subtle sensor grain and natural highlight roll-off rather than a perfectly clean digital render';
+
+// CLIP-L (what CheckpointLoaderSimple's text encoder is) caps at 77 tokens;
+// well past that, content is chunked or dropped rather than cleanly read.
+// The old 1000-character ceiling was sized to stop abuse, not to fit this
+// budget -- the compiled prompt (this text plus NATURAL_PHOTO_GUIDANCE and,
+// for a human scene, the applicable rules above) needs real room left for a
+// requester's own words. 350 characters keeps a detailed sentence or two
+// while leaving space for what compilePhotoPrompt still has to add.
+export const PROMPT_MIN_LENGTH = 10;
+export const PROMPT_MAX_LENGTH = 350;
+
+// Flux's T5-XXL encoder (the one that actually carries detailed semantic
+// meaning in its dual-encoder setup) comfortably handles ~512 tokens, not
+// CLIP-L's 77 -- reusing PROMPT_MAX_LENGTH here would impose SD1.5's real
+// constraint on an architecture that does not have it. ~1500 characters
+// stays well inside that budget alongside compilePhotoPrompt's additions.
+export const FLUX_PROMPT_MAX_LENGTH = 1500;
 
 const avoidRules = [
   [/\b(waxy|plastic) skin\b/i, 'waxy or plastic skin'],
@@ -84,6 +98,14 @@ const avoidRules = [
   [/\b(bokeh|cut[- ]?out)\b/i, 'cut-out subject edges or plastic-looking bokeh']
 ];
 
+// Style intent (natural vs. stylized vs. film) is a creative choice the
+// customer's own wording is free to override. Whether the model is allowed
+// to render explicit content is not that kind of choice -- it is added to
+// every compiled negative prompt unconditionally, including the stylized
+// early return below, and it is never in explicitOverrides because there is
+// no wording that should be able to turn it off.
+export const EXPLICIT_CONTENT_AVOID = 'nudity, nude, naked, exposed genitals, exposed breasts, bare chest, sexual content, sexual act, nsfw, pornographic';
+
 /**
  * Compile customer direction without replacing it. Explicit creative choices
  * win; MaterialLogix adds only the photographic details the customer did not
@@ -96,9 +118,9 @@ export function compilePhotoPrompt(prompt, negative = '', styleIntent = 'natural
   if (!['natural', 'stylized', 'film'].includes(styleIntent)) throw new Error('Unknown Photo style intent.');
   if (styleIntent === 'stylized') return {
     prompt: requested,
-    negative: avoided,
+    negative: [avoided, EXPLICIT_CONTENT_AVOID].filter(Boolean).join(', '),
     styleIntent,
-    appliedRules: [],
+    appliedRules: ['content-safety'],
     explicitOverrides: ['stylized']
   };
 
@@ -125,9 +147,10 @@ export function compilePhotoPrompt(prompt, negative = '', styleIntent = 'natural
     .filter(([explicitChoice]) => !explicitChoice.test(requested))
     .map(([, phrase]) => phrase)
     .join(', ');
+  appliedRules.push('content-safety');
   return {
     prompt: [requested, ...additions.filter(Boolean)].join(', '),
-    negative: [avoided, protectedAvoid].filter(Boolean).join(', '),
+    negative: [avoided, protectedAvoid, EXPLICIT_CONTENT_AVOID].filter(Boolean).join(', '),
     styleIntent,
     appliedRules,
     explicitOverrides
@@ -257,6 +280,34 @@ export async function listCheckpoints(base = DEFAULT_BASE) {
 }
 
 /**
+ * Whether this engine can actually run buildFluxTxt2Img right now, and if
+ * not, exactly what is missing -- the custom node, or which of the four
+ * required model files. A customer with a partial setup (node installed,
+ * one file not yet downloaded) needs to be told which piece, not just
+ * "Flux isn't ready."
+ */
+export async function detectFluxReady(base = DEFAULT_BASE) {
+  const [unetInfo, clipInfo, vaeInfo] = await Promise.all([
+    getJson(base, '/object_info/UnetLoaderGGUF').catch(() => null),
+    getJson(base, '/object_info/DualCLIPLoader').catch(() => null),
+    getJson(base, '/object_info/VAELoader').catch(() => null)
+  ]);
+  const nodeMissing = !unetInfo?.UnetLoaderGGUF || !clipInfo?.DualCLIPLoader || !vaeInfo?.VAELoader;
+  if (nodeMissing) {
+    return { ok: false, nodeMissing: true, missingFiles: [] };
+  }
+  const installedUnets = unetInfo.UnetLoaderGGUF.input.required.unet_name[0] || [];
+  const installedClips = clipInfo.DualCLIPLoader.input.required.clip_name1[0] || [];
+  const installedVaes = vaeInfo.VAELoader.input.required.vae_name[0] || [];
+  const missingFiles = [];
+  if (!installedUnets.includes(FLUX_REQUIRED_FILES.unet)) missingFiles.push(FLUX_REQUIRED_FILES.unet);
+  if (!installedClips.includes(FLUX_REQUIRED_FILES.t5)) missingFiles.push(FLUX_REQUIRED_FILES.t5);
+  if (!installedClips.includes(FLUX_REQUIRED_FILES.clipL)) missingFiles.push(FLUX_REQUIRED_FILES.clipL);
+  if (!installedVaes.includes(FLUX_REQUIRED_FILES.vae)) missingFiles.push(FLUX_REQUIRED_FILES.vae);
+  return { ok: missingFiles.length === 0, nodeMissing: false, missingFiles };
+}
+
+/**
  * Validate the standard ComfyUI nodes and typed sockets required by the
  * MaterialLogix separate-source/separate-mask inpainting graph.
  */
@@ -295,32 +346,136 @@ export async function inspectInpaintCompatibility(base = DEFAULT_BASE) {
   return { base, ...validateInpaintObjectInfo(info) };
 }
 
+// SD1.5-class checkpoints are trained at roughly 512-768px. A single pass
+// rendered well above that (e.g. the "Best quality" preset's uncapped target
+// size) is a well-documented cause of duplicated subjects: the model tiles
+// what it knows how to compose rather than extending one coherent scene.
+// Hires.Fix -- render at a safe base size, then upscale the latent and run a
+// second low-denoise pass -- locks the composition in at native resolution
+// and only adds detail on the second pass, avoiding that failure mode.
+const HIRES_FIX_BASE_MAX_SIDE = 768;
+const HIRES_FIX_DENOISE = 0.45;
+
+// Realistic Vision (and most SD1.5 photoreal finetunes sharing its lineage)
+// document DPM++ SDE Karras at 25+ steps as the tested combination, not the
+// sampler-agnostic Euler/normal default -- the wrong sampler for a specific
+// checkpoint's tuning is a second, independent cause of the anatomy/duplicate
+// artifacts Hires.Fix alone does not fully rule out.
+const SAMPLER_NAME = 'dpmpp_sde';
+const SCHEDULER_NAME = 'karras';
+
+function fitHiresFixBase(width, height, maxSide) {
+  const longest = Math.max(width, height);
+  if (longest <= maxSide) return { width, height };
+  const scale = maxSide / longest;
+  const fit = v => Math.max(512, Math.round(v * scale / 64) * 64);
+  return { width: fit(width), height: fit(height) };
+}
+
 /**
  * A minimal, standard txt2img graph. Pure function so the suite can verify
  * that prompts, sizes, and wiring land where they should without a GPU.
  */
-export function buildTxt2Img({ ckpt, prompt, negative = '', styleIntent = 'natural', width = 1024, height = 1024, steps = 22, cfg = 6.5, seed }) {
+export function buildTxt2Img({ ckpt, prompt, negative = '', styleIntent = 'natural', width = 1024, height = 1024, steps = 25, cfg = 6.5, seed }) {
   if (!ckpt) throw new Error('No checkpoint model selected.');
-  if (String(prompt || '').length > 1000 || String(negative || '').length > 1000) throw new Error('Prompt text is too long.');
+  if (String(prompt || '').trim().length < PROMPT_MIN_LENGTH) throw new Error(`Prompt needs at least ${PROMPT_MIN_LENGTH} characters to describe the shot.`);
+  if (String(prompt || '').length > PROMPT_MAX_LENGTH || String(negative || '').length > PROMPT_MAX_LENGTH) throw new Error('Prompt text is too long.');
   const styled = applyPhotoStyleDefaults(prompt, negative, styleIntent);
   const s = seed ?? Math.floor(Math.random() * 2 ** 32);
+  const base = fitHiresFixBase(width, height, HIRES_FIX_BASE_MAX_SIDE);
+  const needsHiresFix = base.width !== width || base.height !== height;
+
+  const graph = {
+    '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: ckpt } },
+    '2': { class_type: 'CLIPTextEncode', inputs: { text: styled.prompt, clip: ['1', 1] } },
+    '3': { class_type: 'CLIPTextEncode', inputs: { text: styled.negative, clip: ['1', 1] } },
+    '4': { class_type: 'EmptyLatentImage', inputs: { width: base.width, height: base.height, batch_size: 1 } },
+    '5': {
+      class_type: 'KSampler',
+      inputs: {
+        model: ['1', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['4', 0],
+        seed: s, steps, cfg, sampler_name: SAMPLER_NAME, scheduler: SCHEDULER_NAME, denoise: 1
+      }
+    }
+  };
+
+  let finalLatent = ['5', 0];
+  if (needsHiresFix) {
+    graph['8'] = {
+      class_type: 'LatentUpscale',
+      inputs: { samples: ['5', 0], upscale_method: 'nearest-exact', width, height, crop: 'disabled' }
+    };
+    graph['9'] = {
+      class_type: 'KSampler',
+      inputs: {
+        model: ['1', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['8', 0],
+        seed: s, steps, cfg, sampler_name: SAMPLER_NAME, scheduler: SCHEDULER_NAME, denoise: HIRES_FIX_DENOISE
+      }
+    };
+    finalLatent = ['9', 0];
+  }
+
+  graph['6'] = { class_type: 'VAEDecode', inputs: { samples: finalLatent, vae: ['1', 2] } };
+  graph['7'] = { class_type: 'SaveImage', inputs: { images: ['6', 0], filename_prefix: 'cros' } };
+
+  return { seed: s, styleIntent: styled.styleIntent, graph };
+}
+
+// FLUX is a different model family, not a drop-in for buildTxt2Img: it needs
+// two text encoders (CLIP-L + T5-XXL) loaded together rather than one CLIP
+// bundled in the checkpoint, its own VAE, a GGUF-quantized UNET loaded through
+// the ComfyUI-GGUF custom node, and guidance-distilled sampling (FluxGuidance
+// drives the effect a negative prompt and CFG > 1 would on SD -- KSampler's
+// negative input still has to be wired to something, so it gets an empty,
+// unused conditioning and cfg stays at 1). It also does not share SD1.5's
+// native-resolution ceiling, so it renders directly at the target size with
+// no Hires.Fix pass. Kept separate from buildTxt2Img rather than merged into
+// it so the SD1.5 path already fixed above stays exactly as tested.
+export const FLUX_REQUIRED_FILES = Object.freeze({
+  unet: 'flux1-dev-Q3_K_S.gguf',
+  clipL: 'clip_l.safetensors',
+  t5: 't5xxl_fp8_e4m3fn_scaled.safetensors',
+  vae: 'ae.safetensors'
+});
+const FLUX_GUIDANCE = 3.5;
+
+export function buildFluxTxt2Img({ prompt, negative = '', styleIntent = 'natural', width = 1024, height = 1024, steps = 20, seed }) {
+  if (String(prompt || '').trim().length < PROMPT_MIN_LENGTH) throw new Error(`Prompt needs at least ${PROMPT_MIN_LENGTH} characters to describe the shot.`);
+  if (String(prompt || '').length > FLUX_PROMPT_MAX_LENGTH || String(negative || '').length > FLUX_PROMPT_MAX_LENGTH) throw new Error('Prompt text is too long.');
+  const styled = applyPhotoStyleDefaults(prompt, negative, styleIntent);
+  const s = seed ?? Math.floor(Math.random() * 2 ** 32);
+  const fit = v => Math.max(64, Math.round(v / 16) * 16);
+
   return {
     seed: s,
     styleIntent: styled.styleIntent,
     graph: {
-      '1': { class_type: 'CheckpointLoaderSimple', inputs: { ckpt_name: ckpt } },
-      '2': { class_type: 'CLIPTextEncode', inputs: { text: styled.prompt, clip: ['1', 1] } },
-      '3': { class_type: 'CLIPTextEncode', inputs: { text: styled.negative, clip: ['1', 1] } },
-      '4': { class_type: 'EmptyLatentImage', inputs: { width, height, batch_size: 1 } },
-      '5': {
+      '1': { class_type: 'UnetLoaderGGUF', inputs: { unet_name: FLUX_REQUIRED_FILES.unet } },
+      '2': { class_type: 'DualCLIPLoader', inputs: { clip_name1: FLUX_REQUIRED_FILES.t5, clip_name2: FLUX_REQUIRED_FILES.clipL, type: 'flux' } },
+      '3': { class_type: 'VAELoader', inputs: { vae_name: FLUX_REQUIRED_FILES.vae } },
+      '4': { class_type: 'CLIPTextEncode', inputs: { text: styled.prompt, clip: ['2', 0] } },
+      // Guidance-distilled Flux runs KSampler at cfg=1, where classifier-free
+      // guidance (and so a negative prompt) has no mathematical effect --
+      // FluxGuidance drives the positive branch alone. This is still wired
+      // to the real compiled negative rather than left empty: it costs
+      // nothing, and the moment this graph is ever run through a sampler or
+      // cfg configuration where negative conditioning does matter, the
+      // content-safety guard already computed above is live instead of
+      // silently absent. The actual safety burden for Flux, cfg=1 as
+      // configured, is on the positive prompt not requesting explicit
+      // content -- not on this negative branch.
+      '5': { class_type: 'CLIPTextEncode', inputs: { text: styled.negative, clip: ['2', 0] } },
+      '6': { class_type: 'FluxGuidance', inputs: { conditioning: ['4', 0], guidance: FLUX_GUIDANCE } },
+      '7': { class_type: 'EmptyLatentImage', inputs: { width: fit(width), height: fit(height), batch_size: 1 } },
+      '8': {
         class_type: 'KSampler',
         inputs: {
-          model: ['1', 0], positive: ['2', 0], negative: ['3', 0], latent_image: ['4', 0],
-          seed: s, steps, cfg, sampler_name: 'euler', scheduler: 'normal', denoise: 1
+          model: ['1', 0], positive: ['6', 0], negative: ['5', 0], latent_image: ['7', 0],
+          seed: s, steps, cfg: 1, sampler_name: 'euler', scheduler: 'simple', denoise: 1
         }
       },
-      '6': { class_type: 'VAEDecode', inputs: { samples: ['5', 0], vae: ['1', 2] } },
-      '7': { class_type: 'SaveImage', inputs: { images: ['6', 0], filename_prefix: 'cros' } }
+      '9': { class_type: 'VAEDecode', inputs: { samples: ['8', 0], vae: ['3', 0] } },
+      '10': { class_type: 'SaveImage', inputs: { images: ['9', 0], filename_prefix: 'cros' } }
     }
   };
 }
@@ -637,7 +792,8 @@ export function buildInpaint({ imageName, maskName, ckpt, prompt, negative = '',
   if (!imageName) throw new Error('No source image uploaded.');
   if (!maskName) throw new Error('No selection mask uploaded.');
   if (!ckpt) throw new Error('No inpainting checkpoint selected.');
-  if (String(prompt || '').length > 1000 || String(negative || '').length > 1000) throw new Error('Prompt text is too long.');
+  if (String(prompt || '').trim().length < PROMPT_MIN_LENGTH) throw new Error(`Prompt needs at least ${PROMPT_MIN_LENGTH} characters to describe the shot.`);
+  if (String(prompt || '').length > PROMPT_MAX_LENGTH || String(negative || '').length > PROMPT_MAX_LENGTH) throw new Error('Prompt text is too long.');
   const styled = applyPhotoStyleDefaults(prompt, negative, styleIntent);
   const strength = Number(denoise);
   if (!Number.isFinite(strength) || strength < 0.1 || strength > 1) throw new Error('Denoise must be between 0.1 and 1.');
@@ -782,7 +938,7 @@ export async function detectBridge(base = BRIDGE) {
     const res = await bridgeFetch(`${base}/health`, { signal: AbortSignal.timeout(1500) });
     if (!res.ok) return { ok: false, base };
     const j = await res.json();
-    return { ok: true, base, upscale: j.upscale, voice: j.voice, video: j.video, lan: j.lan || [] };
+    return { ok: true, base, upscale: j.upscale, voice: j.voice, video: j.video, lan: j.lan || [], lanPin: j.lanPin || '' };
   } catch {
     return { ok: false, base };
   }
@@ -807,14 +963,14 @@ export async function upscaleViaBridge(blob, model, onStatus = () => {}, base = 
 }
 
 export function localUpscaleModelLabel(model) {
-  if (model === 'cpu-lanczos-x2') return 'CPU recovery · Lanczos 2× (non-AI)';
-  if (model === 'cpu-lanczos-x4') return 'CPU recovery · Lanczos 4× (non-AI)';
-  return `${model} · AI detail restoration`;
+  if (model === 'cpu-lanczos-x2') return 'CPU recovery · Lanczos 2× (standard)';
+  if (model === 'cpu-lanczos-x4') return 'CPU recovery · Lanczos 4× (standard)';
+  return `${model} · detail restoration`;
 }
 
 export function localUpscaleEngineLabel(engine) {
   if (engine === 'realesrgan-ncnn-vulkan') return 'local Real-ESRGAN GPU engine';
-  if (engine === 'ffmpeg-lanczos-cpu') return 'local CPU Lanczos scaler (non-AI)';
-  if (engine === 'ffmpeg-lanczos-cpu-fallback') return 'local CPU Lanczos recovery after GPU failure (non-AI)';
+  if (engine === 'ffmpeg-lanczos-cpu') return 'local CPU Lanczos scaler (standard)';
+  if (engine === 'ffmpeg-lanczos-cpu-fallback') return 'local CPU Lanczos recovery after GPU failure (standard)';
   return 'local image engine';
 }

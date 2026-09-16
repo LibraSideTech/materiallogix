@@ -6,7 +6,11 @@
 
 export const HUMAN_GEOMETRY_SCHEMA = 'materiallogix.human-geometry.v2';
 export const NORMALIZED_IMAGE_COORDINATES = 'image-normalized:x-right:y-down:z-camera-relative';
-export const SUBJECT_WORLD_COORDINATES = 'mediapipe-world:meters:origin-hip-midpoint';
+// Coordinate scope for a single view inside a multi-view Personal Geometry
+// Pack (js/personal-geometry-pack.js): camera-relative and normalized like
+// NORMALIZED_IMAGE_COORDINATES, but explicitly the multi-view reference
+// variant, never a metric/calibrated scale.
+export const NORMALIZED_REFERENCE_VIEW_SCOPE = 'multiview-reference:x-right:y-down:z-camera-relative';
 
 export const POSE_LANDMARK_CODES = Object.freeze([
   'nose', 'left_eye_inner', 'left_eye', 'left_eye_outer',
@@ -104,22 +108,27 @@ export function foregroundMaskSummary(values, width, height, threshold = 0.5) {
 }
 
 export function spatialGeometryModel({ faces = [], hands = [], poses = [], foreground = null } = {}) {
-  const worldPoints = [...hands.map(x => x.worldLandmarks), ...poses.map(x => x.worldLandmarks)]
-    .filter(Boolean).flat().filter(point => finite(point?.x) !== null
+  const relativePoints = [...faces, ...hands, ...poses]
+    .flatMap(item => item?.landmarks || [])
+    .filter(point => finite(point?.x) !== null
       && finite(point?.y) !== null && finite(point?.z) !== null);
-  const zs = worldPoints.map(point => point.z);
+  const zs = relativePoints.map(point => point.z);
   const imageBounds = unionBounds([
     ...faces.map(x => x.landmarks), ...hands.map(x => x.landmarks), ...poses.map(x => x.landmarks)
   ]);
   return {
-    schema: 'materiallogix.spatial-geometry.v1',
-    mode: worldPoints.length ? 'subject-3d-with-2d-scene-layers' : '2d-scene-layers',
+    schema: 'materiallogix.spatial-geometry.v2',
+    mode: relativePoints.length ? 'camera-relative-landmarks-with-2d-scene-layers' : '2d-scene-layers',
     subject: {
-      imageBounds, worldCoordinateSystem: SUBJECT_WORLD_COORDINATES,
-      worldPointCount: worldPoints.length,
-      depthRangeMeters: zs.length ? { near: rounded(Math.min(...zs)), far: rounded(Math.max(...zs)),
-        span: rounded(Math.max(...zs) - Math.min(...zs)) } : null,
-      metricScale: worldPoints.length > 0
+      imageBounds,
+      coordinateSystem: NORMALIZED_IMAGE_COORDINATES,
+      pointCount: relativePoints.length,
+      relativeDepthRange: zs.length ? {
+        near: rounded(Math.min(...zs)),
+        far: rounded(Math.max(...zs)),
+        span: rounded(Math.max(...zs) - Math.min(...zs)),
+        units: 'model-relative'
+      } : null
     },
     layers: {
       foreground: foreground || { available: false, rawMaskStored: false },
@@ -130,7 +139,7 @@ export function spatialGeometryModel({ faces = [], hands = [], poses = [], foreg
     capabilities: {
       subjectIsolationReady: Boolean(foreground?.available && foreground.bounds),
       backgroundReplacementReady: Boolean(foreground?.available && foreground.bounds),
-      subjectRelative3dReady: worldPoints.length >= 21,
+      subjectCameraRelativeDepthReady: relativePoints.length >= 21,
       metricSceneDepthReady: false
     }
   };
@@ -148,13 +157,22 @@ export function geometryAssurance({ faces = [], hands = [], poses = [] } = {}) {
   if (faces.length && !faceComplete) findings.push('face_topology_incomplete');
   if (hands.length && !handComplete) findings.push('hand_topology_incomplete');
   if (poses.length && !poseComplete) findings.push('pose_topology_incomplete');
+  // Array.every() on an empty array is vacuously true, and a 0-expected
+  // coverage ratio fell back to 1 (100%) below, so a candidate that detected
+  // nothing at all — no face, no hand, no pose — read as status:'complete'
+  // with full coverage. That is not a legitimate empty-frame result: every
+  // caller of this function (js/local-face-map.js, js/personal-geometry-pack.js)
+  // is on a path where a human subject is the whole point of the observation,
+  // and one of them has no independent check that would catch a total miss
+  // on its own. A total non-detection is the one case that MUST block.
+  if (!faces.length && !hands.length && !poses.length) findings.push('no_geometry_detected');
   const expected = faces.length * 468 + hands.length * 21 + poses.length * 33;
   const observed = faces.reduce((n, x) => n + (x.landmarks?.length || 0), 0)
     + hands.reduce((n, x) => n + (x.landmarks?.length || 0), 0)
     + poses.reduce((n, x) => n + (x.landmarks?.length || 0), 0);
   return {
     status: findings.length ? 'blocked' : 'complete',
-    coverage: expected ? rounded(Math.min(1, observed / expected), 4) : 1,
+    coverage: expected ? rounded(Math.min(1, observed / expected), 4) : 0,
     findings
   };
 }
@@ -182,11 +200,6 @@ const pointFrom = (value, width = 1, height = 1) => {
     visibility: value?.score, presence: value?.score } : null;
 };
 
-const worldPointFrom = value => Array.isArray(value?.distance) ? {
-  x: value.distance[0], y: value.distance[1], z: value.distance[2] || 0,
-  visibility: value?.score, presence: value?.score
-} : null;
-
 /** Convert the proof-only same-origin candidate into the existing geometry contract. */
 export function mapHumanCandidateResult(result = {}, width = 1, height = 1, backend = 'unknown') {
   const faces = (result.face || []).map(face => {
@@ -211,8 +224,7 @@ export function mapHumanCandidateResult(result = {}, width = 1, height = 1, back
       x: rounded(box[0]), y: rounded(box[1]), w: rounded(box[2]), h: rounded(box[3]),
       score: rounded(hand.fingerScore ?? hand.score ?? hand.boxScore, 3) || 0,
       side: null,
-      landmarks,
-      worldLandmarks: []
+      landmarks
     };
   });
   const poses = (result.body || []).map(body => {
@@ -231,10 +243,7 @@ export function mapHumanCandidateResult(result = {}, width = 1, height = 1, back
     const sourcePoints = codes.map(code => byCode.get(canonical(sourceCode(code))));
     const points = sourcePoints.map(point => pointFrom(point));
     return {
-      landmarks: namedLandmarks(points, codes, blazePose ? 'human-candidate-blazepose' : 'human-candidate-movenet'),
-      worldLandmarks: blazePose
-        ? namedLandmarks(sourcePoints.map(worldPointFrom), codes, 'human-candidate-blazepose-world')
-        : []
+      landmarks: namedLandmarks(points, codes, blazePose ? 'human-candidate-blazepose' : 'human-candidate-movenet')
     };
   });
   const pose = poses[0]?.landmarks || [];

@@ -1,33 +1,51 @@
 // Service worker: makes the web app installable and resilient.
 //
-// Strategy is deliberately network-first for everything: this session has
-// already proven how painful stale JS caches are during development, and in
-// production an app about correctness must never run old logic silently.
+// Network-first for everything. Stale caches are costly in development, and
+// in production this app must not run old logic without saying so.
 // The cache is a fallback for flaky Wi-Fi and offline opens, not a speedup.
 
-const CACHE = 'materiallogix-shell-v20';
+const CACHE = 'materiallogix-shell-v25';
 const PEOPLE_CACHE = 'materiallogix-people-proof-v1';
 const SHELL = [
-  './', 'index.html', 'voice.html', 'usage.html', 'admin.html', 'manifest.webmanifest', 'icon.svg',
-  'css/app.css', 'css/studio-entry.css', 'assets/preview-stamp.wav',
+  './', 'index.html', 'voice.html', 'music.html', 'usage.html', 'admin.html', 'manifest.webmanifest', 'icon.svg',
+  'css/app.css', 'css/photo-editor.css', 'css/music.css', 'css/admin.css', 'css/usage.css',
+  'css/voice-console.css', 'css/studio-entry.css', 'css/video.css', 'assets/preview-stamp.wav',
   'js/bootstrap.js', 'js/studio-shell.js', 'js/studio-nav.js', 'js/api-root.js', 'js/activity.js', 'js/privacy.js',
   'js/studio-entry.js',
-  'js/app.js', 'js/model.js', 'js/store.js', 'js/crop.js', 'js/analyze.js',
+  'js/app.js', 'js/generate-reference.js', 'js/model.js', 'js/store.js', 'js/crop.js', 'js/analyze.js',
   'js/export.js', 'js/clientpage.js', 'js/history.js', 'js/zip.js',
-  'js/generate.js', 'js/inpaint-foundation.js', 'js/cloud-video.js', 'js/spin-viewer.js', 'js/geometry.js', 'js/human-geometry.js', 'js/device.js', 'js/raw.js', 'js/voice.js',
+  'js/generate.js', 'js/inpaint-foundation.js', 'js/cloud-video.js', 'js/spin-viewer.js', 'js/geometry.js', 'js/human-geometry.js', 'js/human-geometry-notice.js', 'js/device.js', 'js/raw.js', 'js/raw-preview.js', 'js/voice.js',
+  'js/companion-link.js', 'js/vendor/qrcodegen.js', 'js/video-pace.js',
   'js/editing.js', 'js/print.js', 'js/house-voices.js', 'js/voice-quality.js', 'js/voice-reference.js', 'js/color-management.js',
-  'js/pricing.js', 'js/pricing-catalog.js', 'js/license.js', 'js/license-key.js'
+  'js/features.js', 'js/capture-guidance.js', 'js/capture-pacer.js', 'js/prompt-guard.js', 'js/app-version.js',
+  'js/pricing.js', 'js/pricing-catalog.js', 'js/license.js', 'js/license-key.js',
+  'js/recording-consent.js', 'js/video-pace.js', 'js/routes.js',
+  'js/music.js', 'js/music-audio.js', 'js/music-store.js', 'js/music-project.js'
   ,'js/billing-client.js', 'js/usage.js', 'js/admin.js',
+  'js/checkout-result.js', 'js/checkout-survey.js', 'js/survey-policy.js', 'js/biometric-notice.js',
+  'js/voice-mix-ui.js', 'js/voice-mix.js', 'js/audio-visualizer.js',
+  'js/loudness.js', 'js/take-defects.js', 'js/long-form.js', 'js/seam-check.js', 'js/wav-export.js',
+  'js/premium-voice-ui.js', 'js/premium-voice.js',
+  'js/voice-take-analysis.js', 'js/voice-take-analysis-worker.js',
+  'js/personal-geometry-consent.js', 'js/personal-geometry-storage.js', 'js/personal-geometry-pack.js',
+  'js/local-face-map.js', 'js/tattoo-mapping.js', 'js/video-pro-editor.js', 'js/video-timeline.js',
   'assets/raw/worker.js',
-  '../media/studio-entry-photo.webp', '../media/studio-entry-video.webp', '../media/studio-entry-voice.webp'
+  'site/media/studio-entry-photo.webp', 'site/media/studio-entry-video.webp',
+  'site/media/studio-entry-voice.webp', 'site/media/studio-entry-music.webp'
 ];
-// Every shell entry is relative to this worker's own URL (/studio/sw.js), not to
-// the origin. Resolving against the origin produced /index.html and /js/app.js,
-// which are not paths this app is ever served from, so the fetch handler below
-// matched nothing and the cache was never read. One resolver, used by both the
-// precache and the fetch matcher, keeps them from drifting apart again.
-const resolveShell = path => new URL(path, self.location.href);
-const SHELL_PATHS = new Set(SHELL.map(path => resolveShell(path).pathname));
+// The same worker is used by local/Windows copies at `/` and by the hosted
+// application at `/studio/`. Resolve every entry from the registration scope,
+// not the origin root. The entry artwork lives beside `/studio/` on the hosted
+// site but under `site/` in a local checkout, so adapt only that source prefix.
+function scopeUrl(path) {
+  const scope = new URL(self.registration.scope);
+  const hostedPath = scope.pathname.endsWith('/studio/') && path.startsWith('site/media/')
+    ? `../media/${path.slice('site/media/'.length)}`
+    : path;
+  return new URL(hostedPath, scope);
+}
+const SHELL_URLS = SHELL.map(scopeUrl);
+const SHELL_PATHS = new Set(SHELL_URLS.map(url => url.pathname));
 // Proof-only candidate assets are warmed only when the explicit parity suite
 // runs. Keeping 14 MiB out of the mandatory shell protects normal installs.
 const PEOPLE_ASSETS = [
@@ -39,7 +57,7 @@ const PEOPLE_ASSETS = [
   'assets/human/models/movenet-lightning.json', 'assets/human/models/movenet-lightning.bin',
   'assets/human/models/blazepose-full.json', 'assets/human/models/blazepose-full.bin'
 ];
-const PEOPLE_PATHS = new Set(PEOPLE_ASSETS.map(path => resolveShell(path).pathname));
+const PEOPLE_PATHS = new Set(PEOPLE_ASSETS.map(path => scopeUrl(path).pathname));
 const NETWORK_TIMEOUT_MS = 1200;
 
 async function networkFirst(request, event, cacheName = CACHE) {
@@ -62,30 +80,24 @@ async function networkFirst(request, event, cacheName = CACHE) {
   }
 }
 
-// cache.addAll() is all-or-nothing: one 404 in the shell list rejects the whole
-// install, and the worker never activates at all. The shell is a resilience
-// fallback, so warm it entry by entry and let a single missing asset cost only
-// that asset. shellPrecacheFailures() surfaces what did not warm so a stale
-// path is a visible defect instead of a silently uninstallable app.
-const precacheFailures = [];
-
-async function warmShell(cache) {
-  precacheFailures.length = 0;
-  await Promise.all(SHELL.map(async path => {
-    try {
-      const request = new Request(resolveShell(path), { cache: 'reload' });
-      const response = await fetch(request);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      await cache.put(request, response);
-    } catch (error) {
-      precacheFailures.push(`${path}: ${error?.message || 'unavailable'}`);
-    }
+async function installShell() {
+  const cache = await caches.open(CACHE);
+  const results = await Promise.allSettled(SHELL_URLS.map(async url => {
+    const request = new Request(url, { cache: 'reload' });
+    const response = await fetch(request);
+    if (!response.ok) throw new Error(`${response.status} ${url.pathname}`);
+    await cache.put(request, response);
   }));
-  if (precacheFailures.length) console.warn('[sw] shell assets that did not precache', precacheFailures);
+  const failures = results.filter(result => result.status === 'rejected');
+  // One optional or temporarily unavailable asset must not brick installation.
+  // Missing entries remain visible in the console and are retried network-first
+  // when requested; the next cache version gets another clean installation.
+  if (failures.length) console.warn(`MaterialLogix offline shell cached with ${failures.length} missing entr${failures.length === 1 ? 'y' : 'ies'}.`);
+  await self.skipWaiting();
 }
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => warmShell(cache)).then(() => self.skipWaiting()));
+  event.waitUntil(installShell());
 });
 
 self.addEventListener('activate', event => {

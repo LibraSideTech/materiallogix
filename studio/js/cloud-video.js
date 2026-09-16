@@ -122,12 +122,24 @@ async function api(path, options = {}) {
   return payload;
 }
 
+/**
+ * Whether a cloud render can be started, and if not, which of the three
+ * reasons it is. They were collapsed into one "unavailable" before, so a
+ * signed-out account, an account without cloud rendering, and an unreachable
+ * service all produced the same sentence - and being told the product is not
+ * ready yet when the real problem is a dropped connection sends people to
+ * support instead of to their router.
+ */
 export async function cloudVideoAvailability() {
   try {
     const session = await api('/api/session');
-    return { authenticated: session.authenticated === true, available: session.cloudAvailable === true };
+    return {
+      reachable: true,
+      authenticated: session.authenticated === true,
+      available: session.cloudAvailable === true
+    };
   } catch {
-    return { authenticated: false, available: false };
+    return { reachable: false, authenticated: false, available: false };
   }
 }
 

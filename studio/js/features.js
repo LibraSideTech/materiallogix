@@ -26,6 +26,3 @@ export async function features() {
 export async function featureEnabled(key) {
   return (await features())[key] === true;
 }
-
-/** Test seam. */
-export function resetFeatures() { flags = null; pending = null; }

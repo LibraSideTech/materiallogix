@@ -21,7 +21,8 @@
 <tr><td>Real-ESRGAN (ncnn)</td><td>image &amp; video upscaling</td><td>BSD-3-Clause upstream; packaged dependency review pending - <a href="https://github.com/xinntao/Real-ESRGAN">source</a></td></tr>
 <tr><td>whisper.cpp</td><td>captions, transcription, cadence measurement</td><td>MIT - <a href="https://github.com/ggml-org/whisper.cpp">source</a></td></tr>
 <tr><td>RIFE (ncnn)</td><td>frame interpolation</td><td>MIT - <a href="https://github.com/nihui/rife-ncnn-vulkan">source</a></td></tr>
-<tr><td>Chatterbox TTS</td><td>voice rendering</td><td>MIT - <a href="https://github.com/resemble-ai/chatterbox">source</a></td></tr>
+<tr><td>Kokoro / Kokoro-82M</td><td>house-voice rendering (12 local voices)</td><td>Apache-2.0 - <a href="https://github.com/hexgrad/kokoro">source</a></td></tr>
+<tr><td>Chatterbox TTS</td><td>personal voice-clone rendering</td><td>MIT - <a href="https://github.com/resemble-ai/chatterbox">source</a></td></tr>
 <tr><td>Argos Translate</td><td>offline translation</td><td>MIT - <a href="https://github.com/argosopentech/argos-translate">source</a></td></tr>
 <tr><td>MediaPipe Tasks</td><td>face, hand, and pose detection</td><td>Apache-2.0 - <a href="https://github.com/google-ai-edge/mediapipe">source</a></td></tr>
 <tr><td>Human 3.3.6</td><td>telemetry-free people-mapping candidate; not the production scanner</td><td>MIT with separately attributed model assets - <a href="https://github.com/vladmandic/human/tree/3.3.6">source</a></td></tr>
@@ -29,9 +30,12 @@
 <tr><td>Parselmouth / Praat</td><td>pitch and harmonicity analysis</td><td>GPL v3 - <a href="https://github.com/YannickJadoul/Parselmouth">source</a></td></tr>
 <tr><td>Resemblyzer</td><td>speaker similarity</td><td>Apache-2.0 - <a href="https://github.com/resemble-ai/Resemblyzer">source</a></td></tr>
 <tr><td>DNSMOS (speechmos)</td><td>neural audio quality scoring</td><td>MIT - <a href="https://github.com/microsoft/DNS-Challenge">source</a></td></tr>
+<tr><td>QR Code generator (Project Nayuki)</td><td>scannable phone companion connection codes</td><td>MIT - <a href="https://www.nayuki.io/page/qr-code-generator-library">source</a></td></tr>
 <tr><td>Fraunces &amp; Inter</td><td>typography</td><td>SIL OFL - <a href="https://fonts.google.com">Google Fonts</a></td></tr>
 </table>
-<p>Each shipped packet includes its applicable runtime notices. Final public distribution remains gated on review of the exact binaries, model weights, notices, and corresponding-source obligations.</p>
+<p>Each shipped packet includes its applicable runtime notices and the verbatim licence text for every bundled runtime, in the packet’s <code>third-party</code> directory.</p>
+<p id="source-offer"><b>Source for the GPL components.</b> The Windows packet ships FFmpeg 6.1.1 and ffprobe 4.0.2 binaries under the GNU General Public License, copied in unmodified and recorded by SHA-256 in the packet’s <code>RELEASE-MANIFEST.json</code>. You can copy the corresponding source for those builds at no charge from <a href="https://github.com/eugeneware/ffmpeg-static/tree/b6.1.1">ffmpeg-static b6.1.1</a>, <a href="https://github.com/FFmpeg/FFmpeg/tree/n6.1.1">FFmpeg n6.1.1</a>, <a href="https://github.com/joshwnj/ffprobe-static">ffprobe-static</a> and <a href="https://github.com/FFmpeg/FFmpeg/tree/n4.0.2">FFmpeg n4.0.2</a>. Separately, LibraSide Technologies, LLC offers any holder of the packet, for at least three years and for as long as MaterialLogix Studio is supported, a complete machine-readable copy of that corresponding source on a durable physical medium for no more than the cost of shipping it. Write to <a href="mailto:admin@materiallogix.com">admin@materiallogix.com</a> with the release tag and the packet’s SHA-256.</p>
+<p>Two items remain under review and are not yet enumerated here: the components bundled inside the Real-ESRGAN ncnn Vulkan portable build, and the model-weight terms recorded in the packet’s <code>human-vision-artifacts.json</code>. Tell us at <a href="mailto:admin@materiallogix.com">admin@materiallogix.com</a> if you believe an attribution is missing or wrong and it will be corrected in the next release.</p>
 </main>
-<footer class="legal-footer"><div class="legal-footer-inner"><span>MaterialLogix Studio™ · LibraSide Technologies, LLC</span><div class="legal-footer-links"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="security.html">Security</a><a href="index.html">All legal</a></div></div></footer>
+<footer class="legal-footer"><div class="legal-footer-inner"><span>MaterialLogix Studio™ · <a href="https://librasidetechnologies.com/">LibraSide Technologies, LLC</a></span><div class="legal-footer-links"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="security.html">Security</a><a href="index.html">All legal</a></div></div></footer>
 </body></html>

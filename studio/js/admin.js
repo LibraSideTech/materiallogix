@@ -18,6 +18,45 @@ const customerCareResults = document.querySelector('#customerCareResults');
 const creditForm = document.querySelector('#creditForm');
 const refundForm = document.querySelector('#refundForm');
 const safe = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[character]));
+// The option values are stored as stable keys so they survive a copy change;
+// a person reading a trend needs the words, not the keys.
+const RESEARCH_WORDS = {
+  us_northeast: 'US Northeast', us_midwest: 'US Midwest', us_south: 'US South', us_west: 'US West',
+  canada: 'Canada', latin_america_caribbean: 'Latin America & Caribbean', europe: 'Europe',
+  africa_middle_east: 'Africa & Middle East', asia_pacific: 'Asia Pacific',
+  creator: 'Creator', photographer: 'Photographer', video_editor: 'Video editor', voice_audio: 'Voice & audio',
+  designer: 'Designer', marketing_brand: 'Marketing & brand', agency_studio: 'Agency or studio',
+  business_owner: 'Business owner', educator_student: 'Educator or student',
+  creative_media: 'Creative media', fashion_beauty: 'Fashion & beauty', retail_ecommerce: 'Retail & ecommerce',
+  entertainment: 'Entertainment', marketing_advertising: 'Marketing & advertising', education: 'Education',
+  nonprofit_public: 'Nonprofit & public', technology: 'Technology', professional_services: 'Professional services',
+  solo: 'Solo', '2_10': '2 to 10', '11_50': '11 to 50', '51_250': '51 to 250', '251_plus': '251 or more',
+  photo: 'Photo', video: 'Video', voice: 'Voice', campaigns: 'Campaigns', client_review: 'Client review', mixed: 'Mixed',
+  new: 'New to this', growing: 'Growing', experienced: 'Experienced', expert: 'Expert',
+  other: 'Other', prefer_not_to_say: 'Preferred not to say'
+};
+const researchWord = value => RESEARCH_WORDS[value] || String(value || '').replaceAll('_', ' ');
+
+function renderResearch(research) {
+  const status = document.querySelector('#researchStatus');
+  const tables = document.querySelector('#researchTables');
+  if (!status || !tables) return;
+  if (!research) { status.textContent = 'Research trends are unavailable.'; tables.innerHTML = ''; return; }
+  const { respondents = 0, commercialInsightsRespondents = 0, minimumGroup = 0, reportable, trends = [] } = research;
+  status.textContent = reportable
+    ? `${respondents} customer${respondents === 1 ? '' : 's'} opted in. ${commercialInsightsRespondents} also allow grouped commercial insights. Groups under ${minimumGroup} are withheld.`
+    : `${respondents} customer${respondents === 1 ? '' : 's'} opted in — fewer than the ${minimumGroup} needed to report a trend without describing a person. Nothing is shown yet.`;
+  if (!reportable) { tables.innerHTML = ''; return; }
+  tables.innerHTML = trends.map(trend => {
+    const rows = (trend.buckets || []).map(bucket =>
+      `<tr><td>${safe(researchWord(bucket.value))}</td><td>${Number(bucket.count)}</td><td>${respondents ? Math.round((Number(bucket.count) / respondents) * 100) : 0}%</td></tr>`);
+    const withheld = Number(trend.withheldBuckets || 0)
+      ? `<tr><td>Withheld — too few to report</td><td>${Number(trend.withheldRespondents || 0)}</td><td>across ${Number(trend.withheldBuckets)} group${Number(trend.withheldBuckets) === 1 ? '' : 's'}</td></tr>`
+      : '';
+    return `<h3 class="ops-research-heading">${safe(trend.label)}</h3>${renderTable(['Answer', 'Customers', 'Share'], rows.concat(withheld))}`;
+  }).join('');
+}
+
 const renderTable = (headings, rows) => `<table class="ops-table"><thead><tr>${headings.map(value => `<th>${safe(value)}</th>`).join('')}</tr></thead><tbody>${rows.join('') || `<tr><td colspan="${headings.length}">No matching activity.</td></tr>`}</tbody></table>`;
 
 let snapshot = null;
@@ -43,10 +82,26 @@ function render() {
   document.querySelector('#comparisonTable').innerHTML = renderTable(
     ['Period','Operations','Artifacts','Billable units','Voided'],
     [[snapshot.period, totals], [snapshot.previousPeriod, previous]].map(([period, item]) => `<tr><td>${safe(period)}</td><td>${Number(item.operations||0)}</td><td>${Number(item.artifacts||0)}</td><td>${Number(item.billable_units||0)}</td><td>${Number(item.voided||0)}</td></tr>`));
+  renderResearch(snapshot.research);
   const anomalies = snapshot.anomalies || [];
+  // Every one of these is money: a payment that did not process, customer funds
+  // held and never released, or spend past a cap. The raw code said too little
+  // for something that can be critical, so each one states its consequence.
+  const ANOMALY_TEXT = {
+    expired_authorizations: count => `${count} held unit${count === 1 ? '' : 's'} expired without being released back to a customer.`,
+    elevated_void_rate: count => `${count} operations were returned — over a tenth of this period. Something is failing after customers commit.`,
+    failed_stripe_events: count => `${count} payment event${count === 1 ? '' : 's'} failed to process. Money may have moved without the licence following.`,
+    failed_cloud_jobs: count => `${count} cloud job${count === 1 ? '' : 's'} failed or timed out after taking a reservation.`,
+    stale_cloud_photo_quotes: count => `${count} Cloud Photo quote${count === 1 ? '' : 's'} went stale without being used or cleared.`,
+    stale_cloud_photo_reserves: count => `${count} Cloud Photo reservation${count === 1 ? '' : 's'} still hold customer funds that were never settled or returned.`,
+    cloud_photo_cost_cap_breach: count => `Spend passed its cap ${count} time${count === 1 ? '' : 's'}. Stop Cloud Photo execution and reconcile before anything else.`,
+    cloud_photo_price_active_while_execution_disabled: count => `${count} Cloud Photo price is live while execution is off, so a customer can be quoted work that cannot run.`,
+    cloud_photo_execution_enabled_before_release: () => 'Cloud Photo execution is switched on before release approval. Turn it off.'
+  };
+  const anomalyText = item => (ANOMALY_TEXT[item.code] || (count => `${String(item.code).replaceAll('_', ' ')} · ${count}`))(Number(item.count));
   document.querySelector('#anomalyList').innerHTML = anomalies.length
-    ? anomalies.map(item => `<p class="ops-alert"><strong>${safe(item.severity)}</strong> · ${safe(item.code).replaceAll('_',' ')} · ${Number(item.count)}</p>`).join('')
-    : '<p class="note">No configured anomaly threshold was crossed in this period.</p>';
+    ? anomalies.map(item => `<p class="ops-alert"><strong>${safe(item.severity)}</strong> · ${safe(anomalyText(item))}</p>`).join('')
+    : '<p class="note">Nothing tripped an alarm this period.</p>';
   const reconciliation = snapshot.reconciliation || {};
   document.querySelector('#reconciliationTable').innerHTML = renderTable(
     ['Net purchases','Wallet ledger net','Failed Stripe events','Failed cloud jobs'],

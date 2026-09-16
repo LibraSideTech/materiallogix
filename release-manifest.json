@@ -1,0 +1,851 @@
+{
+  "schema": "materiallogix.static-release.v1",
+  "version": "0.2.0",
+  "minimum": "0.1.0",
+  "sourceRevision": "5b308dbc6cc83d7032db73b85cea8fcb4d3a75e9",
+  "sourceDate": "2026-09-16T14:55:09.000Z",
+  "sourceDirty": false,
+  "validation": {
+    "linksChecked": 232,
+    "moduleImportsChecked": 165,
+    "precacheEntriesChecked": 101
+  },
+  "fileCount": 167,
+  "files": [
+    {
+      "path": "_headers",
+      "bytes": 2559,
+      "sha256": "e347915fd2e78fbf14a85319ce054bbcf874d6451dd3238f3b55ef4980ccb907"
+    },
+    {
+      "path": "_redirects",
+      "bytes": 409,
+      "sha256": "3e63151d3139645bc0702a30cc60dc1457c264c70865a25cb844a0bf22143d85"
+    },
+    {
+      "path": "_worker.js",
+      "bytes": 8543,
+      "sha256": "a9f79f1b37b38600d97c61891c88dedb360733e27c9139e4628832e8cf93fb4d"
+    },
+    {
+      "path": ".nojekyll",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "404.html",
+      "bytes": 284,
+      "sha256": "6a5686e185ae9b9d69940f22f84bd77714acaf8e257fa4f82d6d355da0213287"
+    },
+    {
+      "path": "cc89cc851acf64485c1280baa77eab1b.txt",
+      "bytes": 32,
+      "sha256": "3f105b41af5dd4435f292db19636840c2294c227a00c24f20849c1d7d4a5e75c"
+    },
+    {
+      "path": "checkout-site.js",
+      "bytes": 10371,
+      "sha256": "e584f9d7a9fdb696a5c001f71fd8bdfeff640ed5f5ccb6627851a7ff5ba5f77d"
+    },
+    {
+      "path": "CNAME",
+      "bytes": 17,
+      "sha256": "bc367d23a996d75a051d6567b06b9547fa94dc48c27c79c0066e6ccf56c3dfd6"
+    },
+    {
+      "path": "contact.html",
+      "bytes": 6593,
+      "sha256": "d89d1b146024d9e392825d6e46fcb032d05f7f911538f90b40fa8487e5333ab1"
+    },
+    {
+      "path": "demo/index.html",
+      "bytes": 311,
+      "sha256": "50216aeb2db12896464208b19e28424198193660a3a0ad5b4a22a0e6a7237bf2"
+    },
+    {
+      "path": "index.html",
+      "bytes": 36661,
+      "sha256": "2a86c8b1b2fb33cf5e7cbca1509d408d3c91a20a2747d87c2e5452b8e64b194e"
+    },
+    {
+      "path": "indexnow-key.txt",
+      "bytes": 32,
+      "sha256": "3f105b41af5dd4435f292db19636840c2294c227a00c24f20849c1d7d4a5e75c"
+    },
+    {
+      "path": "KNOWN_LIMITATIONS.md",
+      "bytes": 1102,
+      "sha256": "c8e3450f9abad69550108515daa5555e9128fe819c9d2ec6027712e68d8b235b"
+    },
+    {
+      "path": "legal/aup.html",
+      "bytes": 4107,
+      "sha256": "7926cbfdce4940ff8257d84c29f22436cdf423e5ee0b95a5687aa290f0ab6b3f"
+    },
+    {
+      "path": "legal/biometric.html",
+      "bytes": 15017,
+      "sha256": "abc2001dfb7b6a4ae58bfabfa6e2dd92bc3e29585d1210ad8da91053d5886f8a"
+    },
+    {
+      "path": "legal/copyright.html",
+      "bytes": 3007,
+      "sha256": "a102075c4a9b3b1812859a355cab86efb05dc19e891688542f0daffc3dec06a1"
+    },
+    {
+      "path": "legal/eula.html",
+      "bytes": 7864,
+      "sha256": "a88712213e2f699036819929ea7c2ed24351dea3a7a4eaa66f02a9c4c55d3a2d"
+    },
+    {
+      "path": "legal/index.html",
+      "bytes": 3388,
+      "sha256": "20c76c8d4f17e94160702bc37788e6cbb361abcab71f8c68ca421f9de12a7c60"
+    },
+    {
+      "path": "legal/legal.css",
+      "bytes": 7317,
+      "sha256": "6f5314b53c3ac5ea402a6892f8b34eb53afe2776ff6a5daff780594e3cdbe4ab"
+    },
+    {
+      "path": "legal/licenses.html",
+      "bytes": 6089,
+      "sha256": "85b26113d88e2b400aaa94d41785da40dd554f9422bc0bfc4d44129ffb06fbcd"
+    },
+    {
+      "path": "legal/privacy.html",
+      "bytes": 14689,
+      "sha256": "948be30f3a4ebf88c037d43198177dec9bff85841cebbcef8d60a25f6bfdb5b2"
+    },
+    {
+      "path": "legal/refunds.html",
+      "bytes": 5702,
+      "sha256": "c359f478235f23e364b1d4c502e5b1b2efaa7127f339b895ba0fea62b4180fae"
+    },
+    {
+      "path": "legal/security.html",
+      "bytes": 3074,
+      "sha256": "6cb2725c6ea11280a743fddb4061938f8921c0c201cfa3d2aae8674d32da8f3c"
+    },
+    {
+      "path": "legal/terms.html",
+      "bytes": 21870,
+      "sha256": "8d70901efcb2e559abff1ead6301877ca2795a6baaf6345a0dddc8c264a22f37"
+    },
+    {
+      "path": "legal/trademark.html",
+      "bytes": 2648,
+      "sha256": "5eee881b99d919fde298743ca721a1aee5571f50fc15efcc1b2995688072dfe6"
+    },
+    {
+      "path": "legal-acceptance.js",
+      "bytes": 10488,
+      "sha256": "5f311225c94940274000a93bfae71f4d68b54cfb5b463fb4b5b1c7e8da6b6018"
+    },
+    {
+      "path": "logo.svg",
+      "bytes": 5183,
+      "sha256": "6f687ae92f2845802a8da844993bc60673ca6fec0656cfd7cf778580ba248c37"
+    },
+    {
+      "path": "media/materiallogix-campaign-photo.jpg",
+      "bytes": 156663,
+      "sha256": "f622c9be773a6f585ca4162bb14108a15c76b7fe67b3245d5215aa885ace4613"
+    },
+    {
+      "path": "media/photo-matrix-deep-skin-linen-daylight.jpg",
+      "bytes": 283520,
+      "sha256": "892c2c7f1e443355ca164c3203ec539b8f94a7ff1a38a7478e09dbfd7a59a3f9"
+    },
+    {
+      "path": "media/photo-matrix-diverse-group-natural-collaboration.jpg",
+      "bytes": 361137,
+      "sha256": "af83c8f2891a76cd928a86495c951653f349fd9d1f8d607cbcd34eb3a859c46b"
+    },
+    {
+      "path": "media/photo-matrix-light-skin-knit-leather-overcast.jpg",
+      "bytes": 284218,
+      "sha256": "929e15c3a07cdb17eb2ba961f8b7b796409ffedac16958a4f343764b853bc3d2"
+    },
+    {
+      "path": "media/photo-matrix-medium-skin-satin-wool-mixed-light.jpg",
+      "bytes": 225283,
+      "sha256": "ac2c8ecc793d500fb9f0de351ed30cadb661be73bb26b8c90e5bc5c6443c2ebe"
+    },
+    {
+      "path": "media/studio-entry-music.webp",
+      "bytes": 43776,
+      "sha256": "8c15d379c8a764a342245cb5a5a010e5e81c45c68e17bb8f1cc979459455752b"
+    },
+    {
+      "path": "media/studio-entry-photo.webp",
+      "bytes": 35540,
+      "sha256": "69e4627ce08b82dca980fdf309c36ac24e535a5c346e35ac6b5587913e05e8ba"
+    },
+    {
+      "path": "media/studio-entry-video.webp",
+      "bytes": 30988,
+      "sha256": "a6c08dca29a2d44f5035bb5876fbc1c56e242d441a437ebb8e0b270a9f45bb7a"
+    },
+    {
+      "path": "media/studio-entry-voice.webp",
+      "bytes": 26896,
+      "sha256": "4513d956abb45208a0c288cd4e3f0202fed9a43fc2006dafed075dc9c231099b"
+    },
+    {
+      "path": "media/studio-music.jpg",
+      "bytes": 106976,
+      "sha256": "45a67c6b553f32c229bc551507859b03ffafc774a70466e62bd2addf6c6fb923"
+    },
+    {
+      "path": "media/studio-photo-card.webp",
+      "bytes": 43948,
+      "sha256": "cfe7c933b49b7aec6e5616eee5ab81da08b22034f3f5f4447ad0c490c7e7a5e5"
+    },
+    {
+      "path": "media/studio-photo-social.jpg",
+      "bytes": 74056,
+      "sha256": "140eedfdfd4787f2d66aa7b22fb661f85f9c2161027f0c1152357d40de67ad74"
+    },
+    {
+      "path": "media/studio-photo.webp",
+      "bytes": 52066,
+      "sha256": "ff260fa2de2accde348593d64392fca2463d00b665ec8538b000fcf5adc07277"
+    },
+    {
+      "path": "media/studio-video.webp",
+      "bytes": 110334,
+      "sha256": "c38be8bf9084ad42799e1cabb5cfca37f416aca474f3b03582443263eb2b5d5a"
+    },
+    {
+      "path": "media/studio-voice.jpg",
+      "bytes": 87991,
+      "sha256": "e1d0c9ec0b97cda2768578b7ee7432f3e1d6a427b9f1ed9f0866d376e0b7b4da"
+    },
+    {
+      "path": "media/studio-workflow.mp4",
+      "bytes": 1564761,
+      "sha256": "25e5d65a563b49d0074c71387c4190181a249cc90784a3edc5173113db57e5c6"
+    },
+    {
+      "path": "media/upscale-qa.png",
+      "bytes": 2307402,
+      "sha256": "3f7bc72e221249b1f4aeb28ad940aabc80eed1e1681367ba1628310f2e937359"
+    },
+    {
+      "path": "media/voice-qa.wav",
+      "bytes": 332060,
+      "sha256": "2f9bd0dcbb8e9ad84bffb17d9e4b1f927405d2d5c628113a4120cc2400d59e72"
+    },
+    {
+      "path": "media/voice-recording-studio.webp",
+      "bytes": 137992,
+      "sha256": "e10c0c8d7eea90526b7749dcb1151e3a7f348205d5b01ce210a3402959e50c76"
+    },
+    {
+      "path": "robots.txt",
+      "bytes": 106,
+      "sha256": "475168850e7d1412bb8780d21144d443e8cf67dd97cf668c1592fa381de3cbbd"
+    },
+    {
+      "path": "SECURITY.md",
+      "bytes": 1347,
+      "sha256": "d97e7c7b9630ffceacc1b38765ef4d7accda07c38ef64df1fcba4c873f3c9079"
+    },
+    {
+      "path": "sitemap.xml",
+      "bytes": 1215,
+      "sha256": "c0442c2826b5c66e6fa3a2f830657b0d259aed81057f4c184b261e1919db4a72"
+    },
+    {
+      "path": "studio/admin.html",
+      "bytes": 14790,
+      "sha256": "58569e3da34b45a458367ad07ce6c8ee580b5fec049d79e8d71740ff9e6f47b2"
+    },
+    {
+      "path": "studio/assets/human/human.esm.js",
+      "bytes": 2067875,
+      "sha256": "e7c85047fb9492bd983b43d5217b54e9fb44393966f4c5db7c7ced1fdaf1fd9e"
+    },
+    {
+      "path": "studio/assets/human/models/blazeface.bin",
+      "bytes": 538928,
+      "sha256": "dc9a97fdc50bc43216554bdd69aa3e7b9361a519ee7bdd996a2f69a98a6f9b72"
+    },
+    {
+      "path": "studio/assets/human/models/blazeface.json",
+      "bytes": 79038,
+      "sha256": "cd7bbfc078270572beb39f9e5ae67aadbd50b5e67cff37e6d4f6b3ea39312e5f"
+    },
+    {
+      "path": "studio/assets/human/models/blazepose-full.bin",
+      "bytes": 6339202,
+      "sha256": "5dd67d57f4886a2ddfdad4496217e7ce012fb8d2e8f87d475a8cc0220d89086c"
+    },
+    {
+      "path": "studio/assets/human/models/blazepose-full.json",
+      "bytes": 157328,
+      "sha256": "543a8415032e47d9a57bbd7a17080cae62221acefbcd9007ad1b95e57f8c86eb"
+    },
+    {
+      "path": "studio/assets/human/models/facemesh.bin",
+      "bytes": 1477958,
+      "sha256": "3826da640b0a3021161605369ee6af293f75d518040355b960ec71a3390c1c0b"
+    },
+    {
+      "path": "studio/assets/human/models/facemesh.json",
+      "bytes": 95845,
+      "sha256": "b60ca26f404724f43bd2b1575761d8265180e1f053cc0731caa68462927309e7"
+    },
+    {
+      "path": "studio/assets/human/models/handlandmark-lite.bin",
+      "bytes": 2023432,
+      "sha256": "3dbf92db39720eac7f88aff322a24d3f4ed3ba1f54aa7a8a37b704f14cb76c0e"
+    },
+    {
+      "path": "studio/assets/human/models/handlandmark-lite.json",
+      "bytes": 83013,
+      "sha256": "8478ec3224129957f1436194738ad26ac78bbac8ea3be1730399ccad6964a27f"
+    },
+    {
+      "path": "studio/assets/human/models/handtrack.bin",
+      "bytes": 2964837,
+      "sha256": "70164f725aefbbf8094a8ef4150dc10e906b6f0976b484ef8ec882d3eae4b812"
+    },
+    {
+      "path": "studio/assets/human/models/handtrack.json",
+      "bytes": 602812,
+      "sha256": "a27d86daea1799c65dd0ad99ea1855a6b6dc721bf7ba4d4eb1a138c9e51d5755"
+    },
+    {
+      "path": "studio/assets/human/models/movenet-lightning.bin",
+      "bytes": 4650216,
+      "sha256": "bf97bc10d9c8a11200b0190ed64ce039b6252f1aff7cb552aca99b3d191c2f34"
+    },
+    {
+      "path": "studio/assets/human/models/movenet-lightning.json",
+      "bytes": 161813,
+      "sha256": "df8cbde44d00f533ccc4916a7c6ebc17316532fb3fadad114ec667fef22872e9"
+    },
+    {
+      "path": "studio/assets/preview-stamp.wav",
+      "bytes": 95468,
+      "sha256": "17faacb5d4d340042fa542f4b63b84a8a07aac19c3850c5ba387e62b9a4f31c7"
+    },
+    {
+      "path": "studio/assets/raw/worker.js",
+      "bytes": 358,
+      "sha256": "08782a15e467904d97b675037185f9e0930635f095ac1ca94237a2a2d53330d7"
+    },
+    {
+      "path": "studio/assets/upscale-qa.png",
+      "bytes": 2307402,
+      "sha256": "3f7bc72e221249b1f4aeb28ad940aabc80eed1e1681367ba1628310f2e937359"
+    },
+    {
+      "path": "studio/css/admin.css",
+      "bytes": 8894,
+      "sha256": "20dc2fef8a68d58e462c6e4f76d96ad01b2beebd8f6fb0ce76fe83f1731c2ffb"
+    },
+    {
+      "path": "studio/css/app.css",
+      "bytes": 84044,
+      "sha256": "4fb3079aadab89770ff3750393d508c02f8de5f6aba902df29f4d73495508404"
+    },
+    {
+      "path": "studio/css/glass-surfaces.css",
+      "bytes": 4448,
+      "sha256": "b2a0b1faf2220e76818733f47a2419276f59b1ca4be9faf06bf7751d301a47b7"
+    },
+    {
+      "path": "studio/css/music.css",
+      "bytes": 10758,
+      "sha256": "1ee57c37777af9d151238b2c955999334cc6ac1606bcee48d068f75eafff3a7f"
+    },
+    {
+      "path": "studio/css/photo-editor.css",
+      "bytes": 2033,
+      "sha256": "e7a9a5dc1ced10c704433e518028ce8b2f1ba618062128c04bba714c440065f4"
+    },
+    {
+      "path": "studio/css/studio-entry.css",
+      "bytes": 18179,
+      "sha256": "528a76ddb0aae72b830928d714abebcc504fb5165436f460948906f949e843b9"
+    },
+    {
+      "path": "studio/css/usage.css",
+      "bytes": 9033,
+      "sha256": "6250dac043e1627efd6d5dc1918de42981d4c818bf353fedaaf0e45bd706a37d"
+    },
+    {
+      "path": "studio/css/video.css",
+      "bytes": 1869,
+      "sha256": "97dddcd76b7990a3af020b340e68b166786577d3c662f7af55a71d31ec26bd79"
+    },
+    {
+      "path": "studio/css/voice-console.css",
+      "bytes": 14842,
+      "sha256": "4c8eb6e240a035258c584265acb03b1bc2b8548d7de503f5642d81d0e4fa46c6"
+    },
+    {
+      "path": "studio/icon.svg",
+      "bytes": 5139,
+      "sha256": "f5aea916a15813b620b1c4b35935e23480f66b02e9f225ac3155b34d4cc57d08"
+    },
+    {
+      "path": "studio/index.html",
+      "bytes": 4417,
+      "sha256": "eca3c9d38a6b60405311e128c07e9088811c83ca69d7ff70af059740ae6f3512"
+    },
+    {
+      "path": "studio/js/access-boundary.js",
+      "bytes": 1103,
+      "sha256": "3c974be8de0ad8766781620b762e19c91f1e82a620b963e0fffe49f6b64036ba"
+    },
+    {
+      "path": "studio/js/account-session.js",
+      "bytes": 1451,
+      "sha256": "7a6f2e61b5b805fd588e4dddabdda2f4572c6fadbd938fad18e0f8668a08e7d3"
+    },
+    {
+      "path": "studio/js/activity.js",
+      "bytes": 9692,
+      "sha256": "f927708ac49b644e89d7f1af15178704709aba064def1d28e7f4f210862123a7"
+    },
+    {
+      "path": "studio/js/admin.js",
+      "bytes": 31977,
+      "sha256": "9bb9f90e19cbe98c060aa322c416746a3b355e4dac1a4d87fd577fc37a84de55"
+    },
+    {
+      "path": "studio/js/analyze.js",
+      "bytes": 39364,
+      "sha256": "5a02d3f2f503080b1bcdda2e387ebad1a24455bf42609617cbe8f40fc72ed88f"
+    },
+    {
+      "path": "studio/js/api-root.js",
+      "bytes": 2148,
+      "sha256": "c0fd310936dfff1d0d090669dc38762f3a637798540b0d65c3d4d52268fcc165"
+    },
+    {
+      "path": "studio/js/app-version.js",
+      "bytes": 525,
+      "sha256": "e4377777a6139ab89761933482672609c422caffdde735b4fc6febc070a9364c"
+    },
+    {
+      "path": "studio/js/app.js",
+      "bytes": 325415,
+      "sha256": "ef9a5134be9a88f62fd2763b9bf3ae04c2fa7f162ebd9d8e8f1591bf67e1f7f4"
+    },
+    {
+      "path": "studio/js/audio-visualizer.js",
+      "bytes": 7043,
+      "sha256": "ba41922deed03b349a29d04a20b3f32304d00df16d828140d965c92d56f9d4d9"
+    },
+    {
+      "path": "studio/js/billing-client.js",
+      "bytes": 9092,
+      "sha256": "85eaecec8350271f5a4ff7af8f12117d0c8c1cbe4c045201e74cc39a011436e4"
+    },
+    {
+      "path": "studio/js/biometric-notice.js",
+      "bytes": 3319,
+      "sha256": "083da73935dc730b833accbfa545c93fdf131d459054d7c082e48f240b4769e6"
+    },
+    {
+      "path": "studio/js/bootstrap.js",
+      "bytes": 1212,
+      "sha256": "31b66c5396e660d61ff125db0bdba5a2ddbf85a79bf4fb5bbaef3a05ceafb8ec"
+    },
+    {
+      "path": "studio/js/capture-guidance.js",
+      "bytes": 6089,
+      "sha256": "5dcc4e2c1ef7fba3b01d68ffaaf30ecaec09a6e0f55c1fc1ba0c4e99c2bfade0"
+    },
+    {
+      "path": "studio/js/capture-pacer.js",
+      "bytes": 7937,
+      "sha256": "06b17690b4dd332c290216f11de8b53a76fff388c5d1f66a91e12ff6aaf907fc"
+    },
+    {
+      "path": "studio/js/checkout-result.js",
+      "bytes": 10260,
+      "sha256": "511e2db0dc3e441a839d0ecd806665ae71ca4f79c3e0f66f6cf2b9e08cd9fd32"
+    },
+    {
+      "path": "studio/js/checkout-survey.js",
+      "bytes": 3864,
+      "sha256": "42a61b727bc7b81b3bc879d3153d2f55b43c1cc92f25d6e8131ea2efb147f7e3"
+    },
+    {
+      "path": "studio/js/checkout.js",
+      "bytes": 11971,
+      "sha256": "387ae52d5d9a27f5652b00c11585ec6528b9b27054f8bcc95fb8894b7e5fc5b8"
+    },
+    {
+      "path": "studio/js/clientpage.js",
+      "bytes": 10479,
+      "sha256": "7a7ccbbfd272ac3c30ac7523fdfee11021ee1e96c6b526c0a05a210cbca48761"
+    },
+    {
+      "path": "studio/js/cloud-video.js",
+      "bytes": 9048,
+      "sha256": "28c2ad564d82fbf9efb38818f9b9768c31aecab5a9358e0d689bbcbef215d33a"
+    },
+    {
+      "path": "studio/js/color-management.js",
+      "bytes": 17681,
+      "sha256": "32cb714a61bc5d474ad32a7ae118c45364e7caff86ed155d8c66313368d88088"
+    },
+    {
+      "path": "studio/js/companion-link.js",
+      "bytes": 2423,
+      "sha256": "be5ffbb44d9c0f71d61bc3fc3f30431b8a9759a04bc467f8fd00c328a4293125"
+    },
+    {
+      "path": "studio/js/crop.js",
+      "bytes": 12810,
+      "sha256": "593b04b447639a8008bb3c577732a12dde6a0ea0dcd6b3e6770f2c372ece1400"
+    },
+    {
+      "path": "studio/js/device.js",
+      "bytes": 2368,
+      "sha256": "fa0a84b02d21d732d512b2e2ad6a5f0d3d6836d5e8556762932d3dc6fea439d3"
+    },
+    {
+      "path": "studio/js/editing.js",
+      "bytes": 27037,
+      "sha256": "ab69f31fcd0b7ddbb468831f210d7ed6b2bb034f4ffa8a66f12305f5d742e72e"
+    },
+    {
+      "path": "studio/js/export.js",
+      "bytes": 22017,
+      "sha256": "2aaa67a1ce672de9f95f59bef7cee044e25fdf5a4bcb707ef5db07574735b5d4"
+    },
+    {
+      "path": "studio/js/features.js",
+      "bytes": 817,
+      "sha256": "b64a11595e653639b099b686507e2d0324d0915e9704e40e6a84a8e54939c98d"
+    },
+    {
+      "path": "studio/js/generate-reference.js",
+      "bytes": 3126,
+      "sha256": "1ce4d679a2054e0727f9ee421a05291871566ec00449886f3e727da9f6feab67"
+    },
+    {
+      "path": "studio/js/generate.js",
+      "bytes": 51808,
+      "sha256": "dc6248e3c4b59d1745cd302dc82207e58dbfe3cb7bc69ec26039f3177798fb67"
+    },
+    {
+      "path": "studio/js/geometry.js",
+      "bytes": 18024,
+      "sha256": "c001887dc969d7b8ed4e150614fb9fdecb1c84fca0fd5a0218cb6c76ffd7347c"
+    },
+    {
+      "path": "studio/js/history.js",
+      "bytes": 1870,
+      "sha256": "eabd67bb558c8f90b3245d2aac9eb1b7aecab613c6e1052c1684bf363d26833d"
+    },
+    {
+      "path": "studio/js/house-voices.js",
+      "bytes": 7046,
+      "sha256": "89d7ec5fe2f96bebbad996804d0b28944354874ec84b1c9aa43a424f42fec8b5"
+    },
+    {
+      "path": "studio/js/human-geometry-notice.js",
+      "bytes": 884,
+      "sha256": "3076bf68f7f7acbbbdccb9b03374250a1f868a8abe4bf928224c9f3bfa5829a6"
+    },
+    {
+      "path": "studio/js/human-geometry.js",
+      "bytes": 15552,
+      "sha256": "74993a5cc5b4aed39a244e67d46c61b3aed5ec2bea96ae6d204bbf970888382b"
+    },
+    {
+      "path": "studio/js/inpaint-foundation.js",
+      "bytes": 4562,
+      "sha256": "e850854282d33f6ac4dfea4326632d04aa7471fa0f0d79ac1c7ff3a64764c0e0"
+    },
+    {
+      "path": "studio/js/legal-version.js",
+      "bytes": 1460,
+      "sha256": "751eb16e095021c57eb9c89ba7820ec0057cec56912691d487324c9cc359c8c2"
+    },
+    {
+      "path": "studio/js/license-key.js",
+      "bytes": 310,
+      "sha256": "5c5dfc6378137201e9647cda232522da718a784e20579ec5d86d5fce4787aff4"
+    },
+    {
+      "path": "studio/js/license.js",
+      "bytes": 7252,
+      "sha256": "50f3d4cae5f9778af3d820e61313fcdbda13491c89e08999ed79ccb32db4bb2e"
+    },
+    {
+      "path": "studio/js/local-face-map.js",
+      "bytes": 28310,
+      "sha256": "7faeaf3b8798c732ee2e4d172b6a062f946cec613a5d7c49a41e0e33dfd6a0c7"
+    },
+    {
+      "path": "studio/js/long-form.js",
+      "bytes": 8125,
+      "sha256": "74e85f1b91fdd97f0bed7c0fcee8c0240494674144eae678b53ba72c58bc7fd6"
+    },
+    {
+      "path": "studio/js/loudness.js",
+      "bytes": 13847,
+      "sha256": "350d3b0976423d5b23b87c33184069aeb0cde1677da142f61ed9bb02ca6eecc6"
+    },
+    {
+      "path": "studio/js/model.js",
+      "bytes": 12956,
+      "sha256": "c46b9fb1a13d90809fb700bf7fb78dbd31229fb9e2d82f2dc184f76eb0eaac3f"
+    },
+    {
+      "path": "studio/js/music-audio.js",
+      "bytes": 14048,
+      "sha256": "fd55fcf610c39a4d3a25e7f65851b42601cbca6676d45b808905e01672c7fbfe"
+    },
+    {
+      "path": "studio/js/music-project.js",
+      "bytes": 2658,
+      "sha256": "2e73d9a50fb0c41b45bce60dc2643629b017800371f0297078908ab1add62e90"
+    },
+    {
+      "path": "studio/js/music-store.js",
+      "bytes": 4834,
+      "sha256": "bc9262871105876d544fdd7fe4cf8d54780d99605a00d0f4a80d0c981c3ce828"
+    },
+    {
+      "path": "studio/js/music.js",
+      "bytes": 14887,
+      "sha256": "1eb8d94cdba973388dc687a260612925c393270fcd4916b5b575d737f9838438"
+    },
+    {
+      "path": "studio/js/personal-geometry-consent.js",
+      "bytes": 23419,
+      "sha256": "cb29aafaeeeac2e3ab8da68a86d95ad9afca11a96aee96e8eaf5aa1fcdb9ee6d"
+    },
+    {
+      "path": "studio/js/personal-geometry-pack.js",
+      "bytes": 19939,
+      "sha256": "23b54d6e1ab062bbc06940d67a7530acf80d6aebb52154f6a8717b26c9dbdf1c"
+    },
+    {
+      "path": "studio/js/personal-geometry-storage.js",
+      "bytes": 62273,
+      "sha256": "253a95e64b6f64c4e3722998d2ea4c2675b54b03da8592f6bf75365b58822264"
+    },
+    {
+      "path": "studio/js/premium-voice-ui.js",
+      "bytes": 5234,
+      "sha256": "6001751613e944dbf830ee2cf704e207685778308fd18508fbf524c677fa71c2"
+    },
+    {
+      "path": "studio/js/premium-voice.js",
+      "bytes": 2145,
+      "sha256": "b55d30d1ec7497dbe95eb87737c8b099916e1a31b97318357c2cd57b247829f3"
+    },
+    {
+      "path": "studio/js/pricing-catalog.js",
+      "bytes": 4618,
+      "sha256": "fc663ded2b44c2aba988fdc5eff856c2ae651f7f407041dad059abcbc6231f85"
+    },
+    {
+      "path": "studio/js/pricing.js",
+      "bytes": 16717,
+      "sha256": "7a9576dc1adbf872007e7c828b5714f0d1a97a7c2abd5221c41a5521db9bea69"
+    },
+    {
+      "path": "studio/js/print.js",
+      "bytes": 7677,
+      "sha256": "6be7ab8459ea501725489473e342c5faf6f444cd29ef04594b516d09d5182416"
+    },
+    {
+      "path": "studio/js/privacy.js",
+      "bytes": 18232,
+      "sha256": "65e27f11fd08e50e81037fe2d508b4e99ae44c8bf18ad0fd63e96ae721d86ffa"
+    },
+    {
+      "path": "studio/js/prompt-guard.js",
+      "bytes": 2892,
+      "sha256": "67973852df3f9d8fc16274f57e8cb21997fd1e28978ceb1319a5364e85bd348c"
+    },
+    {
+      "path": "studio/js/raw-preview.js",
+      "bytes": 6824,
+      "sha256": "cd42cd7fa2deb5d767d0b36b79eb6a9bebd6f0d105e6345a0acb88c6ffcce6ee"
+    },
+    {
+      "path": "studio/js/raw.js",
+      "bytes": 6981,
+      "sha256": "628f96dbe70a36be74d4ff20b7b66c1bcd31a28b2c6e60656e4c65a458a0697c"
+    },
+    {
+      "path": "studio/js/recording-consent.js",
+      "bytes": 1683,
+      "sha256": "073ae2d428c7261bd85161605971a34a81adbb26f17869772fce2d3566341fb9"
+    },
+    {
+      "path": "studio/js/routes.js",
+      "bytes": 799,
+      "sha256": "5b5de2db0f5ceef374039ce063960768d9459764937ce902dd4386ddce7e5108"
+    },
+    {
+      "path": "studio/js/seam-check.js",
+      "bytes": 14679,
+      "sha256": "066680e7893881325edabc26ed0ab006b99001aa40c675ad2baf34570ec5e0c2"
+    },
+    {
+      "path": "studio/js/service-health.js",
+      "bytes": 1611,
+      "sha256": "d67dbf4d0142f3209528e4591897423a1972e0b6d77dd4083a1114573129355a"
+    },
+    {
+      "path": "studio/js/spin-viewer.js",
+      "bytes": 1616,
+      "sha256": "1ff2801d8b04e7d95fbdf1c0ea8ef585988a065c0938c2af68dd88e67472a582"
+    },
+    {
+      "path": "studio/js/store.js",
+      "bytes": 5346,
+      "sha256": "9f6dbdee7c29b5812f331eb3f2907853f8b1fca2c9c6f0cd621478b923223a77"
+    },
+    {
+      "path": "studio/js/studio-entry.js",
+      "bytes": 25819,
+      "sha256": "8ac1c8d54bfe3e2df00b89a936dec4b28d1356aa6a56b2f86d6159b517698ea4"
+    },
+    {
+      "path": "studio/js/studio-nav.js",
+      "bytes": 5797,
+      "sha256": "1fc78d762d1ec24cf49948fd2505d00e70270c5308461bb9700711542bab1497"
+    },
+    {
+      "path": "studio/js/studio-shell.js",
+      "bytes": 8507,
+      "sha256": "9af96c7a3235b53f85f986d3090e776feb52e5cba9dd78400ed982159ececeff"
+    },
+    {
+      "path": "studio/js/survey-policy.js",
+      "bytes": 2343,
+      "sha256": "f79343cfd9dfa5f9913d7d07fd71baa8b6d291938b3bc7634aff4095cbdbc685"
+    },
+    {
+      "path": "studio/js/take-defects.js",
+      "bytes": 11392,
+      "sha256": "540c8f774325111f8c3cb86f8dc89ae328eeacb69894b8ae875588453477d7e7"
+    },
+    {
+      "path": "studio/js/tattoo-mapping.js",
+      "bytes": 23493,
+      "sha256": "92c15b69623ffada26d2ba518b22a6b334e64f6e635ea1cb972309f21fd66ede"
+    },
+    {
+      "path": "studio/js/usage.js",
+      "bytes": 18300,
+      "sha256": "1c9cf370a1dd1e94dbcdea3cf3830106bddbf1e3e8a7cc58a82cf7d305309581"
+    },
+    {
+      "path": "studio/js/vendor/qrcodegen.js",
+      "bytes": 42502,
+      "sha256": "8e833cf12fcd416a7ad89c4d663ad74116382232d2b4c95a9658219758c9bc3c"
+    },
+    {
+      "path": "studio/js/video-pace.js",
+      "bytes": 2805,
+      "sha256": "97e787ff20d36a5bfe59609fdc966c309920171e7e7970feda2f5ee6662b9d04"
+    },
+    {
+      "path": "studio/js/video-pro-editor.js",
+      "bytes": 35689,
+      "sha256": "6a2bd3cf6f4245818710b5685601373daea9111b2d7b45c931da2cafafc7980d"
+    },
+    {
+      "path": "studio/js/video-timeline.js",
+      "bytes": 17206,
+      "sha256": "ef5388010992ede1207c0a92acf3b9436c41653838eb1afc3d763614677bf7c8"
+    },
+    {
+      "path": "studio/js/voice-mix-ui.js",
+      "bytes": 28629,
+      "sha256": "a37cee9b0e989db8d718cb2557ccb4ae7e8729f7c610ab69edcc968980f2e870"
+    },
+    {
+      "path": "studio/js/voice-mix.js",
+      "bytes": 34971,
+      "sha256": "6251507e0561fc1b13205683e754bf5d2fbceb5e433e866a35c95cf693839aa8"
+    },
+    {
+      "path": "studio/js/voice-quality.js",
+      "bytes": 3910,
+      "sha256": "efbd7ece33fea68e699e99fbba6d9be61b7b4b270397bc1513a3237403cd1e29"
+    },
+    {
+      "path": "studio/js/voice-reference.js",
+      "bytes": 13850,
+      "sha256": "23e5e492adbad8d88b9eb7a6369ae752b02e264745e6d0bf8fad2291cc9ee075"
+    },
+    {
+      "path": "studio/js/voice-take-analysis-worker.js",
+      "bytes": 282,
+      "sha256": "48634fe929e6fdbaba5679e11c63ab531c92e612e0ca196ab5cfda6633dd0fc5"
+    },
+    {
+      "path": "studio/js/voice-take-analysis.js",
+      "bytes": 1437,
+      "sha256": "9a845ee5b1723bec9426ed8c8810280b6e7356c619446e40cf14739ad4103d20"
+    },
+    {
+      "path": "studio/js/voice.js",
+      "bytes": 21778,
+      "sha256": "a5c507d9e65e31896dc47f1e0b4d1ad4f6f974a200807b1bd9420b3faa763e26"
+    },
+    {
+      "path": "studio/js/wav-export.js",
+      "bytes": 6540,
+      "sha256": "416e04177550f4051cf9ddb8568456883727929ff991e20f9228a8b675180ee8"
+    },
+    {
+      "path": "studio/js/zip.js",
+      "bytes": 14727,
+      "sha256": "f4ab7358d51d72c93febdeb7886a79d90082b63de536fe8896e316da67fe7ef3"
+    },
+    {
+      "path": "studio/manifest.webmanifest",
+      "bytes": 406,
+      "sha256": "eacca006c9fb4f360d14f9b2ed032272ab691562f07540d1987f52697b1088fb"
+    },
+    {
+      "path": "studio/music.html",
+      "bytes": 76817,
+      "sha256": "384c96910adba50c39d3c0774b47b82160b46b96c840ae107514ee51dea813d2"
+    },
+    {
+      "path": "studio/sw.js",
+      "bytes": 6983,
+      "sha256": "52009cc2b1ee3bd89097ddbfa661ce953c25e4bd47473e9186c5ef937118df50"
+    },
+    {
+      "path": "studio/usage.html",
+      "bytes": 7107,
+      "sha256": "c9a12de19b61542dd3dd5ae65f8404bba331ef925677ae97a4b53070004e9096"
+    },
+    {
+      "path": "studio/version.json",
+      "bytes": 156,
+      "sha256": "23abefd0fc71fd7ac4b43df71c26f229f31225cc4cd6927f0c572eac6d593aef"
+    },
+    {
+      "path": "studio/voice.html",
+      "bytes": 78313,
+      "sha256": "8b0db89f14e4f1e258060f222c63c6db35a24fabf50db870e3e8014f78f8cd8b"
+    },
+    {
+      "path": "ZERO_TRUST.md",
+      "bytes": 3058,
+      "sha256": "cc0ceae7d2b473a043dce37555db188ea801aa3dbed47ab5efd1157fa6dff9e7"
+    }
+  ]
+}

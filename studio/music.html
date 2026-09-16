@@ -1,0 +1,1310 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a0a0b">
+  <title>Music Studio — MaterialLogix™</title>
+  <script>(function(){var t=localStorage.getItem('cros:theme');if(!t)t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.dataset.theme=t;})()</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="./css/music.css">
+</head>
+<body data-mode="guided">
+<main class="app">
+  <header class="top">
+    <a class="brand" href="index.html" aria-label="MaterialLogix Studio home">
+      <strong><span class="brand-material">Material</span><span class="brand-logix">Logix</span><span class="brand-studio">Music Studio</span></strong>
+    </a>
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../">MaterialLogix&trade;</a><span>/</span><a href="index.html">Studio</a><span>/</span><b>Music</b></nav>
+    <span class="badge" id="tierBadge">Free Preview</span>
+    <span class="spacer"></span>
+    <div class="mode" aria-label="Editing detail"><button class="on" data-mode="guided" type="button">Guided</button><button data-mode="advanced" type="button">Advanced</button></div>
+    <button class="btn inspector-toggle hidden" id="inspectorToggle" type="button" aria-expanded="false">Controls</button>
+  </header>
+  <div class="notice" id="planNotice"><strong>Free Preview</strong><span>All creation tools are open. Clean export needs a plan — paid Checkout opens when billing is live.</span><span class="spacer"></span><a class="btn hidden" id="seePlans" target="_blank" rel="noopener noreferrer">See plans</a><button class="btn" id="fromProject" type="button" title="Open audio from the Studio project this song belongs to">From project</button><button class="btn" id="openProject" type="button">Open project</button><button class="btn" id="newSong" type="button">New song</button></div>
+  <div class="workspace">
+    <aside class="tracks" aria-label="Tracks">
+      <div class="section-head"><h2>Tracks</h2><span class="spacer"></span><span class="readout" id="trackCount" title="Tracks used in this plan"></span><button class="btn" id="addTrack" type="button">Add</button></div>
+      <a class="btn sm hidden" id="trackCapLink" target="_blank" rel="noopener noreferrer" style="display:block;margin:8px 10px;text-align:center">See plans</a>
+      <div class="track-list" id="trackList"></div>
+    </aside>
+    <section class="stage" aria-label="Music arrangement">
+      <div class="transport">
+        <button class="btn" id="play" type="button">Play</button>
+        <button class="btn" id="stop" type="button">Stop</button>
+        <span class="time" id="clock">0:00.0</span>
+        <span class="time length" id="length" title="Song length">0:00.0</span>
+        <button class="btn" id="zoomOut" type="button" title="Zoom out (−)">−</button>
+        <button class="btn" id="zoomIn" type="button" title="Zoom in (+)">+</button>
+        <button class="btn" id="loopSection" type="button" aria-pressed="false" title="Loop the section (drag across the ruler to set it)">Loop section</button>
+        <button class="btn" id="record" type="button">Record</button>
+        <button class="btn hidden" id="restoreConsent" type="button">Turn recording back on</button>
+        <span class="input-level hidden" id="inputLevel" title="Microphone input level"><i id="inputMeter"></i></span>
+        <button class="btn" id="import" type="button">Import</button>
+        <button class="btn" id="produce" type="button" title="Originate a new instrumental bed on this machine">Produce</button>
+        <button class="btn hidden" id="toProject" type="button" title="Put the finished master back in the Studio project">Send to project</button>
+        <span class="spacer"></span>
+        <button class="btn pro-only" id="exportStems" type="button" title="One WAV per track, all on the same timeline">Export stems</button>
+        <button class="btn primary" id="export" type="button">Export WAV</button>
+      </div>
+      <div class="timeline" id="timeline" tabindex="0" role="slider" aria-label="Playhead position" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="0 seconds">
+        <div class="ruler" id="ruler" aria-hidden="true"></div>
+        <div class="lanes" id="lanes"><div class="loop-region hidden" id="loopRegion" aria-hidden="true"></div><div class="playhead hidden" id="playhead" aria-hidden="true"></div></div>
+        <div class="empty" id="empty"><span><strong>Start with a vocal, beat, or audio file.</strong><br>Record, import, or produce a beat.</span></div>
+      </div>
+      <div class="quick" aria-label="Common editing actions">
+        <strong>Quick edit</strong>
+        <button class="btn" id="undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
+        <button class="btn" id="redo" type="button" title="Redo (Ctrl+Shift+Z)">Redo</button>
+        <button class="btn" id="split" type="button">Split</button>
+        <button class="btn" id="trimStart" type="button">Trim start</button>
+        <button class="btn" id="trimEnd" type="button">Trim end</button>
+        <button class="btn" id="duplicate" type="button">Duplicate</button>
+        <button class="btn" id="fade" type="button">Smooth edges</button>
+        <button class="btn" id="loop" type="button" title="Repeat this clip's audio for its whole length">Loop clip</button>
+        <button class="btn pro-only" id="addLayer" type="button" title="Weave a new instrument into the selected beat, built by a second, higher-fidelity model">Add layer</button>
+        <button class="btn" id="deleteSelection" type="button" title="Delete the selected clip (Delete)">Delete</button>
+      </div>
+    </section>
+    <aside class="inspector" id="inspector" aria-label="Music controls">
+      <div class="section-head"><h2>Controls</h2><span class="spacer"></span><button class="btn inspector-toggle hidden" id="inspectorClose" type="button">Close</button></div>
+      <div class="inspector-body">
+        <section class="group">
+          <h3>Project</h3>
+          <label class="field">Name<input id="projectName" value="Untitled song" maxlength="120"></label>
+          <div class="row">
+            <label class="field">Tempo<input id="bpm" type="number" min="30" max="300" value="120"></label>
+            <label class="field advanced-only">Snap<select id="snap"><option>1/4</option><option>1/8</option><option>1/16</option><option>off</option></select></label>
+          </div>
+          <details><summary>Project settings</summary><div class="advanced-flex row" style="margin-top:10px"><label class="field">Key<input id="key" value="C major"></label><label class="field">Time signature<select id="timeSignature"><option value="4/4">4/4</option><option value="3/4">3/4</option><option value="6/8">6/8</option><option value="5/4">5/4</option><option value="7/8">7/8</option><option value="12/8">12/8</option></select></label><label class="field">Count-in<select id="countIn"><option value="0">Off</option><option value="1" selected>1 bar</option><option value="2">2 bars</option></select></label></div><div class="chips" style="margin-top:8px"><button class="btn" id="clickToggle" type="button" aria-pressed="false">Click while recording</button></div><div class="readout" id="clickHint">Use headphones, or the click bleeds into the take.</div></details>
+        </section>
+        <section class="group">
+          <h3>Selected track</h3>
+          <label class="field">Name<input id="trackName" maxlength="120" placeholder="Choose a track"></label>
+          <div class="strip">
+            <div class="fader">
+              <div class="fader-scale"><input id="gain" type="range" min="-60" max="12" value="0" step=".5" aria-label="Track volume in decibels"></div>
+              <span class="fader-label">Volume</span>
+              <output class="fader-value" id="gainValue" for="gain">0.0 dB</output>
+            </div>
+            <div class="strip-controls">
+              <div class="chips"><button class="btn" data-track-action="mute" type="button">Mute</button><button class="btn" data-track-action="solo" type="button">Solo</button><button class="btn" data-track-action="armed" type="button">Arm</button></div>
+              <label class="field" style="margin-top:10px">Balance<input id="pan" type="range" min="-1" max="1" value="0" step=".05"></label>
+              <div class="readout" id="panValue">Center</div>
+              <div class="chips"><button class="btn" data-preset="clean" type="button">Clean</button><button class="btn" data-preset="vocal" type="button">Clear vocal</button><button class="btn" data-preset="warm" type="button">Warm vocal</button></div>
+            </div>
+          </div>
+          <div class="advanced-only" style="margin-top:12px">
+            <label class="field">Low cut<input id="highPass" type="range" min="20" max="240" value="80"></label>
+            <div class="row"><label class="field">Low<input id="lowEq" type="range" min="-12" max="12" value="0" step=".5"></label><label class="field">Mid<input id="midEq" type="range" min="-12" max="12" value="0" step=".5"></label><label class="field">High<input id="highEq" type="range" min="-12" max="12" value="0" step=".5"></label></div>
+            <div class="readout" id="eqValue">Tone flat</div>
+            <label class="field">Compression<input id="compressor" type="range" min="0" max="1" value=".35" step=".05"></label>
+            <label class="field">Room<input id="reverb" type="range" min="0" max="1" value="0" step=".05"></label>
+          </div>
+          <div class="chips" style="margin-top:12px"><button class="btn danger" id="removeTrack" type="button">Remove track</button></div>
+        </section>
+        <section class="group advanced-only">
+          <h3>Selected clip</h3>
+          <label class="field">Clip volume<input id="clipGain" type="range" min="-24" max="12" value="0" step=".5"></label>
+          <div class="readout" id="clipGainValue">0.0 dB</div>
+          <label class="field">Speed<input id="clipSpeed" type="range" min="0.5" max="2" value="1" step=".01"></label>
+          <div class="readout" id="clipSpeedValue">1.00x · original pitch</div>
+        </section>
+        <section class="group">
+          <h3>Output</h3>
+          <div class="status" id="status">Ready.</div><div class="meter"><i id="meter"></i></div>
+          <label class="field" style="margin-top:12px">Delivery target<select id="target"></select></label>
+          <div class="readout" id="loudness">Play or export to measure this mix.</div>
+          <div class="advanced-only" id="analysis" style="margin-top:10px;color:var(--muted);font-size:11px">48 kHz · stereo · clean output</div>
+        </section>
+      </div>
+    </aside>
+  </div>
+  <dialog class="picker" id="projectPicker" aria-label="Open from the Studio project">
+    <h2>Open from this project</h2>
+    <p>Audio and video already in the Studio project this song belongs to.</p>
+    <div class="picker-list" id="projectAssets"></div>
+    <button class="btn" id="projectPickerClose" type="button">Cancel</button>
+  </dialog>
+  <dialog class="picker" id="producePicker" aria-label="Produce a beat">
+    <h2>Produce a beat</h2>
+    <p>Describe it in words. This machine originates the audio — nothing leaves it.</p>
+    <div class="readout hidden" id="produceDeviceNotice"></div>
+    <label class="field">Description<textarea id="produceCaption" maxlength="512" rows="3" placeholder="90s boom bap, dusty vinyl drums, warm upright bass, no vocals"></textarea></label>
+    <label class="field">Length (seconds)<input id="produceDuration" type="number" min="4" max="600" step="1" value="30"></label>
+    <div class="advanced-only advanced-flex row">
+      <label class="field">Tempo<input id="produceBpm" type="number" min="30" max="300" placeholder="Let it choose"></label>
+      <label class="field">Key<input id="produceKey" placeholder="Let it choose"></label>
+      <label class="field">Seed<input id="produceSeed" type="number" min="-1" max="2147483647" value="-1" title="-1 for a new take each time"></label>
+    </div>
+    <div class="chips">
+      <button class="btn primary" id="produceGo" type="button">Produce</button>
+      <button class="btn" id="producePickerClose" type="button">Cancel</button>
+    </div>
+  </dialog>
+  <dialog class="picker" id="layerPicker" aria-label="Add a layer to the selected beat">
+    <h2>Add a layer</h2>
+    <p>Weaves one new instrument into the selected beat, built by a second, higher-fidelity model. Replaces that clip's audio with the combined result.</p>
+    <label class="field">Instrument<select id="layerTrack">
+      <option value="bass">Bass</option><option value="drums">Drums</option><option value="guitar">Guitar</option>
+      <option value="keyboard">Keyboard</option><option value="percussion">Percussion</option><option value="strings">Strings</option>
+      <option value="synth">Synth</option><option value="brass">Brass</option><option value="woodwinds">Woodwinds</option>
+      <option value="fx">FX</option><option value="vocals">Vocals</option><option value="backing_vocals">Backing vocals</option>
+    </select></label>
+    <label class="field">Describe it<input id="layerCaption" maxlength="512" placeholder="warm upright bass line, following the groove"></label>
+    <div class="chips">
+      <button class="btn primary" id="layerGo" type="button">Add layer</button>
+      <button class="btn" id="layerPickerClose" type="button">Cancel</button>
+    </div>
+  </dialog>
+  <input class="hidden" id="fileInput" type="file" accept="audio/*" multiple>
+  <audio class="hidden" id="player"></audio>
+</main>
+<script type="module">
+import { beatsPerBar, beatsToSeconds, createMusicClip, duplicateMusicClip, createMusicTrack, encodeMusicWav, newMusicProject, projectDuration, sanitizeMusicProject, secondsPerBeat, secondsToBeats, snapSeconds, splitMusicClip, trimMusicClip } from './js/music.js';
+import { normalizeToTarget, peakNormalize, renderMusicProject, renderMusicStem } from './js/music-audio.js';
+import { DELIVERY_TARGETS, complianceAgainst } from './js/loudness.js';
+import { listMusicProjects, loadMusicAsset, openMusicStore, saveMusicAsset, saveMusicProject } from './js/music-store.js';
+import { downloadBlob, makeZip } from './js/zip.js';
+import { activeLicense } from './js/license.js';
+import { activeProjectId, assetLabel, importableAssets, masterAsset } from './js/music-project.js';
+import { RECORDING_WITHDRAWN_MESSAGE, recordingConsentWithdrawn, restoreRecordingConsent } from './js/recording-consent.js';
+import { addAsset, getBlob, listAssets } from './js/store.js';
+import { MUSIC_TIERS, musicAccessFor } from './js/pricing.js';
+import { bridgeFetch } from './js/generate.js';
+import { PRICING_URL } from './js/routes.js';
+
+const $ = selector => document.querySelector(selector);
+// Same local-bridge resolution voice.html already uses: same-origin on a
+// LAN address, 127.0.0.1 otherwise. bridgeFetch (js/generate.js) carries
+// the Wi-Fi access token voice's local render calls already need.
+const BRIDGE_HOST = /^(localhost$|127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(location.hostname) ? location.hostname : '127.0.0.1';
+const BRIDGE = `http://${BRIDGE_HOST}:8189`;
+
+// The plan comes from the verified licence, never from the address bar: a
+// `?tier=` parameter used to decide it, so anyone could type `?tier=pro` and
+// walk away with 24-bit masters and stems.
+//
+// It starts fail-closed and is raised only once the licence resolves, rather
+// than awaited here. activeLicense() revalidates over the network with a six
+// second timeout, and the workspace must not sit blank behind that.
+let access = 'free';
+let license = null;
+let projectTier = 'pro';
+
+// Starting points handed over by the Studio entrance. The workspace already
+// opens a fresh song on every load and only restores saved work through Open
+// project, so naming it and laying out its tracks displaces nothing.
+const START_SETS = {
+  'vocal-take': { name: 'Vocal take', tracks: [['beat', 'Beat'], ['vocal', 'Vocal']] },
+  'beat-sketch': { name: 'Beat sketch', tracks: [['beat', 'Beat'], ['instrument', 'Instrument']] },
+  'song-demo': { name: 'Song demo', tracks: [['beat', 'Beat'], ['instrument', 'Instrument'], ['vocal', 'Vocal']] }
+};
+const params = new URLSearchParams(location.search);
+const startSet = START_SETS[params.get('start')] || null;
+let project = newMusicProject(startSet ? startSet.name : 'Untitled song', projectTier);
+if (startSet) project.tracks = startSet.tracks.map(([type, name]) => createMusicTrack(type, name));
+let database = null;
+let selectedTrack = project.tracks[0]?.id || null;
+let selectedClip = null;
+let renderedUrl = '';
+let masterBlob = null;
+let recorder = null;
+let recordParts = [];
+let saveTimer = 0;
+const decodedAssets = new Map();
+const peakCache = new Map();
+// The rendered preview is a snapshot. Any edit after it invalidates it, or
+// Play would hand back the mix from before the change.
+let mixStale = true;
+let playheadSeconds = 0;
+const undoStack = [];
+const redoStack = [];
+const UNDO_DEPTH = 40;
+let lastCommitted = null;
+let dragging = null;
+// Zoom, because a five-minute song at a fixed 44 px/s is 13,000 pixels wide and
+// the arrangement can never be seen at once.
+const ZOOM_STEPS = [4, 7, 11, 18, 28, 44, 70, 110, 175];
+let PIXELS_PER_SECOND = Number(localStorage.getItem('mlx:music-zoom')) || 44;
+if (!ZOOM_STEPS.includes(PIXELS_PER_SECOND)) PIXELS_PER_SECOND = 44;
+let loopDrag = null;
+
+// The autosave that follows an edit must not wipe out what the edit said —
+// "Deleted, Ctrl+Z puts it back" is the half the customer needs to read.
+let statusHeldUntil = 0;
+function status(message, bad = false, holdMs = 0) {
+  $('#status').textContent = message;
+  $('#status').style.color = bad ? 'var(--bad)' : '';
+  statusHeldUntil = holdMs ? Date.now() + holdMs : 0;
+  // A failure the customer cannot see is a dead click: the Produce dialog
+  // closes over the side panel, so an error written below the fold reads as
+  // "nothing happened." Bring the message to them instead.
+  // Instant, not smooth: the dialog's async close handler refocuses the
+  // transport button a tick later and cuts a smooth scroll off partway.
+  if (bad) $('#status').scrollIntoView({ block: 'center' });
+}
+// Free is a full preview of Pro: everything is open, and only delivery is
+// gated. That is two separable questions, though, and body[data-*] in
+// css/music.css answers them separately:
+//   data-tier  ('pro' | 'standard') -- is this control usable? Free reads
+//              'pro' here, correctly: a preview control is genuinely usable,
+//              not greyed out, so .pro-only's muted styling stays off for it.
+//   data-plan  (the real access: 'free' | 'standard' | 'pro') -- does the
+//              viewer actually own this? Free and Standard both read
+//              not-pro, so both get .pro-only's PRO badge -- a free
+//              previewer sees, at the point of use, which controls are
+//              previewing Pro rather than only reading it in the notice.
+const proFeatures = () => access === 'pro' || access === 'free';
+const trackCap = () => MUSIC_TIERS[project.tier].maxTracks;
+function tierCopy() {
+  const badge = $('#tierBadge');
+  badge.textContent = access === 'pro' ? 'Music Pro' : access === 'standard' ? 'Music Standard' : 'Free Preview';
+  badge.classList.toggle('pro', proFeatures());
+  document.body.dataset.tier = proFeatures() ? 'pro' : 'standard';
+  document.body.dataset.plan = access;
+  $('#planNotice').firstElementChild.textContent = badge.textContent;
+  $('#planNotice').querySelector('span:not(.spacer)').textContent = access === 'free'
+    ? 'Preview matches Pro tools. Standard means 24 tracks and 16-bit masters. Full Studio or Pro Studio unlocks the download.'
+    : access === 'pro'
+      ? '64 tracks, 24-bit masters, and stem exports are ready.'
+      : '24 tracks and 16-bit masters here. Pro adds 64 tracks, 24-bit, and stems — marked as you use them.';
+  // usage.html's plan section is billing management (Stripe's customer
+  // portal) for someone who already has a plan, not a catalog -- a free
+  // customer clicking it gets "Billing settings could not open." A free or
+  // standard customer weighing Pro needs the catalog itself.
+  $('#seePlans').href = PRICING_URL;
+  $('#seePlans').classList.toggle('hidden', access === 'pro');
+  $('#export').textContent = 'Export WAV';
+}
+function setMode(mode) {
+  document.body.dataset.mode = mode === 'advanced' ? 'advanced' : 'guided';
+  document.querySelectorAll('[data-mode]').forEach(button => { button.classList.toggle('on', button.dataset.mode === document.body.dataset.mode); button.setAttribute('aria-pressed', String(button.classList.contains('on'))); });
+  localStorage.setItem('mlx:music-mode', document.body.dataset.mode);
+}
+function invalidateMix() {
+  mixStale = true;
+  $('#meter').style.width = '0%';
+  if (!$('#player').paused) status('Mix changed. Press Play to hear the update.');
+}
+const snapshot = () => JSON.parse(JSON.stringify(project));
+async function persist() {
+  if (!database) return;
+  try {
+    project = await saveMusicProject(database, project, projectTier);
+    // The save hands back a sanitized copy; redraw so handlers rebind to it.
+    if (!dragging) draw();
+    if (Date.now() >= statusHeldUntil) status('Saved.');
+  } catch (error) { status(error.message, true); }
+}
+function scheduleSave() {
+  invalidateMix();
+  clearTimeout(saveTimer);
+  // Debounced, so a fader drag collapses into one undo step rather than one per pixel.
+  saveTimer = setTimeout(async () => {
+    if (lastCommitted) { undoStack.push(lastCommitted); if (undoStack.length > UNDO_DEPTH) undoStack.shift(); redoStack.length = 0; }
+    lastCommitted = snapshot();
+    await persist();
+  }, 250);
+}
+function restore(from, to) {
+  if (!from.length) return status(to === redoStack ? 'Nothing to undo.' : 'Nothing to redo.');
+  to.push(snapshot());
+  project = sanitizeMusicProject(from.pop(), projectTier);
+  if (!project.tracks.some(track => track.id === selectedTrack)) selectedTrack = project.tracks[0]?.id || null;
+  const track = project.tracks.find(item => item.id === selectedTrack);
+  if (!track?.clips.some(clip => clip.id === selectedClip)) selectedClip = track?.clips[0]?.id || null;
+  lastCommitted = snapshot();
+  clearTimeout(saveTimer);
+  invalidateMix(); draw(); persist();
+  status(to === redoStack ? 'Undone.' : 'Redone.');
+}
+function peaksFor(assetId) {
+  if (peakCache.has(assetId)) return peakCache.get(assetId);
+  const decoded = decodedAssets.get(assetId);
+  if (!decoded) return null;
+  const buckets = 900;
+  const [left] = decoded.channels;
+  const right = decoded.channels[1] || left;
+  const span = left.length / buckets;
+  const peaks = new Float32Array(buckets);
+  for (let bucket = 0; bucket < buckets; bucket++) {
+    const from = Math.floor(bucket * span);
+    const to = Math.min(left.length, Math.floor((bucket + 1) * span));
+    let loudest = 0;
+    for (let index = from; index < to; index++) loudest = Math.max(loudest, Math.abs(left[index]), Math.abs(right[index]));
+    peaks[bucket] = Math.min(1, loudest);
+  }
+  peakCache.set(assetId, peaks);
+  return peaks;
+}
+function waveformSvg(clip) {
+  const peaks = peaksFor(clip.assetId);
+  if (!peaks) return '';
+  const source = clip.sourceDuration || clip.duration;
+  const columns = Math.max(12, Math.min(180, Math.round(clip.duration * 12)));
+  const top = [];
+  const bottom = [];
+  for (let column = 0; column <= columns; column++) {
+    const seconds = (clip.offset || 0) + clip.duration * (column / columns);
+    const bucket = Math.min(peaks.length - 1, Math.max(0, Math.round(seconds / source * peaks.length)));
+    const x = (column / columns * 100).toFixed(2);
+    const half = (peaks[bucket] * 19).toFixed(2);
+    top.push(`${x},${(20 - half).toFixed(2)}`);
+    bottom.unshift(`${x},${(20 + Number(half)).toFixed(2)}`);
+  }
+  return `<svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><path d="M${top.join(' L')} L${bottom.join(' L')} Z"></path></svg>`;
+}
+function drawRuler() {
+  const ruler = $('#ruler');
+  const seconds = Math.max(16, projectDuration(project) + 8);
+  const barSeconds = secondsPerBeat(project) * beatsPerBar(project);
+  const bars = Math.ceil(seconds / barSeconds);
+  const marks = [];
+  for (let bar = 0; bar < bars; bar++) {
+    const at = bar * barSeconds;
+    marks.push(`<b style="left:${(at * PIXELS_PER_SECOND).toFixed(1)}px">${bar + 1}</b>`);
+  }
+  ruler.innerHTML = marks.join('');
+  ruler.style.width = `${(bars * barSeconds * PIXELS_PER_SECOND).toFixed(0)}px`;
+}
+function movePlayhead(seconds) {
+  const head = $('#playhead');
+  head.classList.toggle('hidden', !project.tracks.some(track => track.clips.length));
+  head.style.left = `${(seconds * PIXELS_PER_SECOND).toFixed(1)}px`;
+  const timeline = $('#timeline');
+  timeline.setAttribute('aria-valuemax', projectDuration(project).toFixed(1));
+  timeline.setAttribute('aria-valuenow', seconds.toFixed(1));
+  timeline.setAttribute('aria-valuetext', `${seconds.toFixed(1)} seconds`);
+}
+function drawLoop() {
+  const region = $('#loopRegion');
+  const start = beatsToSeconds(project.loop.startBeat, project.bpm);
+  const end = beatsToSeconds(project.loop.endBeat, project.bpm);
+  const marked = end > start + 0.05;
+  region.classList.toggle('hidden', !marked);
+  region.classList.toggle('armed', project.loop.enabled);
+  if (marked) {
+    region.style.left = `${(start * PIXELS_PER_SECOND).toFixed(1)}px`;
+    region.style.width = `${((end - start) * PIXELS_PER_SECOND).toFixed(1)}px`;
+  }
+  const button = $('#loopSection');
+  button.classList.toggle('on', project.loop.enabled && marked);
+  button.setAttribute('aria-pressed', String(project.loop.enabled && marked));
+}
+const clockText = value => `${Math.floor(value / 60)}:${String((value % 60).toFixed(1)).padStart(4, '0')}`;
+function showGain(db) { $('#gainValue').textContent = `${Number(db) > 0 ? '+' : ''}${Number(db).toFixed(1)} dB`; }
+function showClipGain(db) { $('#clipGainValue').textContent = `${Number(db) > 0 ? '+' : ''}${Number(db).toFixed(1)} dB`; }
+function showClipSpeed(rate) {
+  const value = Number(rate);
+  const semitones = 12 * Math.log2(value || 1);
+  $('#clipSpeedValue').textContent = Math.abs(value - 1) < 0.005
+    ? '1.00x · original pitch'
+    : `${value.toFixed(2)}x · pitch ${semitones > 0 ? '+' : ''}${semitones.toFixed(1)} semitones`;
+}
+function showEq(effects) {
+  const bands = [['Low', effects?.lowEqDb ?? 0], ['Mid', effects?.midEqDb ?? 0], ['High', effects?.highEqDb ?? 0]].filter(([, db]) => Number(db));
+  $('#eqValue').textContent = bands.length ? bands.map(([name, db]) => `${name} ${db > 0 ? '+' : ''}${Number(db).toFixed(1)}`).join('  ·  ') : 'Tone flat';
+}
+function showPan(pan) {
+  const value = Number(pan);
+  $('#panValue').textContent = Math.abs(value) < .025 ? 'Center' : `${Math.round(Math.abs(value) * 100)}% ${value < 0 ? 'left' : 'right'}`;
+}
+function trackLabel(track) { return `${track.mute ? 'Muted' : track.solo ? 'Solo' : track.armed ? 'Armed' : track.type}`; }
+function draw() {
+  $('#projectName').value = project.name;
+  $('#bpm').value = project.bpm;
+  $('#snap').value = project.snap;
+  $('#key').value = project.key;
+  $('#countIn').value = String(project.metronome.countInBars);
+  $('#timeSignature').value = `${project.timeSignature[0]}/${project.timeSignature[1]}`;
+  $('#trackCount').textContent = `${project.tracks.length} / ${trackCap()}`;
+  $('#clickToggle').classList.toggle('on', project.metronome.enabled);
+  $('#clickToggle').setAttribute('aria-pressed', String(project.metronome.enabled));
+  const list = $('#trackList'); list.replaceChildren();
+  for (const track of project.tracks) {
+    const button = document.createElement('button'); button.type = 'button'; button.dataset.track = track.id; button.className = `track${selectedTrack === track.id ? ' on' : ''}`;
+    button.innerHTML = `<span><strong></strong><small></small></span><span class="track-state"></span>`;
+    button.querySelector('strong').textContent = track.name; button.querySelector('small').textContent = `${track.clips.length} clip${track.clips.length === 1 ? '' : 's'}`; button.querySelector('.track-state').textContent = trackLabel(track);
+    button.onclick = () => { selectedTrack = track.id; selectedClip = track.clips[0]?.id || null; draw(); };
+    list.append(button);
+  }
+  const lanes = $('#lanes'); lanes.querySelectorAll('.lane').forEach(node => node.remove());
+  $('#empty').classList.toggle('hidden', project.tracks.some(track => track.clips.length));
+  const pixelsPerSecond = PIXELS_PER_SECOND;
+  for (const track of project.tracks) {
+    const lane = document.createElement('div'); lane.className = 'lane'; lane.dataset.track = track.id;
+    for (const clip of track.clips) {
+      const node = document.createElement('button'); node.type = 'button'; node.className = `clip${selectedClip === clip.id ? ' on' : ''}`; node.title = `${clip.name}, ${clip.duration.toFixed(1)} seconds`;
+      node.innerHTML = waveformSvg(clip); const label = document.createElement('span'); label.className = 'clip-name'; label.textContent = clip.name; node.append(label);
+      node.style.setProperty('--clip', track.color);
+      node.style.left = `${clip.start * pixelsPerSecond}px`; node.style.width = `${Math.max(24, clip.duration * pixelsPerSecond)}px`;
+      node.onclick = () => { if (dragging?.moved) return; selectedTrack = track.id; selectedClip = clip.id; draw(); };
+      node.onpointerdown = event => {
+        if (event.button) return;
+        // Selection is applied in place: redrawing here would replace the
+        // node the pointer is captured on and the drag would never start.
+        selectedTrack = track.id; selectedClip = clip.id;
+        document.querySelectorAll('.clip.on').forEach(other => other.classList.remove('on'));
+        node.classList.add('on');
+        document.querySelectorAll('.track.on').forEach(other => other.classList.remove('on'));
+        document.querySelector(`.track[data-track="${track.id}"]`)?.classList.add('on');
+        syncInspector();
+        dragging = { id: clip.id, node, fromX: event.clientX, start: liveClip(track.id, clip.id)?.start ?? clip.start, moved: false };
+        node.setPointerCapture(event.pointerId);
+      };
+      node.onpointermove = event => {
+        if (!dragging || dragging.id !== clip.id) return;
+        const delta = (event.clientX - dragging.fromX) / PIXELS_PER_SECOND;
+        if (!dragging.moved && Math.abs(delta) * PIXELS_PER_SECOND < 3) return;
+        const live = liveClip(track.id, clip.id);
+        if (!live) return;
+        dragging.moved = true;
+        live.start = Math.max(0, snapSeconds(dragging.start + delta, project.bpm, project.snap));
+        node.style.left = `${live.start * PIXELS_PER_SECOND}px`;
+        status(`${live.name} at ${live.start.toFixed(2)}s`);
+      };
+      node.onpointerup = () => {
+        if (!dragging) return;
+        const moved = dragging.moved; dragging = null;
+        if (moved) { draw(); scheduleSave(); }
+      };
+      lane.append(node);
+    }
+    lanes.append(lane);
+  }
+  drawRuler();
+  drawLoop();
+  $('#length').textContent = clockText(projectDuration(project));
+  // The slider's range changes when the arrangement does, not only when the
+  // playhead moves, or assistive tech is told the song is still zero long.
+  $('#timeline').setAttribute('aria-valuemax', projectDuration(project).toFixed(1));
+  syncInspector();
+}
+function syncInspector() {
+  const track = project.tracks.find(item => item.id === selectedTrack);
+  for (const [selector, value] of [['#gain', track?.gainDb ?? 0], ['#pan', track?.pan ?? 0], ['#highPass', track?.effects.highPassHz ?? 80], ['#compressor', track?.effects.compressorAmount ?? .35], ['#reverb', track?.effects.reverbSend ?? 0], ['#lowEq', track?.effects.lowEqDb ?? 0], ['#midEq', track?.effects.midEqDb ?? 0], ['#highEq', track?.effects.highEqDb ?? 0]]) $(selector).value = String(value);
+  showEq(track?.effects);
+  showGain(track?.gainDb ?? 0); showPan(track?.pan ?? 0);
+  $('#trackName').value = track?.name || ''; $('#trackName').disabled = !track;
+  const clip = track?.clips.find(item => item.id === selectedClip) || null;
+  $('#clipGain').value = String(clip?.gainDb ?? 0);
+  $('#clipSpeed').value = String(clip?.playbackRate ?? 1);
+  $('#clipGain').disabled = !clip; $('#clipSpeed').disabled = !clip;
+  showClipGain(clip?.gainDb ?? 0); showClipSpeed(clip?.playbackRate ?? 1);
+  document.querySelectorAll('[data-track-action]').forEach(button => button.classList.toggle('on', Boolean(track?.[button.dataset.trackAction])));
+}
+const liveClip = (trackId, clipId) => project.tracks.find(item => item.id === trackId)?.clips.find(item => item.id === clipId) || null;function chosen() {
+  const track = project.tracks.find(item => item.id === selectedTrack);
+  const clip = track?.clips.find(item => item.id === selectedClip);
+  return { track, clip };
+}
+// Pro's own ceiling is the structural maximum -- there is nowhere higher to
+// point a Pro (or free-preview, which shares Pro's ceiling) customer who
+// reaches it. Standard's is a real product difference, so that message is
+// the one paired with the #trackCapLink route-out.
+const ceilingHint = () => project.tier === 'pro'
+  ? `This plan supports ${trackCap()} tracks.`
+  : `Standard supports ${trackCap()} tracks — see plans.`;
+// Shown at the moment an add is refused for a ceiling reason, not ambiently:
+// a link next to the counter at 3/24 tracks would be noise most of the time.
+// Pro's ceiling is the product's structural maximum, so there is nothing to
+// route a Pro (or free-preview) customer to; only Standard gets the link.
+function showCeilingLink(show) {
+  const link = $('#trackCapLink');
+  if (show) link.href = PRICING_URL;
+  link.classList.toggle('hidden', !show);
+}
+function addTrack(type = 'audio', name = '') {
+  showCeilingLink(false);
+  const max = trackCap();
+  if (project.tracks.length >= max) { showCeilingLink(project.tier !== 'pro'); return status(ceilingHint(), true); }
+  const track = createMusicTrack(type, name); project.tracks.push(track); selectedTrack = track.id; selectedClip = null; draw(); scheduleSave();
+}
+async function decodeBlob(blob) {
+  const context = new AudioContext();
+  try { const buffer = await context.decodeAudioData(await blob.arrayBuffer()); return { sampleRate: buffer.sampleRate, channels: Array.from({ length: buffer.numberOfChannels }, (_, index) => buffer.getChannelData(index).slice()) }; }
+  finally { await context.close(); }
+}
+async function ensureDecoded(assetId) {
+  if (decodedAssets.has(assetId)) return decodedAssets.get(assetId);
+  const saved = await loadMusicAsset(database, assetId);
+  if (!saved?.blob) throw new Error('Missing audio for a clip in this project.');
+  const decoded = await decodeBlob(saved.blob);
+  decodedAssets.set(assetId, decoded);
+  return decoded;
+}
+async function hydrateWaveforms() {
+  for (const track of project.tracks) for (const clip of track.clips) {
+    try { await ensureDecoded(clip.assetId); } catch { /* drawn without a waveform */ }
+  }
+  draw();
+}
+async function importFiles(files, { intoTrackId = null } = {}) {
+  if (!database) return status('Storage is not ready.', true);
+  showCeilingLink(false);
+  const target = intoTrackId ? project.tracks.find(track => track.id === intoTrackId) : null;
+  for (const file of files) {
+    try {
+      const decoded = await decodeBlob(file); const assetId = crypto.randomUUID(); decodedAssets.set(assetId, decoded);
+      const type = /beat|drum/i.test(file.name) ? 'beat' : /vocal|voice|take/i.test(file.name) ? 'vocal' : 'audio';
+      const displayName = file.name.replace(/\.[^.]+$/, '');
+      const start = snapSeconds(playheadSeconds, project.bpm, project.snap);
+      const clip = createMusicClip({ assetId, name: displayName, duration: decoded.channels[0].length / decoded.sampleRate, sourceDuration: decoded.channels[0].length / decoded.sampleRate, start });
+      await saveMusicAsset(database, { id: assetId, projectId: project.id, name: file.name, type: file.type, blob: file, duration: decoded.channels[0].length / decoded.sampleRate, sampleRate: decoded.sampleRate, channels: decoded.channels.length });
+      if (target) {
+        target.clips.push(clip); selectedTrack = target.id;
+      } else {
+        if (project.tracks.length >= trackCap()) { showCeilingLink(project.tier !== 'pro'); status(`${ceilingHint()} Arm a track to stack takes on it.`, true); break; }
+        const track = createMusicTrack(type, displayName);
+        track.clips.push(clip);
+        project.tracks.push(track); selectedTrack = track.id;
+      }
+      selectedClip = clip.id;
+    } catch (error) { status(`${file.name}: ${error.message}`, true); }
+  }
+  draw(); scheduleSave();
+}
+
+/** Probed on every dialog open, not cached: the engine can be started
+ * between one Produce and the next, and a remembered "not running" would
+ * then be a lie. A refused connection answers in milliseconds. */
+async function produceEngineNotice() {
+  try {
+    const res = await bridgeFetch(`${BRIDGE}/health`, { signal: AbortSignal.timeout(2500) });
+    const body = await res.json();
+    return body?.music?.device === 'cpu'
+      ? 'No fast graphics hardware found on this machine — producing will take longer than usual.'
+      : '';
+  } catch {
+    return 'The beat engine is not running on this computer yet. Start MaterialLogix, then produce.';
+  }
+}
+
+/** One quiet retry before a failure is shown: a bridge still finishing
+ * startup, or a Wi-Fi blip from a phone, should not cost the customer a
+ * dialog's worth of typing. */
+async function bridgePost(url, init) {
+  try { return await bridgeFetch(url, init); }
+  catch { await new Promise(done => setTimeout(done, 600)); return bridgeFetch(url, init); }
+}
+
+/** Disables a trigger button for the life of one async action, so a second
+ * click while a 14s-140s+ render is in flight cannot queue a duplicate
+ * request behind the first with no sign anything happened. */
+async function withBusyButton(button, label, run) {
+  const original = button.textContent;
+  button.disabled = true; button.textContent = label;
+  try { await run(); }
+  finally { button.disabled = false; button.textContent = original; }
+}
+
+async function produceBeat({ prompt: caption, duration, bpm, key, seed }) {
+  if (!database) return status('Storage is not ready.', true);
+  if (!caption.trim()) return status('Describe the beat you want before producing.', true);
+  showCeilingLink(false);
+  status('Producing your beat…');
+  let res;
+  try {
+    res = await bridgePost(`${BRIDGE}/produce`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: caption, duration, bpm: bpm || null, key: key || '', seed: seed ?? -1 }),
+    });
+  } catch { return status('Could not reach the beat engine — start MaterialLogix on this computer, then produce again.', true); }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return status(body.error || 'Producing that beat failed.', true);
+  }
+  const summary = JSON.parse(res.headers.get('X-MaterialLogix-Beat-Summary') || 'null');
+  const blob = await res.blob();
+  const decoded = await decodeBlob(blob);
+  const assetId = crypto.randomUUID(); decodedAssets.set(assetId, decoded);
+  const displayName = caption.trim().slice(0, 60) || 'Produced beat';
+  const clipDuration = decoded.channels[0].length / decoded.sampleRate;
+  const start = snapSeconds(playheadSeconds, project.bpm, project.snap);
+  const clip = createMusicClip({ assetId, name: displayName, duration: clipDuration, sourceDuration: clipDuration, start });
+  await saveMusicAsset(database, { id: assetId, projectId: project.id, name: `${displayName}.wav`, type: 'audio/wav', blob, duration: clipDuration, sampleRate: decoded.sampleRate, channels: decoded.channels.length });
+  const armed = project.tracks.find(track => track.armed);
+  if (armed) {
+    armed.clips.push(clip); selectedTrack = armed.id;
+  } else {
+    if (project.tracks.length >= trackCap()) { showCeilingLink(project.tier !== 'pro'); return status(`${ceilingHint()} Arm a track to stack takes on it.`, true); }
+    const track = createMusicTrack('beat', displayName);
+    track.clips.push(clip); project.tracks.push(track); selectedTrack = track.id;
+  }
+  selectedClip = clip.id;
+  draw(); scheduleSave();
+  // A take can pass every container check and still trail into near-silence
+  // before the file ends (measured — see beat_render.py's sustain check).
+  // The clip is real and kept either way; this is a heads-up, not a failure.
+  if (summary?.sustain?.collapsed) {
+    status(`Produced — but it trails off around ${summary.sustain.collapseAtSeconds}s of ${summary.requestedSeconds}s. Worth producing again.`, true);
+  } else {
+    status('Produced.');
+  }
+}
+
+async function addLayerToClip({ track: trackName, prompt: caption }) {
+  if (!proFeatures()) return status('Adding a layer is part of Music Pro: a second, higher-fidelity model builds a new instrument into a beat you already have.', true);
+  const { clip } = chosen();
+  if (!clip) return status('Choose a beat to add a layer to first.', true);
+  if (!caption.trim()) return status('Describe the layer you want before producing.', true);
+  const saved = await loadMusicAsset(database, clip.assetId);
+  if (!saved?.blob) return status('Missing audio for that clip.', true);
+  status('Adding the layer…');
+  let res;
+  try {
+    const qs = new URLSearchParams({ track: trackName, prompt: caption, seed: '-1' });
+    res = await bridgePost(`${BRIDGE}/layer?${qs}`, {
+      method: 'POST', headers: { 'Content-Type': saved.blob.type || 'audio/wav' }, body: saved.blob,
+    });
+  } catch { return status('Could not reach the beat engine — start MaterialLogix on this computer, then add the layer again.', true); }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return status(body.error || 'Adding that layer failed.', true);
+  }
+  const summary = JSON.parse(res.headers.get('X-MaterialLogix-Beat-Summary') || 'null');
+  const blob = await res.blob();
+  const decoded = await decodeBlob(blob);
+  // lego's own output is the existing beat with the new part woven in (the
+  // source's latent is kept, not silenced, during generation) — this
+  // replaces the clip's audio in place rather than adding a second clip.
+  const assetId = crypto.randomUUID(); decodedAssets.set(assetId, decoded);
+  await saveMusicAsset(database, { id: assetId, projectId: project.id, name: `${clip.name} + ${trackName}.wav`, type: 'audio/wav', blob, duration: clip.duration, sampleRate: decoded.sampleRate, channels: decoded.channels.length });
+  decodedAssets.delete(clip.assetId);
+  clip.assetId = assetId;
+  draw(); scheduleSave();
+  if (summary?.sustain?.collapsed) status('Layer added — but it trails off early. Worth trying again.', true);
+  else status(`Added ${trackName}.`);
+}
+const bitDepth = () => (proFeatures() ? 24 : 16);
+const safeName = value => String(value || '').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '');
+const songFileName = () => safeName(project.name) || 'music-project';
+const currentTarget = () => DELIVERY_TARGETS.find(entry => entry.id === $('#target').value) || DELIVERY_TARGETS[0];
+
+async function collectAssets() {
+  const assets = new Map();
+  for (const track of project.tracks) for (const clip of track.clips) if (!assets.has(clip.assetId)) assets.set(clip.assetId, await ensureDecoded(clip.assetId));
+  return assets;
+}
+function requireAudio() {
+  if (!project.tracks.some(track => track.clips.length)) throw new Error('Record or import audio first.');
+}
+function showMeter(channels) {
+  let peak = 0;
+  for (const channel of channels) for (const sample of channel) peak = Math.max(peak, Math.abs(sample));
+  $('#meter').style.width = `${Math.min(100, peak * 100)}%`;
+  return peak;
+}
+
+/**
+ * Monitoring. Peak-safe only, so Play stays instant: measuring loudness
+ * properly means K-weighting and oversampling the whole song, which is seconds
+ * of work on a five-minute track and belongs on the export rather than on
+ * every press of Play.
+ */
+async function render() {
+  requireAudio();
+  status('Preparing your mix…');
+  const result = renderMusicProject(project, await collectAssets());
+  const channels = peakNormalize(result.channels, -1);
+  const peak = showMeter(channels);
+  URL.revokeObjectURL(renderedUrl);
+  renderedUrl = URL.createObjectURL(new Blob([encodeMusicWav(channels, result.sampleRate, bitDepth())], { type: 'audio/wav' }));
+  $('#player').src = renderedUrl;
+  $('#analysis').textContent = `${result.sampleRate / 1000} kHz · stereo · ${bitDepth()}-bit · monitor peak ${(20 * Math.log10(peak || 1e-6)).toFixed(1)} dBFS`;
+  mixStale = false;
+  const caught = result.analysis.clippedSamples;
+  // Said out loud in the status line, not buried in the Advanced readout: a
+  // mix that overshot is a mix the customer has to fix, at either level.
+  if (caught) status(`${caught} sample${caught === 1 ? '' : 's'} overshot and were held back. Lower the loudest track.`, true);
+  else status('Mix ready.');
+  return renderedUrl;
+}
+
+/** Delivery. Levelled to the chosen target and measured exactly, once. */
+async function master() {
+  requireAudio();
+  const target = currentTarget();
+  status(`Levelling for ${target.label.toLowerCase()}…`);
+  const assets = await collectAssets();
+  // Yield so the status paints before the measurement takes the thread.
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const result = renderMusicProject(project, assets);
+  const levelled = normalizeToTarget(result.channels, result.sampleRate, { targetLufs: target.lufs, ceilingDbtp: target.ceilingDbtp });
+  showMeter(levelled.channels);
+  if (!Number.isFinite(levelled.integratedLufs)) $('#loudness').textContent = 'Nothing measurable in this mix yet.';
+  else {
+    const reading = complianceAgainst(target, levelled);
+    $('#loudness').textContent = `${levelled.integratedLufs.toFixed(1)} LUFS · ${levelled.truePeakDbtp.toFixed(1)} dBTP — ${reading.advice}`;
+  }
+  return { ...levelled, sampleRate: result.sampleRate, target };
+}
+
+async function exportMix() {
+  try {
+    const delivered = await master();
+    const blob = new Blob([encodeMusicWav(delivered.channels, delivered.sampleRate, bitDepth())], { type: 'audio/wav' });
+    masterBlob = blob;
+    $('#toProject').classList.toggle('hidden', !sharedProject());
+    URL.revokeObjectURL(renderedUrl);
+    renderedUrl = URL.createObjectURL(blob);
+    $('#player').src = renderedUrl;
+    mixStale = false;
+    if (delivered.heldBackDb > 0.5) {
+      const detailed = document.body.dataset.mode === 'advanced';
+      status(detailed
+        ? `Master ready, ${delivered.heldBackDb.toFixed(1)} dB under ${delivered.target.label.toLowerCase()} level — the peaks would have broken the ${delivered.target.ceilingDbtp} dBTP ceiling. Ease the loudest hits to get closer.`
+        : `Master ready, a little quieter than ${delivered.target.label.toLowerCase()}. The loudest moments are holding it back — soften them and it gets closer.`, true);
+    } else status(access === 'free' ? 'Master ready to hear.' : 'Master ready.');
+    if (access === 'free') return status('Master ready to hear. Full Studio or Pro Studio unlocks the download — see plans, top right.', true);
+    downloadBlob(blob, `${songFileName()}.wav`);
+  } catch (error) { status(error.message, true); }
+}
+
+/**
+ * One WAV per track, all the same length, so the set opens lined up in
+ * whatever the next room uses. This is the handoff a mix engineer asks for.
+ */
+async function exportStems() {
+  try {
+    // Shown to every plan on purpose: a Standard customer should be able to see
+    // what Pro adds, not discover it is missing.
+    if (!musicAccessFor(license).stemAuthoring) return status('Stem export is part of Music Pro: one WAV per track, all on the same timeline, ready for a mix engineer.', true);
+    requireAudio();
+    const tracks = project.tracks.filter(track => track.clips.length);
+    const assets = await collectAssets();
+    const entries = [];
+    for (const [index, track] of tracks.entries()) {
+      status(`Rendering stem ${index + 1} of ${tracks.length}…`);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const stem = renderMusicStem(project, track.id, assets);
+      const name = `${String(index + 1).padStart(2, '0')}-${safeName(track.name) || 'track'}`;
+      entries.push({ name: `${songFileName()}/${name}.wav`, data: new Uint8Array(encodeMusicWav(stem.channels, stem.sampleRate, bitDepth())) });
+    }
+    if (access === 'free') return status(`${entries.length} stems ready. Pro Studio unlocks the download — see plans, top right.`, true);
+    downloadBlob(makeZip(entries), `${songFileName()}-stems.zip`);
+    status(`Exported ${entries.length} stem${entries.length === 1 ? '' : 's'}.`);
+  } catch (error) { status(error.message, true); }
+}
+let countingIn = false;
+let clickContext = null;
+let clickPump = 0;
+let stopInputMeter = null;
+
+function click(context, at, accent) {
+  const osc = context.createOscillator();
+  const level = context.createGain();
+  osc.frequency.value = accent ? 1320 : 880;
+  level.gain.setValueAtTime(0.0001, at);
+  level.gain.exponentialRampToValueAtTime(0.45, at + 0.004);
+  level.gain.exponentialRampToValueAtTime(0.0001, at + 0.07);
+  osc.connect(level).connect(context.destination);
+  osc.start(at); osc.stop(at + 0.09);
+}
+function endClicks() {
+  clearInterval(clickPump); clickPump = 0;
+  const context = clickContext; clickContext = null;
+  if (context) context.close().catch(() => {});
+}
+/** Clicks scheduled a beat or so ahead of the clock, so the tempo does not
+ *  drift the way a timer-driven click does on a busy page. */
+function startClickTrack(context) {
+  const perBar = beatsPerBar(project);
+  const beatLength = secondsPerBeat(project);
+  const origin = context.currentTime;
+  let beat = 0;
+  const pump = () => {
+    const horizon = context.currentTime + 1.5;
+    while (origin + beat * beatLength < horizon) {
+      click(context, origin + beat * beatLength, beat % perBar === 0);
+      beat++;
+    }
+  };
+  pump();
+  clickPump = setInterval(pump, 400);
+}
+/** What the microphone is hearing, before the take is committed: a singer
+ *  should not find out the input was silent or clipping after the performance. */
+function startInputMeter(stream) {
+  const context = new AudioContext();
+  const analyser = context.createAnalyser();
+  analyser.fftSize = 1024;
+  context.createMediaStreamSource(stream).connect(analyser);
+  const buffer = new Float32Array(analyser.fftSize);
+  const wrap = $('#inputLevel');
+  wrap.classList.remove('hidden');
+  const timer = setInterval(() => {
+    analyser.getFloatTimeDomainData(buffer);
+    let peak = 0;
+    for (const sample of buffer) peak = Math.max(peak, Math.abs(sample));
+    $('#inputMeter').style.width = `${Math.min(100, peak * 100)}%`;
+    wrap.classList.toggle('hot', peak > 0.89);
+  }, 60);
+  stopInputMeter = () => {
+    clearInterval(timer);
+    wrap.classList.add('hidden'); wrap.classList.remove('hot');
+    $('#inputMeter').style.width = '0%';
+    context.close().catch(() => {});
+    stopInputMeter = null;
+  };
+}
+async function countIn(context) {
+  const bars = project.metronome.countInBars;
+  if (!bars) return true;
+  const perBar = beatsPerBar(project);
+  const beats = bars * perBar;
+  const beatLength = secondsPerBeat(project);
+  countingIn = true;
+  $('#record').textContent = 'Cancel';
+  const start = context.currentTime + 0.08;
+  for (let beat = 0; beat < beats; beat++) click(context, start + beat * beatLength, beat % perBar === 0);
+  for (let remaining = beats; remaining > 0 && countingIn; remaining--) {
+    status(`Count-in… ${remaining}`);
+    await new Promise(resolve => setTimeout(resolve, beatLength * 1000));
+  }
+  const finished = countingIn;
+  countingIn = false;
+  return finished;
+}
+async function toggleRecord() {
+  if (countingIn) { countingIn = false; endClicks(); stopInputMeter?.(); $('#record').textContent = 'Record'; status('Count-in stopped.'); return; }
+  if (recorder?.state === 'recording') { recorder.stop(); return; }
+  // Checked before the microphone is asked for, not after: withdrawing consent
+  // has to actually stop the recording, not merely be recorded as a preference.
+  if (recordingConsentWithdrawn()) {
+    status(RECORDING_WITHDRAWN_MESSAGE, true, 10000);
+    $('#restoreConsent').classList.remove('hidden');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+    startInputMeter(stream);
+    clickContext = new AudioContext();
+    if (!await countIn(clickContext)) { stream.getTracks().forEach(track => track.stop()); stopInputMeter?.(); endClicks(); $('#record').textContent = 'Record'; return; }
+    if (project.metronome.enabled) startClickTrack(clickContext); else endClicks();
+    recordParts = []; recorder = new MediaRecorder(stream); recorder.ondataavailable = event => { if (event.data.size) recordParts.push(event.data); };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach(track => track.stop());
+      stopInputMeter?.(); endClicks();
+      $('#record').textContent = 'Record';
+      const armed = project.tracks.find(track => track.armed);
+      await importFiles([new File(recordParts, `Take ${new Date().toLocaleTimeString()}.webm`, { type: recorder.mimeType })], { intoTrackId: armed?.id || null });
+    };
+    recorder.start(250); $('#record').textContent = 'Stop recording'; status('Recording…');
+  } catch (error) { countingIn = false; stopInputMeter?.(); endClicks(); $('#record').textContent = 'Record'; status(`Microphone: ${error.message}`, true); }
+}
+
+document.querySelectorAll('[data-mode]').forEach(button => button.onclick = () => setMode(button.dataset.mode));
+$('#addTrack').onclick = () => addTrack('audio', `Track ${project.tracks.length + 1}`);
+$('#import').onclick = () => $('#fileInput').click(); $('#fileInput').onchange = event => importFiles([...event.target.files]); $('#record').onclick = toggleRecord;
+$('#play').onclick = async () => {
+  try {
+    const at = $('#player').currentTime;
+    if (!renderedUrl || mixStale) { await render(); $('#player').currentTime = Math.min(at, projectDuration(project)); }
+    await $('#player').play(); status('Playing.');
+  } catch (error) { status(error.message, true); }
+};
+$('#stop').onclick = () => { $('#player').pause(); $('#player').currentTime = 0; showTime(0); status('Stopped.'); };
+function showTime(value) {
+  playheadSeconds = value;
+  $('#clock').textContent = clockText(value);
+  movePlayhead(value);
+}
+const loopStartSeconds = () => beatsToSeconds(project.loop.startBeat, project.bpm);
+const loopEndSeconds = () => beatsToSeconds(project.loop.endBeat, project.bpm);
+const hasLoop = () => loopEndSeconds() > loopStartSeconds() + 0.05;
+
+$('#player').ontimeupdate = () => {
+  const at = $('#player').currentTime;
+  // Wrap inside the section rather than running past it: this is the loop a
+  // singer leaves running while they take another pass at eight bars.
+  if (project.loop.enabled && hasLoop() && at >= loopEndSeconds()) {
+    $('#player').currentTime = loopStartSeconds();
+    return showTime(loopStartSeconds());
+  }
+  showTime(at);
+};
+$('#player').onended = () => {
+  if (project.loop.enabled && hasLoop()) {
+    $('#player').currentTime = loopStartSeconds();
+    return $('#player').play().catch(() => {});
+  }
+  status('Finished.');
+};
+
+// The ruler carries both gestures: a click moves the playhead, a drag marks the
+// loop section. Clips keep their own pointer handling, so selecting one still
+// works.
+$('#ruler').onpointerdown = event => {
+  const rect = $('#ruler').getBoundingClientRect();
+  loopDrag = { fromX: event.clientX, from: Math.max(0, (event.clientX - rect.left) / PIXELS_PER_SECOND), moved: false };
+  $('#ruler').setPointerCapture(event.pointerId);
+};
+$('#ruler').onpointermove = event => {
+  if (!loopDrag) return;
+  if (!loopDrag.moved && Math.abs(event.clientX - loopDrag.fromX) < 4) return;
+  loopDrag.moved = true;
+  const rect = $('#ruler').getBoundingClientRect();
+  const to = Math.max(0, (event.clientX - rect.left) / PIXELS_PER_SECOND);
+  const from = snapSeconds(Math.min(loopDrag.from, to), project.bpm, project.snap);
+  const until = snapSeconds(Math.max(loopDrag.from, to), project.bpm, project.snap);
+  project.loop.startBeat = secondsToBeats(from, project.bpm);
+  project.loop.endBeat = secondsToBeats(Math.max(until, from + 0.1), project.bpm);
+  project.loop.enabled = true;
+  drawLoop();
+};
+$('#ruler').onpointerup = () => {
+  if (!loopDrag) return;
+  const { moved, from } = loopDrag;
+  loopDrag = null;
+  if (moved) {
+    scheduleSave();
+    return status(`Loop section ${loopStartSeconds().toFixed(1)}s to ${loopEndSeconds().toFixed(1)}s. Play repeats it.`, false, 4000);
+  }
+  const bounded = Math.min(from, projectDuration(project));
+  if (renderedUrl && !mixStale) $('#player').currentTime = bounded;
+  showTime(bounded);
+};
+$('#timeline').addEventListener('keydown', event => {
+  const step = event.shiftKey ? secondsPerBeat(project) * beatsPerBar(project) : secondsPerBeat(project);
+  const end = projectDuration(project);
+  let next = null;
+  if (event.key === 'ArrowRight') next = Math.min(end, playheadSeconds + step);
+  else if (event.key === 'ArrowLeft') next = Math.max(0, playheadSeconds - step);
+  else if (event.key === 'End') next = end;
+  else if (event.key === 'Home') next = 0;
+  if (next === null) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (renderedUrl && !mixStale) $('#player').currentTime = next;
+  showTime(next);
+});
+$('#loopSection').onclick = () => {
+  if (!hasLoop()) return status('Drag across the ruler to mark a section first.', true);
+  project.loop.enabled = !project.loop.enabled;
+  drawLoop(); scheduleSave();
+  status(project.loop.enabled ? 'Loop on.' : 'Loop off.');
+};
+function setZoom(direction) {
+  const index = ZOOM_STEPS.indexOf(PIXELS_PER_SECOND);
+  const next = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, index + direction))];
+  if (next === PIXELS_PER_SECOND) return;
+  PIXELS_PER_SECOND = next;
+  localStorage.setItem('mlx:music-zoom', String(next));
+  draw(); movePlayhead(playheadSeconds);
+}
+$('#zoomIn').onclick = () => setZoom(1);
+$('#zoomOut').onclick = () => setZoom(-1);
+
+// Dropping a file on the timeline is the gesture the empty state already
+// invites. Where it lands decides both the track and the start position: onto a
+// lane joins that track, anywhere else follows the armed track, then a new one.
+const timeline = $('#timeline');
+const AUDIO_FILE = /\.(wav|mp3|m4a|aac|ogg|oga|flac|webm|aiff?|opus)$/i;
+timeline.addEventListener('dragover', event => {
+  if (![...event.dataTransfer.types].includes('Files')) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  timeline.classList.add('dropping');
+});
+timeline.addEventListener('dragleave', event => { if (!timeline.contains(event.relatedTarget)) timeline.classList.remove('dropping'); });
+timeline.addEventListener('drop', async event => {
+  event.preventDefault();
+  timeline.classList.remove('dropping');
+  const files = [...(event.dataTransfer?.files || [])].filter(file => file.type.startsWith('audio/') || AUDIO_FILE.test(file.name));
+  if (!files.length) return status('Drop an audio file — a beat, a take, or a sample.', true);
+  const lane = event.target.closest?.('.lane');
+  const armed = project.tracks.find(track => track.armed);
+  const rect = $('#lanes').getBoundingClientRect();
+  showTime(Math.max(0, (event.clientX - rect.left) / PIXELS_PER_SECOND));
+  await importFiles(files, { intoTrackId: lane?.dataset.track || armed?.id || null });
+});
+$('#export').onclick = exportMix;
+$('#exportStems').onclick = exportStems;
+
+// --- crossover with the rest of the Studio --------------------------------
+const sharedProject = () => activeProjectId(location.search, localStorage.getItem('cros:project'));
+
+$('#fromProject').onclick = async () => {
+  const projectId = sharedProject();
+  if (!projectId) return status('No Studio project is open. Start one in Photo or Video first.', true);
+  try {
+    const available = importableAssets(await listAssets(projectId));
+    if (!available.length) return status('That project has no audio or video to bring in yet.', true);
+    if (available.length === 1) return openFromProject(available[0]);
+    const list = $('#projectAssets');
+    list.replaceChildren(...available.map(asset => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn';
+      button.textContent = assetLabel(asset);
+      button.onclick = () => { closePicker(); openFromProject(asset); };
+      return button;
+    }));
+    $('#projectPicker').showModal();
+  } catch (error) { status(`Could not read the project: ${error.message}`, true); }
+};
+async function openFromProject(asset) {
+  try {
+    status(`Opening ${asset.filename}…`);
+    const blob = await getBlob(asset.id);
+    if (!blob) return status('That asset has no media stored against it.', true);
+    const armed = project.tracks.find(track => track.armed);
+    await importFiles([new File([blob], asset.filename, { type: asset.mime || blob.type || 'audio/wav' })], { intoTrackId: armed?.id || null });
+  } catch (error) {
+    // A video container the browser cannot demux is the common case, and that
+    // is worth saying plainly rather than surfacing a decode error.
+    status(`Could not open ${asset.filename}: ${error.message}`, true);
+  }
+}
+$('#toProject').onclick = async () => {
+  const projectId = sharedProject();
+  if (!projectId) return status('No Studio project is open, so there is nowhere to send it.', true);
+  if (!masterBlob) return status('Export a master first.', true);
+  try {
+    const asset = masterAsset({
+      projectId,
+      filename: `${songFileName()}.wav`,
+      bytes: masterBlob.size,
+      duration: projectDuration(project)
+    });
+    await addAsset(asset, masterBlob);
+    status(`Sent to the Studio project as ${asset.filename}. It is available in Video now.`, false, 6000);
+  } catch (error) { status(`Could not send it: ${error.message}`, true); }
+};
+$('#undo').onclick = () => restore(undoStack, redoStack);
+$('#redo').onclick = () => restore(redoStack, undoStack);
+
+// Anything put on the timeline has to be removable from it. Both go through
+// scheduleSave, so both land on the undo stack like every other edit.
+function deleteSelection() {
+  const { track, clip } = chosen();
+  if (!clip) return status('Choose a clip first.', true);
+  const index = track.clips.indexOf(clip);
+  track.clips.splice(index, 1);
+  selectedClip = track.clips[Math.min(index, track.clips.length - 1)]?.id || null;
+  draw(); scheduleSave();
+  status(`Deleted ${clip.name}. Ctrl+Z puts it back.`, false, 5000);
+}
+function removeTrack() {
+  const { track } = chosen();
+  if (!track) return status('Choose a track first.', true);
+  const index = project.tracks.indexOf(track);
+  project.tracks.splice(index, 1);
+  selectedTrack = project.tracks[Math.min(index, project.tracks.length - 1)]?.id || null;
+  selectedClip = project.tracks.find(item => item.id === selectedTrack)?.clips[0]?.id || null;
+  draw(); scheduleSave();
+  status(`Removed ${track.name}. Ctrl+Z puts it back.`, false, 5000);
+}
+// Closing a modal has to put focus back where it was taken from. The platform
+// usually does, but after choosing an item it landed on the body instead —
+// redrawing the arrangement runs between the close and the restore — and a
+// keyboard user then starts again from the top of the document.
+function closePicker() {
+  $('#projectPicker').close();
+  $('#fromProject').focus();
+}
+$('#restoreConsent').onclick = () => {
+  const agreed = window.confirm('Turn recording back on for this computer? This restores consent for recording your voice in the Studio. Recordings stay on this device.');
+  if (!agreed) return;
+  restoreRecordingConsent();
+  $('#restoreConsent').classList.add('hidden');
+  status('Recording is available again.', false, 5000);
+};
+if (recordingConsentWithdrawn()) $('#restoreConsent').classList.remove('hidden');
+$('#projectPickerClose').onclick = closePicker;
+$('#projectPicker').addEventListener('close', () => $('#fromProject').focus());
+$('#produce').onclick = async () => {
+  // Open first, probe second: a refused connection answers at once, but an
+  // unroutable host only answers at the 2.5s timeout, and a button that
+  // sits still for that long reads as broken.
+  const notice = $('#produceDeviceNotice');
+  notice.classList.add('hidden');
+  $('#producePicker').showModal();
+  const message = await produceEngineNotice();
+  if (!$('#producePicker').open) return;
+  notice.textContent = message;
+  notice.classList.toggle('hidden', !message);
+};
+$('#producePickerClose').onclick = () => $('#producePicker').close();
+$('#producePicker').addEventListener('close', () => $('#produce').focus());
+$('#produceGo').onclick = async () => {
+  const caption = $('#produceCaption').value;
+  const duration = Number($('#produceDuration').value) || 30;
+  const bpm = Number($('#produceBpm').value) || null;
+  const key = $('#produceKey').value;
+  const seed = Number($('#produceSeed').value);
+  $('#producePicker').close();
+  await withBusyButton($('#produce'), 'Producing…', () =>
+    produceBeat({ prompt: caption, duration, bpm, key, seed: Number.isFinite(seed) ? seed : -1 }));
+};
+$('#addLayer').onclick = () => {
+  if (!proFeatures()) return status('Adding a layer is part of Music Pro: a second, higher-fidelity model builds a new instrument into a beat you already have.', true);
+  const { clip } = chosen();
+  if (!clip) return status('Choose a beat to add a layer to first.', true);
+  $('#layerPicker').showModal();
+};
+$('#layerPickerClose').onclick = () => $('#layerPicker').close();
+$('#layerPicker').addEventListener('close', () => $('#addLayer').focus());
+$('#layerGo').onclick = async () => {
+  const track = $('#layerTrack').value;
+  const caption = $('#layerCaption').value;
+  $('#layerPicker').close();
+  await withBusyButton($('#addLayer'), 'Adding…', () => addLayerToClip({ track, prompt: caption }));
+};
+$('#deleteSelection').onclick = deleteSelection;
+$('#removeTrack').onclick = removeTrack;
+$('#clickToggle').onclick = () => { project.metronome.enabled = !project.metronome.enabled; draw(); scheduleSave(); };
+
+$('#target').replaceChildren(...DELIVERY_TARGETS.map(entry => {
+  const option = document.createElement('option');
+  option.value = entry.id;
+  option.textContent = `${entry.label} · ${entry.lufs} LUFS`;
+  return option;
+}));
+$('#target').value = localStorage.getItem('mlx:music-target') || DELIVERY_TARGETS[0].id;
+$('#target').onchange = () => {
+  localStorage.setItem('mlx:music-target', $('#target').value);
+  $('#loudness').textContent = 'Export to measure against this target.';
+};
+// Space for transport is the one shortcut every audio user already knows.
+document.addEventListener('keydown', event => {
+  const target = event.target;
+  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
+  const meta = event.ctrlKey || event.metaKey;
+  if (meta && event.key.toLowerCase() === 'z') { event.preventDefault(); return event.shiftKey ? restore(redoStack, undoStack) : restore(undoStack, redoStack); }
+  if (meta && event.key.toLowerCase() === 'y') { event.preventDefault(); return restore(redoStack, undoStack); }
+  if (meta) return;
+  if (event.key === ' ') { event.preventDefault(); return $('#player').paused ? $('#play').click() : $('#player').pause(); }
+  if (event.key === 'Home') { event.preventDefault(); return $('#stop').click(); }
+  if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); return deleteSelection(); }
+  if (event.key === '+' || event.key === '=') { event.preventDefault(); return setZoom(1); }
+  if (event.key === '-' || event.key === '_') { event.preventDefault(); return setZoom(-1); }
+  if (event.key.toLowerCase() === 'l') { event.preventDefault(); return $('#loopSection').click(); }
+  if (event.key.toLowerCase() === 's') { event.preventDefault(); return $('#split').click(); }
+});
+$('#projectName').onchange = event => { project.name = event.target.value.trim() || 'Untitled song'; scheduleSave(); }; $('#bpm').onchange = event => { project.bpm = Math.max(30, Math.min(300, Number(event.target.value) || 120)); draw(); scheduleSave(); }; $('#snap').onchange = event => { project.snap = event.target.value; scheduleSave(); }; $('#key').onchange = event => { project.key = event.target.value; scheduleSave(); }; $('#countIn').onchange = event => { project.metronome.countInBars = Number(event.target.value); scheduleSave(); };
+$('#timeSignature').onchange = event => {
+  const [top, bottom] = String(event.target.value).split('/').map(Number);
+  project.timeSignature = [top, bottom];
+  draw(); scheduleSave();
+};
+for (const id of ['gain','pan','highPass','compressor','reverb','lowEq','midEq','highEq']) $(`#${id}`).oninput = event => {
+  const { track } = chosen(); if (!track) return status('Choose a track first.', true);
+  const key = { gain:'gainDb', pan:'pan', highPass:'highPassHz', compressor:'compressorAmount', reverb:'reverbSend', lowEq:'lowEqDb', midEq:'midEqDb', highEq:'highEqDb' }[id];
+  const target = ['gain','pan'].includes(id) ? track : track.effects;
+  target[key] = Number(event.target.value);
+  if (id === 'gain') showGain(event.target.value);
+  if (id === 'pan') showPan(event.target.value);
+  if (['lowEq','midEq','highEq'].includes(id)) showEq(track.effects);
+  if (!['gain','pan'].includes(id)) track.effects.bypass = false;
+  scheduleSave();
+};
+$('#clipGain').oninput = event => {
+  const { clip } = chosen(); if (!clip) return status('Choose a clip first.', true);
+  clip.gainDb = Number(event.target.value);
+  showClipGain(clip.gainDb);
+  scheduleSave();
+};
+$('#clipSpeed').oninput = event => {
+  const { clip } = chosen(); if (!clip) return status('Choose a clip first.', true);
+  const nextRate = Number(event.target.value) || 1;
+  // Tape behaviour: the same audio over a different stretch of timeline, so the
+  // clip's length has to move with its speed or the tail is cut off.
+  const source = (clip.sourceDuration || clip.duration) - (clip.offset || 0);
+  clip.duration = Math.max(0.05, Math.min(source / nextRate, clip.duration * (clip.playbackRate || 1) / nextRate));
+  clip.playbackRate = nextRate;
+  showClipSpeed(nextRate);
+  draw(); scheduleSave();
+};
+$('#trackName').oninput = event => {
+  const { track } = chosen(); if (!track) return;
+  track.name = event.target.value.slice(0, 120);
+  // Patch the one label rather than redrawing, which would move the caret.
+  const label = document.querySelector('.track.on strong'); if (label) label.textContent = track.name;
+  scheduleSave();
+};
+document.querySelectorAll('[data-track-action]').forEach(button => button.onclick = () => {
+  const { track } = chosen(); if (!track) return status('Choose a track first.', true);
+  const action = button.dataset.trackAction;
+  const next = !track[action];
+  // One microphone means one destination, so arming a track disarms the rest.
+  if (action === 'armed' && next) for (const other of project.tracks) other.armed = false;
+  track[action] = next;
+  draw(); scheduleSave();
+  if (action === 'armed') status(next ? `Takes record onto ${track.name}.` : 'No track armed. The next take makes its own.', false, 4000);
+});
+document.querySelectorAll('[data-preset]').forEach(button => button.onclick = () => {
+  const { track } = chosen(); if (!track) return status('Choose a track first.', true);
+  const preset = button.dataset.preset;
+  track.effects.bypass = preset === 'clean';
+  track.effects.highPassHz = preset === 'warm' ? 60 : 90;
+  track.effects.compressorAmount = preset === 'warm' ? .2 : .35;
+  track.effects.reverbSend = 0;
+  track.effects.lowEqDb = preset === 'warm' ? 1.5 : 0;
+  track.effects.midEqDb = preset === 'vocal' ? 1 : 0;
+  track.effects.highEqDb = preset === 'vocal' ? 2 : preset === 'warm' ? -1 : 0;
+  draw(); scheduleSave();
+});
+$('#split').onclick = () => { const { track, clip } = chosen(); if (!clip) return status('Choose a clip first.', true); const at = clip.start + clip.duration / 2; const index = track.clips.indexOf(clip); track.clips.splice(index, 1, ...splitMusicClip(clip, at)); selectedClip = track.clips[index + 1].id; draw(); scheduleSave(); };
+$('#trimStart').onclick = () => { const { clip } = chosen(); if (!clip || clip.duration <= .2) return status('Choose a longer clip.', true); Object.assign(clip, trimMusicClip(clip, { start: clip.start + .1 })); draw(); scheduleSave(); };
+$('#trimEnd').onclick = () => { const { clip } = chosen(); if (!clip || clip.duration <= .2) return status('Choose a longer clip.', true); Object.assign(clip, trimMusicClip(clip, { end: clip.start + clip.duration - .1 })); draw(); scheduleSave(); };
+$('#duplicate').onclick = () => { const { track, clip } = chosen(); if (!clip) return status('Choose a clip first.', true); const copy = duplicateMusicClip(clip); track.clips.push(copy); selectedClip = copy.id; draw(); scheduleSave(); };
+$('#fade').onclick = () => { const { clip } = chosen(); if (!clip) return status('Choose a clip first.', true); clip.fadeIn = clip.fadeOut = Math.min(.08, clip.duration / 3); draw(); scheduleSave(); };
+$('#loop').onclick = () => { const { clip } = chosen(); if (!clip) return status('Choose a clip first.', true); clip.loop = !clip.loop; status(clip.loop ? 'Clip looped.' : 'Loop off.'); scheduleSave(); };
+async function adoptProject(next, message) {
+  project = sanitizeMusicProject(next, projectTier);
+  selectedTrack = project.tracks[0]?.id || null;
+  selectedClip = project.tracks[0]?.clips[0]?.id || null;
+  undoStack.length = 0; redoStack.length = 0; lastCommitted = snapshot();
+  decodedAssets.clear(); peakCache.clear(); invalidateMix(); draw();
+  // A song built past today's ceiling (the free preview allows it on purpose)
+  // keeps every track on open -- trackCap() only stops what gets ADDED next.
+  // Say so here, or a customer who cannot add a 25th track would reasonably
+  // wonder why the 40 they already see were not cut down to match.
+  status(project.tracks.length > trackCap()
+    ? `${message.replace(/\.$/, '')} — all ${project.tracks.length} tracks kept, above this plan's ${trackCap()}-track cap.`
+    : message);
+  await hydrateWaveforms();
+}
+$('#openProject').onclick = async () => {
+  if (!database) return;
+  const projects = await listMusicProjects(database, projectTier);
+  if (!projects.length) return status('No saved Music projects yet.');
+  await adoptProject(projects[0], 'Project opened.');
+};
+$('#newSong').onclick = async () => {
+  await adoptProject(newMusicProject('Untitled song', projectTier), 'New song.');
+  await persist();
+};
+$('#inspectorToggle').onclick = () => { $('#inspector').classList.add('open'); $('#inspectorToggle').setAttribute('aria-expanded','true'); }; $('#inspectorClose').onclick = () => { $('#inspector').classList.remove('open'); $('#inspectorToggle').setAttribute('aria-expanded','false'); $('#inspectorToggle').focus(); };
+
+tierCopy(); setMode(localStorage.getItem('mlx:music-mode') || 'guided'); draw(); lastCommitted = snapshot();
+(async () => {
+  try { license = await activeLicense(); } catch { license = null; }
+  const resolved = musicAccessFor(license).tier;
+  if (resolved === access) return;
+  access = resolved;
+  projectTier = access === 'standard' ? 'standard' : 'pro';
+  project.tier = projectTier;
+  tierCopy(); draw();
+})();
+try {
+  database = await openMusicStore();
+  // A starter from the entrance is a deliberate new song. Otherwise reopen
+  // the song this computer last worked on: saving a fresh blank on every
+  // load made the previous visit's tracks look deleted, and left one
+  // "Untitled song" per visit behind in the store.
+  const recent = startSet ? [] : await listMusicProjects(database, projectTier);
+  if (recent.length) await adoptProject(recent[0], 'Project opened.');
+  else { project = await saveMusicProject(database, project, projectTier); status('Saved.'); }
+} catch (error) { status(error.message, true); }
+</script>
+<script type="module" src="js/studio-nav.js"></script>
+</body>
+</html>
