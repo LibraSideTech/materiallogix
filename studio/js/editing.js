@@ -82,25 +82,67 @@ export function buildLuminanceLut(points) {
   return lut;
 }
 
+/** Clamps in place, because the selective sliders bind to this object. */
 const sanitizeSelective = value => {
-  const raw = value && typeof value === 'object' ? value : {};
-  return {
-    exposure: clamp(raw.exposure, -1, 1),
-    temperature: clamp(raw.temperature, -100, 100),
-    saturation: clamp(raw.saturation, -100, 100),
-    strokes: sanitizeStamps(raw.strokes, 0.15)
-  };
+  const target = value && typeof value === 'object' && !Object.isFrozen(value) ? value : {};
+  target.exposure = clamp(target.exposure, -1, 1);
+  target.temperature = clamp(target.temperature, -100, 100);
+  target.saturation = clamp(target.saturation, -100, 100);
+  target.strokes = sanitizeStamps(target.strokes, 0.15);
+  return target;
+};
+
+/**
+ * Adds any missing default onto the object that is already there, instead of
+ * building a replacement for it.
+ *
+ * The distinction matters more than it looks. An editor slider captures the
+ * object it writes to when the rail is built, and renderReview calls
+ * paintStage on the very next line, which lands back in ensureEditState. If
+ * that call swapped in a fresh object, every slider would go on writing to the
+ * old one: the readout would move, the adjustment would not, and the value
+ * would be dropped on a copy nothing renders or saves.
+ */
+const fillDefaults = (target, defaults) => {
+  for (const [key, value] of Object.entries(defaults)) {
+    if (target[key] !== undefined) continue;
+    target[key] = Array.isArray(value) ? [...value]
+      : (value && typeof value === 'object' ? { ...value } : value);
+  }
+  return target;
 };
 
 export function ensureEditState(asset) {
   asset.edit = asset.edit || {};
   asset.edit.mode = asset.edit.mode === 'advanced' ? 'advanced' : 'guided';
-  asset.edit.adjustments = { ...EDIT_DEFAULTS.adjustments, ...(asset.edit.adjustments || {}) };
-  asset.edit.adjustments.heals = sanitizeStamps(asset.edit.adjustments.heals, 0.08);
-  asset.edit.adjustments.selective = sanitizeSelective(asset.edit.adjustments.selective);
-  asset.edit.adjustments.curve = sanitizeCurve(asset.edit.adjustments.curve);
-  asset.edit.pixelGrid = { ...EDIT_DEFAULTS.pixelGrid, ...(asset.edit.pixelGrid || {}) };
+  const adjustments = asset.edit.adjustments && typeof asset.edit.adjustments === 'object'
+    && !Object.isFrozen(asset.edit.adjustments) ? asset.edit.adjustments : {};
+  fillDefaults(adjustments, EDIT_DEFAULTS.adjustments);
+  asset.edit.adjustments = adjustments;
+  adjustments.heals = sanitizeStamps(adjustments.heals, 0.08);
+  adjustments.selective = sanitizeSelective(adjustments.selective);
+  adjustments.curve = sanitizeCurve(adjustments.curve);
+  const pixelGrid = asset.edit.pixelGrid && typeof asset.edit.pixelGrid === 'object'
+    && !Object.isFrozen(asset.edit.pixelGrid) ? asset.edit.pixelGrid : {};
+  asset.edit.pixelGrid = fillDefaults(pixelGrid, EDIT_DEFAULTS.pixelGrid);
   return asset.edit;
+}
+
+// Arrays and objects (heals, selective, curve) coerce to NaN and fall out here;
+// they carry their own checks.
+const numericSliderSet = (a, { includeRotate = true } = {}) => Object.entries(a)
+  .some(([key, value]) => (includeRotate || key !== 'rotate')
+    && Math.abs(Number(value) || 0) > 0.0001);
+
+/** True when this asset carries any edit at all — sliders, repairs, mask, or curve. */
+export function hasVisibleAdjustments(adjustments) {
+  if (!adjustments || typeof adjustments !== 'object') return false;
+  const a = { ...EDIT_DEFAULTS.adjustments, ...adjustments };
+  if (sanitizeStamps(a.heals, 0.08).length) return true;
+  const selective = sanitizeSelective({ ...EDIT_DEFAULTS.adjustments.selective, ...(a.selective || {}) });
+  if (selective.strokes.length && numericSliderSet(selective)) return true;
+  if (buildLuminanceLut(a.curve)) return true;
+  return numericSliderSet(a);
 }
 
 export function previewFilter(adjustments = {}) {
@@ -132,42 +174,51 @@ export function edgeAwareDenoiseRgba(input, width, height, amount = 0) {
   const rangeSigma = 10 + strength * 34;
   const rangeDenominator = 2 * rangeSigma * rangeSigma;
   const baseMix = 0.18 + strength * 0.74;
-  const luma = index => 0.2126 * source[index] + 0.7152 * source[index + 1] + 0.0722 * source[index + 2];
-  const offsets = [
-    [-1, -1, 0.68], [0, -1, 1], [1, -1, 0.68],
-    [-1, 0, 1],                    [1, 0, 1],
-    [-1, 1, 0.68],  [0, 1, 1],  [1, 1, 0.68]
-  ];
+  // Each pixel needs its own luminance and that of its eight neighbours.
+  // Computed inline that is nine dot products per pixel; computed once it is one.
+  const luma = new Float32Array(w * h);
+  for (let p = 0, i = 0; p < luma.length; p++, i += 4) {
+    luma[p] = 0.2126 * source[i] + 0.7152 * source[i + 1] + 0.0722 * source[i + 2];
+  }
+  const dPixel = [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1];
+  const spatial = [0.68, 1, 0.68, 1, 1, 0.68, 1, 0.68];
 
   for (let y = 1; y < h - 1; y++) {
     for (let x = 1; x < w - 1; x++) {
-      const center = (y * w + x) * 4;
-      const centerLuma = luma(center);
-      const horizontal = Math.abs(luma(center - 4) - luma(center + 4));
-      const vertical = Math.abs(luma(center - w * 4) - luma(center + w * 4));
-      const edgeProtection = smoothstep(32, 96, Math.max(horizontal, vertical));
+      const p = y * w + x;
+      const center = p * 4;
+      const cr = source[center];
+      const cg = source[center + 1];
+      const cb = source[center + 2];
+      const centerLuma = luma[p];
+      const horizontal = Math.abs(luma[p - 1] - luma[p + 1]);
+      const vertical = Math.abs(luma[p - w] - luma[p + w]);
+      const edgeProtection = smoothstep(32, 96, horizontal > vertical ? horizontal : vertical);
       const mix = baseMix * (1 - edgeProtection * 0.94);
       let weightSum = 1;
-      const sum = [source[center], source[center + 1], source[center + 2]];
+      let sr = cr, sg = cg, sb = cb;
 
-      for (const [dx, dy, spatialWeight] of offsets) {
-        const neighbor = ((y + dy) * w + x + dx) * 4;
-        const dr = source[neighbor] - source[center];
-        const dg = source[neighbor + 1] - source[center + 1];
-        const db = source[neighbor + 2] - source[center + 2];
+      for (let k = 0; k < 8; k++) {
+        const np = p + dPixel[k];
+        const neighbor = np * 4;
+        const nr = source[neighbor];
+        const ng = source[neighbor + 1];
+        const nb = source[neighbor + 2];
+        const dr = nr - cr;
+        const dg = ng - cg;
+        const db = nb - cb;
         const colorDistance2 = (dr * dr + dg * dg + db * db) / 3;
-        const lumaDistance = luma(neighbor) - centerLuma;
-        const weight = spatialWeight * Math.exp(-(colorDistance2 + lumaDistance * lumaDistance) / rangeDenominator);
+        const lumaDistance = luma[np] - centerLuma;
+        const weight = spatial[k] * Math.exp(-(colorDistance2 + lumaDistance * lumaDistance) / rangeDenominator);
         weightSum += weight;
-        sum[0] += source[neighbor] * weight;
-        sum[1] += source[neighbor + 1] * weight;
-        sum[2] += source[neighbor + 2] * weight;
+        sr += nr * weight;
+        sg += ng * weight;
+        sb += nb * weight;
       }
 
-      for (let channel = 0; channel < 3; channel++) {
-        const filtered = sum[channel] / weightSum;
-        output[center + channel] = clampByte(source[center + channel] + (filtered - source[center + channel]) * mix);
-      }
+      output[center] = clampByte(cr + (sr / weightSum - cr) * mix);
+      output[center + 1] = clampByte(cg + (sg / weightSum - cg) * mix);
+      output[center + 2] = clampByte(cb + (sb / weightSum - cb) * mix);
       output[center + 3] = source[center + 3];
     }
   }
@@ -217,6 +268,104 @@ function healSpotsRgba(data, width, height, heals, frame) {
   }
 }
 
+/**
+ * Unsharp mask on luminance.
+ *
+ * Sharpening a photograph is not a Laplacian. A one-pixel second difference
+ * added per channel raises grain harder than it raises detail, rings a bright
+ * halo either side of every edge, and pulls R, G and B apart at a colour
+ * boundary. This is the three-part control the job actually needs: a Gaussian
+ * high-pass for radius, a gate that leaves flat grain alone, and an overshoot
+ * limit tied to the local range so an edge gains acutance without a halo. One
+ * shared luminance delta drives all three channels, so hue cannot shift.
+ */
+export function unsharpMaskRgba(input, width, height, amount = 0) {
+  const w = Math.trunc(Number(width));
+  const h = Math.trunc(Number(height));
+  if (w < 1 || h < 1 || !input || input.length !== w * h * 4) {
+    throw new TypeError('Sharpening requires a complete RGBA buffer and positive dimensions.');
+  }
+  const output = new Uint8ClampedArray(input);
+  const strength = clamp(amount, 0, 100) / 100;
+  if (!strength || w < 5 || h < 5) return output;
+
+  const count = w * h;
+  const luma = new Float32Array(count);
+  for (let p = 0, i = 0; p < count; p++, i += 4) {
+    luma[p] = 0.2126 * input[i] + 0.7152 * input[i + 1] + 0.0722 * input[i + 2];
+  }
+
+  // Sigma 1.0 px over five taps. Wider than this and the halo becomes the
+  // thing you see; narrower and it sharpens the sensor rather than the subject.
+  const K0 = 0.402620, K1 = 0.244201, K2 = 0.054489;
+  // The vertical half runs first into its own plane; the horizontal half is
+  // folded into the pixel loop so only one intermediate plane is ever held.
+  const column = new Float32Array(count);
+  for (let y = 0; y < h; y++) {
+    const up2 = (y > 1 ? y - 2 : 0) * w;
+    const up1 = (y > 0 ? y - 1 : 0) * w;
+    const row = y * w;
+    const down1 = (y < h - 1 ? y + 1 : h - 1) * w;
+    const down2 = (y < h - 2 ? y + 2 : h - 1) * w;
+    for (let x = 0; x < w; x++) {
+      column[row + x] = K2 * luma[up2 + x] + K1 * luma[up1 + x] + K0 * luma[row + x]
+        + K1 * luma[down1 + x] + K2 * luma[down2 + x];
+    }
+  }
+
+  const gain = 0.30 + strength * 2.20;
+  // Squared thresholds in luminance levels: detail below 6 is grain rather than
+  // subject, and a 3x3 patch spanning less than 14 holds no edge to sharpen.
+  const GRAIN_FLOOR = 6 * 6;
+  const EDGE_FLOOR = 14 * 14;
+  const OVERSHOOT = 0.05 + strength * 0.30;
+
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    const above = (y > 0 ? y - 1 : 0) * w;
+    const below = (y < h - 1 ? y + 1 : h - 1) * w;
+    for (let x = 0; x < w; x++) {
+      const p = row + x;
+      const xm2 = x > 1 ? x - 2 : 0;
+      const xm1 = x > 0 ? x - 1 : 0;
+      const xp1 = x < w - 1 ? x + 1 : w - 1;
+      const xp2 = x < w - 2 ? x + 2 : w - 1;
+      const blurred = K2 * column[row + xm2] + K1 * column[row + xm1] + K0 * column[p]
+        + K1 * column[row + xp1] + K2 * column[row + xp2];
+      const delta = luma[p] - blurred;
+
+      let lo = Infinity, hi = -Infinity;
+      for (let band = above; ; band += w) {
+        let v = luma[band + xm1];
+        if (v < lo) lo = v; if (v > hi) hi = v;
+        v = luma[band + x];
+        if (v < lo) lo = v; if (v > hi) hi = v;
+        v = luma[band + xp1];
+        if (v < lo) lo = v; if (v > hi) hi = v;
+        if (band === below) break;
+      }
+      const range = hi - lo;
+      // Grain fails both gates: its high-pass response is small and the patch
+      // it sits in holds no edge. A real edge passes both.
+      const d2 = delta * delta;
+      const r2 = range * range;
+      const applied = delta * gain * (d2 / (d2 + GRAIN_FLOOR)) * (r2 / (r2 + EDGE_FLOOR));
+      const headroom = range * OVERSHOOT;
+      let target = luma[p] + applied;
+      if (target > hi + headroom) target = hi + headroom;
+      else if (target < lo - headroom) target = lo - headroom;
+
+      const lift = target - luma[p];
+      if (lift === 0) continue;
+      const i = p * 4;
+      output[i] = clampByte(input[i] + lift);
+      output[i + 1] = clampByte(input[i + 1] + lift);
+      output[i + 2] = clampByte(input[i + 2] + lift);
+    }
+  }
+  return output;
+}
+
 /** Soft-edged mask from brush stamps, in canvas space; overlapping touches keep the strongest one. */
 function selectiveMaskFor(strokes, frame, width, height) {
   const mask = new Float32Array(width * height);
@@ -256,7 +405,7 @@ export function applyPixelAdjustments(canvas, adjustments = {}, frame = null) {
     (Math.abs(selective.exposure) > 0.0001 || Math.abs(selective.temperature) > 0.0001 || Math.abs(selective.saturation) > 0.0001);
   const lut = buildLuminanceLut(a.curve);
   // Straighten is geometry, applied while the crop is drawn; alone it never needs a pixel pass.
-  const slidersActive = Object.entries(a).some(([key, value]) => key !== 'rotate' && Math.abs(Number(value) || 0) > 0.0001);
+  const slidersActive = numericSliderSet(a, { includeRotate: false });
   if (!slidersActive && !heals.length && !selectiveActive && !lut) return canvas;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
@@ -298,47 +447,72 @@ export function applyPixelAdjustments(canvas, adjustments = {}, frame = null) {
   const cx = (width - 1) / 2;
   const cy = (height - 1) / 2;
   const maxRadius = Math.max(1, Math.hypot(cx, cy));
+  const invMaxRadius = 1 / maxRadius;
 
+  // Exposure and contrast are per-channel functions of an integer 0..255
+  // sample, so 256 evaluations replace three per pixel. At 24 MP that is the
+  // difference between 72 million multiplies and 512.
+  const toneBase = new Float64Array(256);
+  for (let v = 0; v < 256; v++) toneBase[v] = (v * exposure - 128) * contrast + 128;
+
+  const warmShift = temperature * 24 + tint * 11;
+  const greenShift = tint * 20;
+  const coolShift = temperature * 24 - tint * 11;
+  const grainAmount = grain * 22;
+  const vignetteDepth = vignette * 0.72;
+  const selectiveExposure = selective.exposure;
+  const selectiveWarmth = selective.temperature / 100;
+  const selectiveSaturation = selective.saturation / 100;
+
+  // Squared horizontal distance never changes down a column.
+  const dx2 = vignette > 0 ? new Float64Array(width) : null;
+  if (dx2) for (let x = 0; x < width; x++) { const d = x - cx; dx2[x] = d * d; }
+
+  const step = (edge0, span, value) => {
+    let t = (value - edge0) / span;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return t * t * (3 - 2 * t);
+  };
+
+  let i = 0;
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      let r = data[i] * exposure;
-      let g = data[i + 1] * exposure;
-      let b = data[i + 2] * exposure;
+    const dy = y - cy;
+    const dy2 = dy * dy;
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x++, i += 4) {
+      let r = toneBase[data[i]];
+      let g = toneBase[data[i + 1]];
+      let b = toneBase[data[i + 2]];
 
-      r = (r - 128) * contrast + 128;
-      g = (g - 128) * contrast + 128;
-      b = (b - 128) * contrast + 128;
-
-      const toneLuma = clamp((0.2126 * r + 0.7152 * g + 0.0722 * b) / 255, 0, 1);
-      const highlightMask = smoothstep(0.42, 1, toneLuma);
-      const shadowMask = 1 - smoothstep(0, 0.58, toneLuma);
-      const toneDelta = 72 * (highlights * highlightMask + shadows * shadowMask);
+      let toneLuma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      toneLuma = toneLuma < 0 ? 0 : toneLuma > 1 ? 1 : toneLuma;
+      const toneDelta = 72 * (highlights * step(0.42, 0.58, toneLuma)
+        + shadows * (1 - step(0, 0.58, toneLuma)));
       r += toneDelta; g += toneDelta; b += toneDelta;
 
-      r += temperature * 24 + tint * 11;
-      g -= tint * 20;
-      b -= temperature * 24 - tint * 11;
+      r += warmShift;
+      g -= greenShift;
+      b -= coolShift;
 
       const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-      const maxChannel = Math.max(r, g, b);
-      const minChannel = Math.min(r, g, b);
-      const chroma = clamp((maxChannel - minChannel) / 255, 0, 1);
-      const vibranceStrength = vibrance * (1 - chroma) * 0.85;
-      const colorScale = Math.max(0, 1 + saturation + vibranceStrength);
+      const maxChannel = r > g ? (r > b ? r : b) : (g > b ? g : b);
+      const minChannel = r < g ? (r < b ? r : b) : (g < b ? g : b);
+      let chroma = (maxChannel - minChannel) / 255;
+      chroma = chroma < 0 ? 0 : chroma > 1 ? 1 : chroma;
+      const colorScale = Math.max(0, 1 + saturation + vibrance * (1 - chroma) * 0.85);
       r = luma + (r - luma) * colorScale;
       g = luma + (g - luma) * colorScale;
       b = luma + (b - luma) * colorScale;
 
       if (mask) {
-        const strength = mask[y * width + x];
+        const strength = mask[rowOffset + x];
         if (strength > 0.004) {
-          const gain = Math.pow(2, selective.exposure * strength);
+          const gain = Math.pow(2, selectiveExposure * strength);
           r *= gain; g *= gain; b *= gain;
-          const warmth = (selective.temperature / 100) * strength * 24;
+          const warmth = selectiveWarmth * strength * 24;
           r += warmth; b -= warmth;
           const brushLuma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-          const brushScale = Math.max(0, 1 + (selective.saturation / 100) * strength);
+          const brushScale = Math.max(0, 1 + selectiveSaturation * strength);
           r = brushLuma + (r - brushLuma) * brushScale;
           g = brushLuma + (g - brushLuma) * brushScale;
           b = brushLuma + (b - brushLuma) * brushScale;
@@ -346,46 +520,38 @@ export function applyPixelAdjustments(canvas, adjustments = {}, frame = null) {
       }
 
       if (lut) {
-        const toneIn = Math.max(0, Math.min(255, 0.2126 * r + 0.7152 * g + 0.0722 * b));
-        const lift = lut[Math.round(toneIn)] - toneIn;
+        let toneIn = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        toneIn = toneIn < 0 ? 0 : toneIn > 255 ? 255 : toneIn;
+        const lift = lut[(toneIn + 0.5) | 0] - toneIn;
         r += lift; g += lift; b += lift;
       }
 
       if (grain > 0) {
-        const hash = Math.sin((x + 1) * 12.9898 + (y + 1) * 78.233) * 43758.5453;
-        const noise = ((hash - Math.floor(hash)) * 2 - 1) * grain * 22;
+        // An integer bit-mix instead of the fract(sin(dot)) trick: same
+        // deterministic per-pixel field, no transcendental per pixel, and no
+        // diagonal banding where sin's period nearly aligns with the raster.
+        let n = Math.imul(x + 1, 0x27d4eb2d) ^ Math.imul(y + 1, 0x165667b1);
+        n = Math.imul(n ^ (n >>> 15), 0x2c1b3c6d);
+        n = Math.imul(n ^ (n >>> 12), 0x297a2d39);
+        const noise = (((n ^ (n >>> 15)) >>> 0) / 2147483648 - 1) * grainAmount;
         r += noise; g += noise; b += noise;
       }
 
       if (vignette > 0) {
-        const radius = Math.hypot(x - cx, y - cy) / maxRadius;
-        const edge = smoothstep(0.34, 1, radius);
-        const gain = 1 - edge * vignette * 0.72;
+        const gain = 1 - step(0.34, 0.66, Math.sqrt(dx2[x] + dy2) * invMaxRadius) * vignetteDepth;
         r *= gain; g *= gain; b *= gain;
       }
 
-      data[i] = clampByte(r);
-      data[i + 1] = clampByte(g);
-      data[i + 2] = clampByte(b);
+      r = r < 0 ? 0 : r > 255 ? 255 : r;
+      g = g < 0 ? 0 : g > 255 ? 255 : g;
+      b = b < 0 ? 0 : b > 255 ? 255 : b;
+      data[i] = (r + 0.5) | 0;
+      data[i + 1] = (g + 0.5) | 0;
+      data[i + 2] = (b + 0.5) | 0;
     }
   }
 
-  const sharpen = clamp(a.sharpen, 0, 100) / 100;
-  if (sharpen > 0 && width > 2 && height > 2) {
-    const source = new Uint8ClampedArray(data);
-    const amount = sharpen * 0.9;
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const i = (y * width + x) * 4;
-        for (let channel = 0; channel < 3; channel++) {
-          const center = source[i + channel];
-          const neighbors = source[i - 4 + channel] + source[i + 4 + channel] +
-            source[i - width * 4 + channel] + source[i + width * 4 + channel];
-          data[i + channel] = clampByte(center + amount * (center * 4 - neighbors));
-        }
-      }
-    }
-  }
+  if (clamp(a.sharpen, 0, 100) > 0) data.set(unsharpMaskRgba(data, width, height, a.sharpen));
 
   ctx.putImageData(image, 0, 0);
   return canvas;

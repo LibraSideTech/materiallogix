@@ -4,40 +4,102 @@ import {
   newProject, newAsset, newPlacement
 } from './model.js';
 import * as store from './store.js';
+import { localFallbackMessage, recordVideoPace } from './video-pace.js';
+import { PRICING_URL, STUDIO_DOWNLOAD_URL } from './routes.js';
 import {
-  defaultCrop, clampCrop, zoomCrop, panCrop, snapToRatio, renderCrop, loadImage, grabVideoFrame,
+  canvasToBytes, defaultCrop, clampCrop, zoomCrop, panCrop, snapToRatio, renderCrop, loadImage, grabVideoFrame,
   adjustmentFrame, placementRect
 } from './crop.js';
 import {
   analyzeAsset, assetIssues, placementIssues, preflight, smartCrop, captureCoverage, captureCoverageBody, cornerSignature, captureFrameQuality
 } from './analyze.js';
-import { buildPackage, decisionsMarkdown, approvedPairs, slug } from './export.js';
+import { buildPackage, decisionsMarkdown, approvedPairs, planFinishedPhoto, slug } from './export.js';
 import { buildClientPage, applyClientVerdict } from './clientpage.js';
 import { snapshot, snapshotProject, popUndo, clearUndo, log, logMarkdown } from './history.js';
 import { downloadBlob, makeZip, readStoreZip } from './zip.js';
 import { activeLicense, activate, activationFailureReason, deactivate, covers } from './license.js';
 import { assessInpaintMaskedBoundary, blendInpaintMaskedCandidate,
-  bridgeFetch, detectComfy, listCheckpoints, inspectInpaintCompatibility, generateOne, normalizeInpaintSelection,
+  bridgeFetch, DEFAULT_BASE, detectComfy, listCheckpoints, inspectInpaintCompatibility, generateOne, normalizeInpaintSelection,
   normalizeInpaintPath, summarizeInpaintMask, inpaintOne, listUpscaleModels, upscaleOne, detectBridge,
-  upscaleViaBridge, localUpscaleModelLabel, localUpscaleEngineLabel,
-  CPU_PRESETS, cpuJobSettings, estimateCpuSeconds, recordCpuPace, waitLabel } from './generate.js';
+  upscaleViaBridge, localUpscaleEngineLabel,
+  CPU_PRESETS, cpuJobSettings, estimateCpuSeconds, recordCpuPace, waitLabel,
+  PROMPT_MIN_LENGTH, PROMPT_MAX_LENGTH, buildFluxTxt2Img, detectFluxReady, runGraph, uploadImage } from './generate.js';
+import { buildReferencePhoto } from './generate-reference.js';
 import { probeDevice, deviceSummary } from './device.js';
 import { featureEnabled } from './features.js';
-import { guidanceFor, ensureGuardianAck } from './capture-guidance.js';
+import { guidanceFor } from './capture-guidance.js';
 import { screenPrompt } from './prompt-guard.js';
 import { wordBudgetForSeconds } from './voice.js';
+import { HOUSE_VOICE_BY_ID } from './house-voices.js';
 import { paceTrace, paceTraceSvg, runPaceGuide, paceTarget } from './capture-pacer.js';
-import { analyzeGeometry } from './geometry.js';
-import { CURVE_IDENTITY, buildLuminanceLut, ensureEditState, pixelGridReview, pixelGridOverlay } from './editing.js';
-import { authorizeOutbound, settleOutbound, settleOutboundBeforeDelivery, voidOutbound } from './billing-client.js';
+import {
+  PERSON_GEOMETRY_OBSERVATION_ALGORITHM_ID,
+  PERSON_GEOMETRY_OBSERVATION_MANIFEST_SHA256,
+  analyzeGeometry
+} from './geometry.js';
+import { NOTICE_TEXT as PEOPLE_MAPPING_NOTICE } from './human-geometry-notice.js';
+import {
+  OPTIONAL_APPEARANCE_LAYERS,
+  PERSONAL_GEOMETRY_NOTICE_SHA256,
+  PERSONAL_GEOMETRY_NOTICE_TEXT,
+  PERSONAL_GEOMETRY_NOTICE_VERSION,
+  PERSONAL_GEOMETRY_PURPOSES,
+  PERSONAL_GEOMETRY_RETENTION_POLICY_ID,
+  PERSONAL_GEOMETRY_US_JURISDICTIONS,
+  SKIN_DETAIL_CONTINUITY_ALGORITHM_ID,
+  SKIN_DETAIL_CONTINUITY_ALGORITHM_SHA256,
+  evaluatePersonalGeometryConsent,
+  personalGeometryRetentionExpiry
+} from './personal-geometry-consent.js';
+import {
+  LOCAL_FACE_MAP_ALGORITHM_ID,
+  LOCAL_FACE_MAP_ALGORITHM_SHA256,
+  buildSinglePhotoFaceMap,
+  validateLocalFaceMap
+} from './local-face-map.js';
+import { buildPersonalGeometryPack } from './personal-geometry-pack.js';
+import {
+  PERSONAL_GEOMETRY_TEMPORARY_TTL_MS,
+  completePersonalGeometryPurpose,
+  deletePersonalGeometryAsset,
+  deletePersonalGeometryProject,
+  getPersonalGeometryFaceMapsForAsset,
+  getPersonalGeometryPacksForProject,
+  getPersonalGeometryTattooMapsForAsset,
+  personalGeometrySafeRecoveryView,
+  savePersonalGeometryConsentReceipt,
+  savePersonalGeometryFaceMap,
+  savePersonalGeometryPack,
+  savePersonalGeometryTattooMap,
+  subscribePersonalGeometryDeletion,
+  sweepExpiredPersonalGeometryData,
+  withdrawAndDeletePersonalGeometry
+} from './personal-geometry-storage.js';
+import { CURVE_IDENTITY, buildLuminanceLut, ensureEditState, hasVisibleAdjustments, pixelGridReview, pixelGridOverlay, previewFilter } from './editing.js';
+import { authorizeOutbound, consumeEntitlement, settleOutbound, settleOutboundBeforeDelivery, voidOutbound } from './billing-client.js';
 import { COLOR_PIPELINE, colorExportDecision, decodeColorManagedBlob } from './color-management.js';
 import { PRINT_PPI, PRINT_PRESETS, encodePrintJpeg, planPrint, printColorDecision, renderPrint } from './print.js';
 import { normalizeSpinIndex, stepSpinIndex, spinIndexFromDrag, spinStepFromWheel, spinAngleLabel } from './spin-viewer.js';
 import { makeInpaintJobSpec, createInpaintBenchmark } from './inpaint-foundation.js';
-import { quoteCloudJob, recordExport } from './pricing.js';
+import { LANES, hasProAccess, imageExportCeiling, quoteCloudJob, recordExport, laneFor } from './pricing.js';
 import { cloudVideoAvailability, submitCloudVideoPackage, watchCloudVideoJob, downloadCloudVideo } from './cloud-video.js';
 import { isImportableMediaFile, isRadianceFile, isRawCameraFile, prepareRawCameraImport } from './raw.js';
+import {
+  TATTOO_CONTROL_POINT_COUNT, TATTOO_MESH_MAX_DENSITY,
+  TATTOO_MESH_MIN_DENSITY, TATTOO_REGIONS, generateTattooMesh,
+  TATTOO_PLACEMENT_ALGORITHM_ID, TATTOO_PLACEMENT_ALGORITHM_SHA256,
+  createTattooPlacementMap, defaultTattooMap, manualTattooControlLattice,
+  tattooControlLatticeForRegion, tattooPlacementConsentState, tattooPoseGeometryFromPackRecords,
+  validateTattooPlacementMap
+} from './tattoo-mapping.js';
+import {
+  VIDEO_TIMELINE_SCHEMA, hasVideoProEntitlement, remapVideoTimelineAssets,
+  sanitizeVideoTimeline, timelineDuration, videoTimelineFingerprint
+} from './video-timeline.js';
+import { openVideoProEditor } from './video-pro-editor.js';
+import { adoptBridgePinFromHash, companionQrMatrix, companionUrl, paintCompanionQr } from './companion-link.js';
 
+const FLUX_SENTINEL = '__flux__';
 const $ = sel => document.querySelector(sel);
 const el = (tag, props = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -50,6 +112,18 @@ const el = (tag, props = {}, ...kids) => {
   return n;
 };
 
+// A scanned companion code may carry the bridge PIN in its fragment. Adopt it
+// before any bridge call, then clear it so the PIN never lingers in the
+// address bar or in a shared link.
+if (adoptBridgePinFromHash(location.hash, localStorage)) {
+  history.replaceState(null, '', location.pathname + location.search);
+}
+
+// 1× is source pixels; 2× and 4× are what judging a hairline or a retouched
+// pore actually takes.
+const LOUPE_ZOOMS = Object.freeze([1, 2, 4]);
+const storedLoupeZoom = Number(localStorage.getItem('cros:loupeZoom'));
+
 const state = {
   projects: [], project: null, assets: [],
   mode: 'review',
@@ -59,17 +133,45 @@ const state = {
   compareWith: null,
   reviewRailTab: 'edit',
   loupe: false,
-  loupeZoom: 1,
-  editTool: null,              // null | 'heal' | 'brush' — stage input routes to the armed retouch tool
+  loupeZoom: LOUPE_ZOOMS.includes(storedLoupeZoom) ? storedLoupeZoom : 1,
+  editTool: null,              // null | 'heal' | 'brush' | 'tattoo' — stage input routes to the armed edit tool
   healSize: 1.2,               // spot radius as a percentage of the frame width
   brushSize: 4,                // selective brush radius as a percentage of the frame width
   filters: { status: '', role: '', kind: '', surface: '', issues: '', rating: 0, q: '' },
   reviewer: localStorage.getItem('cros:reviewer') || 'reviewer',
   decoded: new Map(),         // assetId -> { source, w, h, url }
+  tattooMaps: new Map(),      // assetId -> isolated-store record; never persisted in ordinary assets
   busy: false
 };
 const localVideoJobs = new Map();
+let personalGeometrySubjectRef = null;
+const PERSONAL_GEOMETRY_ACCOUNT_REF_KEY = 'materiallogix:personal-geometry-account-ref';
 const VALID_PLACEMENT_FILL = new Set(['crop', 'contain', 'blur']);
+const LEGACY_PERSONAL_GEOMETRY_LINK_FIELDS = Object.freeze([
+  'personalGeometryPackId', 'personalGeometryConsentId', 'personalGeometryCaptureMode',
+  'identityPackId', 'identityCaptureMode'
+]);
+const LEGACY_PERSONAL_GEOMETRY_FIELDS = Object.freeze([
+  ...LEGACY_PERSONAL_GEOMETRY_LINK_FIELDS,
+  'geometry', 'geometryConsentId', 'geometryPackId', 'humanGeometry',
+  'localFaceMaps', 'localFaceMapConsentId', 'personalGeometry',
+  'personalGeometryPack', 'peopleReview', 'tattooMap'
+]);
+
+function hasLegacyPersonalGeometryLink(asset) {
+  return LEGACY_PERSONAL_GEOMETRY_LINK_FIELDS.some(field =>
+    Object.prototype.hasOwnProperty.call(asset || {}, field));
+}
+
+function stripLegacyPersonalGeometryFields(asset) {
+  let changed = false;
+  for (const field of LEGACY_PERSONAL_GEOMETRY_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(asset || {}, field)) continue;
+    delete asset[field];
+    changed = true;
+  }
+  return changed;
+}
 
 function normalizePlacementFill(placement) {
   if (!placement || typeof placement !== 'object') return;
@@ -85,18 +187,47 @@ function normalizePlacementFill(placement) {
 // ---------------------------------------------------------------------------
 // small helpers
 
+const TOAST_STACK_LIMIT = 3;
+/**
+ * Messages stack instead of replacing each other. Clearing the previous toast
+ * on every call meant a second message issued in the same tick erased the
+ * first before anyone could read it — and a failure reason was usually the one
+ * that vanished.
+ */
 function toast(msg, bad = false) {
-  document.querySelectorAll('.toast').forEach(t => t.remove());
+  let stack = document.querySelector('.toast-stack');
+  if (!stack) {
+    stack = el('div', { className: 'toast-stack' });
+    document.body.append(stack);
+  }
+  const existing = [...stack.children];
+  const hold = node => {
+    clearTimeout(Number(node.dataset.expiry));
+    node.dataset.expiry = String(setTimeout(() => {
+      node.remove();
+      if (!stack.children.length) stack.remove();
+    }, bad ? 7000 : 2600));
+  };
+  const duplicate = existing.find(node => node.textContent === msg);
+  // A repeated message moves to the bottom and starts its life over, rather
+  // than expiring on the timer the first one set.
+  if (duplicate) { stack.append(duplicate); hold(duplicate); return; }
+  for (const extra of existing.slice(0, Math.max(0, existing.length + 1 - TOAST_STACK_LIMIT))) extra.remove();
   const t = el('div', { className: 'toast' + (bad ? ' bad' : ''), textContent: msg, role: 'status' });
   t.setAttribute('aria-live', bad ? 'assertive' : 'polite');
-  document.body.append(t);
-  setTimeout(() => t.remove(), bad ? 7000 : 2600);
+  stack.append(t);
+  hold(t);
 }
 
 /** Wraps long jobs so the tab-close guard and the cursor both know. */
 async function busy(fn) {
   state.busy = true;
   document.body.style.cursor = 'progress';
+  // Let whatever the caller just put on screen actually reach it. These jobs
+  // are synchronous once they start — a 24 MP grade holds the thread for
+  // seconds — and awaiting a microtask would run before the frame is painted.
+  // The timeout is the fallback: a backgrounded tab never fires a frame.
+  await new Promise(resolve => { requestAnimationFrame(resolve); setTimeout(resolve, 50); });
   try { return await fn(); }
   finally { state.busy = false; document.body.style.cursor = ''; }
 }
@@ -110,11 +241,20 @@ function dialog(title, body, buttons) {
   return d;
 }
 const closeDialog = () => { const d = $('#dlg'); d.close(); d.classList.remove('feedback-popover'); };
+/** replaceChildren stringifies whatever it is given, so a skipped conditional
+ * child arrives on screen as the word "null". */
+const setChildren = (node, ...kids) => node.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
+const count = (n, noun) => `${n} ${noun}${n === 1 ? '' : 's'}`;
+const sentence = text => String(text || '').replace(/^./, c => c.toUpperCase());
 const btn = (label, cls = 'btn', onclick) => {
   const b = el('button', { className: cls, type: 'button' }, label);
   if (onclick) b.onclick = onclick;
   return b;
 };
+/** A link that carries the weight of a button, for routes that leave the app. */
+const linkBtn = (label, href, cls = 'btn') =>
+  el('a', { className: cls, href, target: '_blank', rel: 'noopener noreferrer' }, label);
+
 /** Names a control whose visible label is a glyph. */
 const aria = (node, label) => { node.setAttribute('aria-label', label); node.title = label; return node; };
 
@@ -141,6 +281,198 @@ function touchAsset(asset) {
 function touchProject() {
   scheduleSave('project', () => store.saveProject(state.project));
 }
+
+function tattooRecordForAsset(asset) {
+  return state.tattooMaps.get(asset?.id) || null;
+}
+
+function cacheTattooMapReadback(assetId, record) {
+  if (!record?.tattooMap || record.tattooMap.targetAssetId !== assetId) return null;
+  const cached = {
+    ...record,
+    tattooMap: structuredClone(record.tattooMap),
+    storeAuthority: Object.freeze({
+      verified: true,
+      assetId,
+      mapId: record.mapId,
+      packId: record.packId,
+      checkedAt: new Date().toISOString()
+    })
+  };
+  state.tattooMaps.set(assetId, cached);
+  return cached;
+}
+
+function tattooMapForAsset(asset) {
+  let record = tattooRecordForAsset(asset);
+  if (!record) {
+    record = {
+      mapId: '', packId: '', expiresAt: null,
+      tattooMap: defaultTattooMap(), receipt: null, sourcePackRecord: null
+    };
+    state.tattooMaps.set(asset.id, record);
+  }
+  return record.tattooMap;
+}
+
+function activeTattooMapRecord(asset, mapping = tattooMapForAsset(asset)) {
+  const record = tattooRecordForAsset(asset);
+  if (!record || record.mapId !== mapping?.mapId || record.packId !== mapping?.packId) return null;
+  const authority = record.storeAuthority;
+  if (authority?.verified !== true || authority.assetId !== asset.id
+      || authority.mapId !== record.mapId || authority.packId !== record.packId) return null;
+  const consent = tattooPlacementConsentState(record.receipt, {
+    targetAssetId: asset.id,
+    sourcePackRecord: record.sourcePackRecord
+  });
+  if (!consent.allowed) return null;
+  const validation = validateTattooPlacementMap(mapping, {
+    consentReceipt: record.receipt,
+    targetAssetId: asset.id,
+    sourcePackRecord: record.sourcePackRecord
+  });
+  return validation.valid ? record : null;
+}
+
+async function persistTattooMap(asset, mapping = tattooMapForAsset(asset)) {
+  if (!activeTattooMapRecord(asset, mapping)) {
+    throw new Error('The direct tattoo-placement consent is no longer active.');
+  }
+  await savePersonalGeometryTattooMap(mapping, {
+    projectId: state.project.id,
+    assetId: asset.id,
+    retentionClass: 'saved'
+  });
+  const records = await getPersonalGeometryTattooMapsForAsset(asset.id);
+  const readback = records.find(record => record.mapId === mapping.mapId);
+  const validation = readback && validateTattooPlacementMap(readback.tattooMap, {
+    consentReceipt: readback.receipt,
+    targetAssetId: asset.id,
+    sourcePackRecord: readback.sourcePackRecord
+  });
+  if (!readback || !validation?.valid || readback.tattooMap.updatedAt !== mapping.updatedAt
+      || readback.tattooMap.meshDensity !== mapping.meshDensity
+      || JSON.stringify(readback.tattooMap.controlPoints) !== JSON.stringify(mapping.controlPoints)) {
+    throw new Error('The tattoo-placement map did not pass isolated-store read-back verification.');
+  }
+  return cacheTattooMapReadback(asset.id, readback);
+}
+
+function touchTattooMap(asset, mapping = tattooMapForAsset(asset)) {
+  scheduleSave(`tattoo:${asset.id}`, () => persistTattooMap(asset, mapping)
+    .catch(cause => toast(cause?.message || 'The tattoo-placement map could not be saved.', true)));
+}
+
+const tattooMapLoads = new Map();
+const tattooMapDiscoveryComplete = new Set();
+
+function purgeTattooMapReadbacks(result) {
+  if (result?.verified !== true) return;
+  const affectedPackIds = new Set(result.affectedPackIds || []);
+  const scope = result.scope || {};
+  const allLocal = Object.keys(scope).length === 0
+    && ['local_data_deleted', 'account_closed'].includes(result.reason);
+  let removed = false;
+  for (const [assetId, record] of state.tattooMaps) {
+    const sourcePackId = record?.sourcePackRecord?.pack?.packId || record?.tattooMap?.sourcePackId;
+    const matches = allLocal
+      || scope.assetId === assetId
+      || (scope.projectId && scope.projectId === state.project?.id)
+      || affectedPackIds.has(record?.packId)
+      || (sourcePackId && affectedPackIds.has(sourcePackId));
+    if (!matches) continue;
+    const pendingKey = `tattoo:${assetId}`;
+    clearTimeout(pendingSaves.get(pendingKey)?.timer);
+    pendingSaves.delete(pendingKey);
+    state.tattooMaps.delete(assetId);
+    tattooMapDiscoveryComplete.add(assetId);
+    removed = true;
+  }
+  if (!removed) return;
+  if (state.editTool === 'tattoo') state.editTool = null;
+  queueMicrotask(() => {
+    if (state.project && document.body) renderReview();
+  });
+}
+
+subscribePersonalGeometryDeletion(purgeTattooMapReadbacks);
+
+function hydrateTattooMap(asset) {
+  if (tattooMapDiscoveryComplete.has(asset.id)) {
+    return Promise.resolve(state.tattooMaps.get(asset.id) || null);
+  }
+  if (tattooMapLoads.has(asset.id)) return tattooMapLoads.get(asset.id);
+  const load = getPersonalGeometryTattooMapsForAsset(asset.id).then(records => {
+    const record = records[0] || null;
+    if (record) cacheTattooMapReadback(asset.id, record);
+    else state.tattooMaps.delete(asset.id);
+    tattooMapDiscoveryComplete.add(asset.id);
+    return record;
+  }).finally(() => tattooMapLoads.delete(asset.id));
+  tattooMapLoads.set(asset.id, load);
+  return load;
+}
+
+async function createAuthorizedTattooMap(asset, {
+  sourcePackRecord = null,
+  controlPoints = null,
+  buildControlPoints = null,
+  region,
+  method
+} = {}) {
+  const accountRef = personalGeometryAccountRef();
+  if (sourcePackRecord && (sourcePackRecord.receipt?.subject_role !== 'self'
+      || sourcePackRecord.receipt?.subject_ref !== accountRef
+      || sourcePackRecord.receipt?.account_ref !== accountRef)) {
+    throw new Error('The selected body Pack is not your directly consented self-subject Pack.');
+  }
+  const receipt = await requestPersonalGeometryConsent({
+    packId: `tattoo-pack-${crypto.randomUUID()}`,
+    specificPurpose: PERSONAL_GEOMETRY_PURPOSES.tattooPlacement,
+    coreCategories: ['source_media', 'tattoo_mapping'],
+    algorithms: [{
+      algorithm_id: TATTOO_PLACEMENT_ALGORITHM_ID,
+      sha256: TATTOO_PLACEMENT_ALGORITHM_SHA256
+    }],
+    allowedOptionalLayers: ['tattoos'],
+    receiptBindings: {
+      target_asset_id: asset.id,
+      source_pack_id: sourcePackRecord?.pack?.packId || null,
+      source_pack_subject_ref: sourcePackRecord?.receipt?.subject_ref || null
+    },
+    directSelfOnly: true
+  });
+  if (!receipt) return null;
+  // Landmark-to-placement derivation begins only after the new target-bound
+  // direct release is stored. Cancelling the dialog executes no mapping code.
+  const authorizedControlPoints = typeof buildControlPoints === 'function'
+    ? buildControlPoints()
+    : controlPoints;
+  if (!Array.isArray(authorizedControlPoints)
+      || authorizedControlPoints.length !== TATTOO_CONTROL_POINT_COUNT) {
+    throw new Error('The selected local landmarks cannot seed this region. No placement map was stored.');
+  }
+  const map = createTattooPlacementMap({
+    mapId: `tattoo-map-${crypto.randomUUID()}`,
+    targetAssetId: asset.id,
+    consentReceipt: receipt,
+    sourcePackRecord,
+    controlPoints: authorizedControlPoints,
+    region,
+    method
+  });
+  await savePersonalGeometryTattooMap(map, {
+    projectId: state.project.id,
+    assetId: asset.id,
+    retentionClass: 'saved'
+  });
+  const records = await getPersonalGeometryTattooMapsForAsset(asset.id);
+  const readback = records.find(record => record.mapId === map.mapId);
+  if (!readback) throw new Error('The tattoo-placement map did not pass isolated-store read-back verification.');
+  cacheTattooMapReadback(asset.id, readback);
+  tattooMapDiscoveryComplete.add(asset.id);
+  return tattooMapForAsset(asset);
+}
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPendingSaves(); });
 
 /** Every state change to an asset goes through here: undo + audit for free. */
@@ -149,6 +481,21 @@ function mutate(asset, label, fn) {
   fn();
   log(asset, label, state.reviewer);
   touchAsset(asset);
+}
+
+/** Crop gestures write placement.crop directly for speed, so they take their
+ * own history entry here. Without one, a reframe rode inside whatever entry
+ * came before it, and Undo after a crop threw away the color edit made
+ * moments earlier along with the crop. Drags snapshot once at first
+ * movement; wheel ticks, key presses, and zoom clicks coalesce per burst so
+ * ten scroll notches step back as one reframe, not ten. */
+const cropBursts = new WeakMap();
+function captureCropBurst(asset, label) {
+  const now = Date.now();
+  const last = cropBursts.get(asset);
+  if (last && last.label === label && now - last.at < 600) { last.at = now; return; }
+  snapshot(asset, label);
+  cropBursts.set(asset, { label, at: now });
 }
 
 const activeSurfaces = () => (state.project?.surfaces || []).map(id => SURFACE_BY_ID[id]).filter(Boolean);
@@ -260,7 +607,22 @@ async function decode(asset) {
   return d;
 }
 
-async function runAnalysis(asset, { quiet = false } = {}) {
+async function runAnalysis(asset, {
+  quiet = false,
+  geometryConsentReceipt = null,
+  geometryPackId = null,
+  geometryRequiredCategories = []
+} = {}) {
+  if (geometryConsentReceipt || geometryPackId) {
+    // Validate the exact receipt, purpose, Pack, and algorithm before decoding
+    // or otherwise reading pixels for this sensitive operation.
+    await analyzeGeometry(null, 0, 0, {
+      consentReceipt: geometryConsentReceipt,
+      packId: geometryPackId,
+      specificPurpose: geometryConsentReceipt?.specific_purpose || null,
+      requiredCategories: geometryRequiredCategories
+    });
+  }
   const d = await decode(asset);
   if (!d) { if (!quiet) toast(`Could not decode ${asset.filename}.`, true); return null; }
   const blob = await store.getBlob(asset.id);
@@ -291,17 +653,39 @@ async function runAnalysis(asset, { quiet = false } = {}) {
       lumaRange: Math.max(...samples.map(s => s.meanLuma)) - Math.min(...samples.map(s => s.meanLuma))
     };
   }
-  // Geometry is the one networked extra (MediaPipe from CDN). Null offline.
-  asset.geometry = await analyzeGeometry(d.source, d.w, d.h);
-  asset.peopleReview = {
-    status: asset.geometry ? 'complete' : 'manual-review-needed',
-    faces: asset.geometry?.faces?.length || 0,
-    hands: asset.geometry?.hands?.length || 0,
-    bodies: asset.geometry?.poses?.length || (asset.geometry?.body ? 1 : 0),
-    reviewedAt: new Date().toISOString()
+  // Person mapping is a separate sensitive operation. Generic import and
+  // quality checks never invoke it. A Pack-specific receipt must be active and
+  // must name this exact pseudonymous Pack before local inference.
+  let geometry = null;
+  let peopleReview = {
+    status: 'consent-required',
+    faces: 0,
+    hands: 0,
+    bodies: 0,
+    reviewedAt: null
   };
+  if (geometryConsentReceipt) {
+    geometry = await analyzeGeometry(d.source, d.w, d.h, {
+      consentReceipt: geometryConsentReceipt,
+      packId: geometryPackId,
+      specificPurpose: geometryConsentReceipt.specific_purpose,
+      requiredCategories: geometryRequiredCategories
+    });
+    peopleReview = {
+      status: geometry ? 'complete' : 'manual-review-needed',
+      faces: geometry?.faces?.length || 0,
+      hands: geometry?.hands?.length || 0,
+      bodies: geometry?.poses?.length || (geometry?.body ? 1 : 0),
+      reviewedAt: new Date().toISOString()
+    };
+  }
+
+  // Older builds wrote sensitive derived data into ordinary asset recovery.
+  // Remove those fields on every save; current results live only in the
+  // dedicated local store and this call's ephemeral return value.
+  stripLegacyPersonalGeometryFields(asset);
   await store.saveAsset(asset);
-  return asset.auto;
+  return { auto: asset.auto, geometry, peopleReview };
 }
 
 async function analyzeAll() {
@@ -353,7 +737,7 @@ async function importFiles(fileList) {
   if (!files.length) return toast('No supported photo or video files in that drop.', true);
 
   const bar = el('i');
-  const status = el('p', {}, `Importing ${files.length} file(s)…`);
+  const status = el('p', {}, `Importing ${count(files.length, 'file')}…`);
   dialog('Import', el('div', {}, status, el('div', { className: 'progress' }, bar)), [btn('Close', 'btn', closeDialog)]);
 
   let imported = 0, blocked = 0;
@@ -411,7 +795,7 @@ async function importFiles(fileList) {
   state.assets = await store.listAssets(state.project.id);
   closeDialog();
   render();
-  toast(`Imported and analysed ${imported} file(s).${blocked ? ` ${blocked} file(s) were blocked.` : ''}`);
+  toast(`Imported ${count(imported, 'file')} and ran the automatic checks. Face and body mapping only runs when you ask for it.${blocked ? ` ${count(blocked, 'file')} could not be opened.` : ''}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -430,8 +814,13 @@ function briefField(key, label, multiline = false) {
   return el('label', { className: 'field' }, el('span', {}, label), input);
 }
 
-function photoWorkflowSteps(active = 1) {
-  return el('ol', { className: 'photo-flow', ariaLabel: 'Photo workflow' },
+function peopleMappingNotice() {
+  return el('p', { className: 'notice-bar', style: 'white-space:pre-line;font-size:11.5px;margin:10px 0' },
+    PEOPLE_MAPPING_NOTICE);
+}
+
+function photoWorkflowSteps(active = 1, product = 'Photo') {
+  return el('ol', { className: 'photo-flow', ariaLabel: `${product} workflow` },
     ...['Create or open', 'Review', 'Edit', 'Quality check', 'Export'].map((label, index) =>
       el('li', { className: index + 1 === active ? 'active' : index + 1 < active ? 'complete' : '' },
         el('span', {}, String(index + 1)), label)));
@@ -456,18 +845,6 @@ function openPhotoCreation() {
   requestAnimationFrame(() => generation?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
 }
 
-async function reviewPeople(asset) {
-  if (!asset) return toast('Create or open a photo first.', true);
-  await busy(() => runAnalysis(asset));
-  state.reviewRailTab = 'review';
-  localStorage.setItem(REVIEW_RAIL_OPEN_KEY, 'true');
-  renderReview();
-  const review = asset.peopleReview;
-  toast(review.status === 'complete'
-    ? `People review complete: ${review.faces} face${review.faces === 1 ? '' : 's'}, ${review.hands} hand${review.hands === 1 ? '' : 's'}, ${review.bodies} bod${review.bodies === 1 ? 'y' : 'ies'}.`
-    : 'Automatic people review is unavailable; inspect faces, hands, and bodies manually.');
-}
-
 // --- generation panel: local GPU now, BYO key and managed tiers later ------
 
 let comfyStatus = null;   // cached detection result for this session
@@ -483,17 +860,17 @@ function generatePanel() {
   wrap.append(local);
 
   const renderLocal = async (force = false) => {
-    const savedBase = localStorage.getItem('cros:comfyBase') || `http://${location.hostname}:8188`;
+    const savedBase = localStorage.getItem('cros:comfyBase') || DEFAULT_BASE;
     if (!comfyStatus || force) {
       local.replaceChildren(el('p', { className: 'hint' }, 'Checking Photo creation\u2026'));
       comfyStatus = await detectComfy(savedBase);
     }
     if (!comfyStatus.ok) {
       const baseInput = el('input', { type: 'text', value: savedBase, placeholder: 'http://127.0.0.1:8188' });
-      baseInput.onchange = () => localStorage.setItem('cros:comfyBase', baseInput.value.trim() || 'http://127.0.0.1:8188');
+      baseInput.onchange = () => localStorage.setItem('cros:comfyBase', baseInput.value.trim() || DEFAULT_BASE);
       const phoneConnection = el('details', { className: 'connection-details' },
         el('summary', {}, 'Phone connection'),
-        el('p', { className: 'hint' }, 'Enter the Wi-Fi address shown by MaterialLogix to control Studio from your phone and run guided face, hand, and body scans.'),
+        el('p', { className: 'hint' }, 'Enter the Wi-Fi address shown by MaterialLogix to control Studio from your phone. Non-person photo quality checks run on the computer where the photo is open. Face, hand, and body mapping stays off until the pictured adult gives direct consent.'),
         el('label', { className: 'field' }, el('span', {}, 'Wi-Fi address'), baseInput));
       const routes = el('div', {});
       local.replaceChildren(
@@ -539,9 +916,102 @@ function generatePanel() {
       return;
     }
     const ckptSel = el('select', {});
+    const fluxReady = await detectFluxReady(comfyStatus.base).catch(() => ({ ok: false, nodeMissing: true, missingFiles: [] }));
+    if (fluxReady.ok) {
+      ckptSel.append(el('option', { value: FLUX_SENTINEL }, 'Studio quality — Flux (highest)'));
+    }
     for (const [index, c] of ckpts.entries()) ckptSel.append(el('option', { value: c }, `Studio quality ${index + 1}`));
+    const fluxNote = fluxReady.ok ? null : el('p', { className: 'hint' }, fluxReady.nodeMissing
+      ? 'Add the Flux quality pack for the sharpest results: install the ComfyUI-GGUF node, then restart Studio’s local engine.'
+      : `Add the Flux quality pack for the sharpest results: missing ${fluxReady.missingFiles.join(', ')}.`);
     const promptBox = el('textarea', { placeholder: 'What to generate. Wording from the brief helps.', rows: 3 });
     const negBox = el('input', { type: 'text', placeholder: 'Avoid (optional)', value: state.project.brief.mustAvoid || '' });
+    const referenceInput = el('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp', multiple: true });
+    const referenceKind = el('select', {},
+      el('option', { value: 'identity' }, 'Identity / appearance'),
+      el('option', { value: 'composition' }, 'Composition only'),
+      el('option', { value: 'style' }, 'Style only'));
+    const subjectSel = el('select', {},
+      el('option', { value: 'full' }, 'Whole image'),
+      el('option', { value: 'left' }, 'Left subject'),
+      el('option', { value: 'center' }, 'Center subject'),
+      el('option', { value: 'right' }, 'Right subject'));
+    const referenceList = el('div', { className: 'reference-photo-list', ariaLive: 'polite' });
+    const referenceHelp = el('p', { className: 'hint' }, 'Add a clear reference to guide the person or product in a new scene. Use a close, readable face when likeness matters.');
+    let referencePhotos = [];
+    let activeReferenceId = null;
+    let replacingReferenceId = null;
+    const referenceRegion = () => ({
+      full: { x: 0, y: 0, width: 1, height: 1 },
+      left: { x: 0, y: 0, width: 0.5, height: 1 },
+      center: { x: 0.25, y: 0, width: 0.5, height: 1 },
+      right: { x: 0.5, y: 0, width: 0.5, height: 1 }
+    })[subjectSel.value] || { x: 0, y: 0, width: 1, height: 1 };
+    const activeReference = () => referencePhotos.find(item => item.id === activeReferenceId) || null;
+    const renderReferencePhotos = () => {
+      if (!referencePhotos.length) {
+        referenceList.replaceChildren(el('p', { className: 'hint' }, 'No reference photos added.'));
+        return;
+      }
+      referenceList.replaceChildren(...referencePhotos.map((item, index) => {
+        const choose = btn(activeReferenceId === item.id ? 'Selected' : 'Use', 'btn sm', () => { activeReferenceId = item.id; renderReferencePhotos(); });
+        choose.disabled = activeReferenceId === item.id;
+        const remove = btn('Remove', 'btn sm', () => {
+          URL.revokeObjectURL(item.url);
+          referencePhotos = referencePhotos.filter(ref => ref.id !== item.id);
+          if (activeReferenceId === item.id) activeReferenceId = referencePhotos[0]?.id || null;
+          renderReferencePhotos();
+        });
+        const replace = btn('Replace', 'btn sm', () => { replacingReferenceId = item.id; referenceInput.click(); });
+        return el('div', { className: 'reference-photo-row' },
+          el('img', { src: item.url, alt: `Reference photo ${index + 1}` }),
+          el('span', {}, `${item.file.name || 'Reference ' + (index + 1)} · ${item.width || '?'}×${item.height || '?'}`),
+          choose, replace, remove);
+      }));
+    };
+    const prepareReferenceFile = async (file) => {
+      if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) throw new Error('Use PNG, JPG, or WebP.');
+      status.textContent = 'Reading reference photo…';
+      const bitmap = await createImageBitmap(file).catch(() => null);
+      if (!bitmap) throw new Error('That reference photo could not be read.');
+      const width = bitmap.width, height = bitmap.height;
+      bitmap.close?.();
+      if (Math.min(width, height) < 512) throw new Error('Use a clearer reference at least 512 px on the short side.');
+      return { file, width, height, url: URL.createObjectURL(file) };
+    };
+    referenceInput.onchange = async () => {
+      const chosenFiles = [...(referenceInput.files || [])];
+      try {
+        const prepared = [];
+        for (const file of chosenFiles) prepared.push(await prepareReferenceFile(file));
+        if (replacingReferenceId && prepared[0]) {
+          const target = referencePhotos.find(item => item.id === replacingReferenceId);
+          if (target) {
+            URL.revokeObjectURL(target.url);
+            Object.assign(target, prepared[0]);
+            activeReferenceId = target.id;
+          }
+          for (const item of prepared.slice(1)) {
+            const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            referencePhotos.push({ id, ...item });
+            activeReferenceId = id;
+          }
+        } else {
+          for (const item of prepared) {
+            const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            referencePhotos.push({ id, ...item });
+            activeReferenceId = id;
+          }
+        }
+        status.textContent = prepared.length ? `${prepared.length} reference photo${prepared.length === 1 ? '' : 's'} ready.` : '';
+      } catch (error) {
+        status.textContent = 'Reference blocked: ' + (error.message || 'choose another photo.');
+      } finally {
+        replacingReferenceId = null;
+        referenceInput.value = '';
+        renderReferencePhotos();
+      }
+    };
     const styleSel = el('select', {},
       el('option', { value: 'natural' }, 'Photographic · believable by default'),
       el('option', { value: 'film' }, 'Film · adds grain and highlight roll-off'),
@@ -585,6 +1055,7 @@ function generatePanel() {
     speedSel.onchange = refreshOutput;
     sizeSel.onchange = refreshOutput;
     refreshOutput();
+    renderReferencePhotos();
 
     const go = btn('Generate photos', 'btn primary', async () => {
       const count = Number(countSel.value);
@@ -608,15 +1079,50 @@ function generatePanel() {
                 ? `${label} \u2014 creating\u2026 ${mins}:${secs} elapsed. It is safe to leave this open.`
                 : `${label} \u2014 creating\u2026`;
             };
-            const { blob, seed } = await generateOne({
-              ckpt: ckptSel.value,
-              prompt: promptBox.value,
-              negative: negBox.value,
-              styleIntent: styleSel.value,
-              width: plan.width, height: plan.height, steps: plan.steps
-            }, () => {
+            const onStatus = () => {
               if (!ticker) { tick(); ticker = setInterval(tick, 1000); }
-            }, comfyStatus.base, comfyStatus.cpuOnly ? 45 : 10);
+            };
+            let blob, seed;
+            const ref = activeReference();
+            if (ref && referenceKind.value !== 'identity') {
+              throw new Error('Composition and style references need a supported reference model before rendering. Choose Identity / appearance or remove the reference.');
+            }
+            if (ref && ckptSel.value === FLUX_SENTINEL) {
+              throw new Error('Reference photos are available with Studio quality checkpoints. Choose a checkpoint or remove the reference.');
+            }
+            if (ckptSel.value === FLUX_SENTINEL) {
+              // Flux has no CPU-only lane and no native-resolution ceiling to
+              // fit a speed preset around, so it always runs the plan's exact
+              // requested size, not plan.steps (tuned for SD1.5's
+              // CPU_PRESETS, not this model's own fixed step count).
+              const built = buildFluxTxt2Img({ prompt: promptBox.value, negative: negBox.value, styleIntent: styleSel.value, width: plan.width, height: plan.height });
+              const result = await runGraph(built.graph, onStatus, comfyStatus.base, 10);
+              blob = result.blob;
+              seed = built.seed;
+            } else if (ref) {
+              status.textContent = `${label} — uploading reference…`;
+              const imageName = await uploadImage(ref.file, ref.file.name || `reference_${i + 1}.png`, comfyStatus.base);
+              const built = buildReferencePhoto({
+                ckpt: ckptSel.value,
+                prompt: promptBox.value,
+                negative: negBox.value,
+                styleIntent: styleSel.value,
+                width: plan.width, height: plan.height, steps: plan.steps,
+                imageName,
+                region: referenceRegion()
+              });
+              const result = await runGraph(built.graph, onStatus, comfyStatus.base, comfyStatus.cpuOnly ? 45 : 10);
+              blob = result.blob;
+              seed = built.seed;
+            } else {
+              ({ blob, seed } = await generateOne({
+                ckpt: ckptSel.value,
+                prompt: promptBox.value,
+                negative: negBox.value,
+                styleIntent: styleSel.value,
+                width: plan.width, height: plan.height, steps: plan.steps
+              }, onStatus, comfyStatus.base, comfyStatus.cpuOnly ? 45 : 10));
+            }
             if (ticker) { clearInterval(ticker); ticker = null; }
             if (comfyStatus.cpuOnly) {
               recordCpuPace((Date.now() - startedAt) / 1000, plan.steps, plan.width, plan.height);
@@ -650,10 +1156,19 @@ function generatePanel() {
     });
     local.replaceChildren(head,
       el('label', { className: 'field' }, el('span', {}, 'Quality'), ckptSel),
+      ...(fluxNote ? [fluxNote] : []),
       el('label', { className: 'field' }, el('span', {}, 'Describe your image'), promptBox),
       el('label', { className: 'field' }, el('span', {}, 'Look'), styleSel),
       el('p', { className: 'hint' }, 'Photographic keeps people and materials believable unless your direction asks for a stylized result.'),
       el('label', { className: 'field' }, el('span', {}, 'Avoid'), negBox),
+      el('details', { className: 'reference-photo-picker' },
+        el('summary', {}, 'Reference photos'),
+        referenceHelp,
+        el('label', { className: 'field' }, el('span', {}, 'Add photos'), referenceInput),
+        el('div', { style: 'display:flex;gap:8px' },
+          el('label', { className: 'field', style: 'flex:1' }, el('span', {}, 'Use as'), referenceKind),
+          el('label', { className: 'field', style: 'flex:1' }, el('span', {}, 'Subject'), subjectSel)),
+        referenceList),
       el('div', { style: 'display:flex;gap:8px' },
         el('label', { className: 'field', style: 'flex:1' }, el('span', {}, 'Size'), sizeSel),
         el('label', { className: 'field', style: 'flex:1' }, el('span', {}, 'Count'), countSel)),
@@ -692,20 +1207,21 @@ function macEngineSetup(onConnected) {
   });
   if (!MAC_PACKET_URL) {
     return el('div', {},
-      el('p', { className: 'hint' }, 'Studio runs on your Mac through ComfyUI.'),
+      el('p', { className: 'hint' }, 'Mac Beta. Studio runs on your Mac, on your own graphics card.'),
       el('div', { className: 'setup-command-row' }, commandBox, copy),
       btn('Connect', 'btn primary sm', onConnected),
       el('details', { className: 'connection-details' },
         el('summary', {}, 'Setting this up'),
+        el('p', { className: 'hint' }, 'The Mac setup is in beta: it takes a few steps, and a one-file installer is coming.'),
         el('ol', { className: 'setup-steps' },
-          el('li', {}, 'Install ComfyUI for Apple silicon.'),
+          el('li', {}, 'Install ComfyUI for Mac.'),
           el('li', {}, 'Start it with the command above.'),
           el('li', {}, 'Add a Photo quality pack, then connect.')),
-        el('p', { className: 'hint' }, 'Runs on your graphics card. Nothing leaves the Mac.'),
+        el('p', { className: 'hint' }, 'Runs on your graphics card. This local Photo engine path stays on this Mac.'),
         el('p', { className: 'hint' }, 'Chrome for now. Safari can block the connection.')));
   }
   return el('div', {},
-    el('p', { className: 'hint' }, 'Download MaterialLogix for Mac.'),
+    el('p', { className: 'hint' }, 'Download MaterialLogix for Mac. Beta.'),
     el('div', { className: 'setup-choice' },
       el('a', { className: 'btn primary sm', href: MAC_PACKET_URL }, 'With the engine'),
       el('a', { className: 'btn sm', href: MAC_PACKET_LITE_URL || MAC_PACKET_URL }, 'Without it')),
@@ -713,7 +1229,7 @@ function macEngineSetup(onConnected) {
       el('summary', {}, 'Which one'),
       el('p', { className: 'hint' }, 'The engine makes the photos. Without it Studio still reviews, edits, and exports.'),
       el('p', { className: 'hint' }, 'With the engine is one file and nothing else to install. Without it is a small file, and Studio fetches the engine the first time you create.'),
-      el('p', { className: 'hint' }, 'Runs on your graphics card. Nothing leaves the Mac.')),
+      el('p', { className: 'hint' }, 'Runs on your graphics card. This local Photo engine path stays on this Mac.')),
     btn('Connect', 'btn primary sm', onConnected));
 }
 
@@ -827,7 +1343,8 @@ function renderSidebar() {
   const sidebarHead = el('div', { className: 'sidebar-head' },
     el('strong', {}, 'Create or open'), el('span', { className: 'spacer' }), closeSidebar);
   const projectStrip = el('div', { className: 'sidebar-project' },
-    el('span', { className: 'eyebrow' }, 'Project'), $('#projectSelect'), $('#newProject'), $('#counters'));
+    el('span', { className: 'eyebrow' }, 'Project'), $('#projectSelect'), $('#newProject'));
+  const status = panel('Project status', false, $('#counters'));
 
   const addBtn = btn('Add files', 'btn', () => $('#fileInput').click());
   const analyzeBtn = btn('Run checks on all', 'btn sm', analyzeAll);
@@ -849,7 +1366,7 @@ function renderSidebar() {
   const generation = panel('Generate photo', !state.assets.length, generatePanel());
   generation.dataset.photoGeneration = 'true';
   const activeAsset = currentAsset();
-  const reviewStatus = activeAsset?.peopleReview;
+  const reviewStatus = activeAsset?.auto;
   const startActions = el('div', { className: 'photo-start-actions' },
     btn('Generate photo', 'btn primary', () => {
       generation.open = true;
@@ -859,15 +1376,18 @@ function renderSidebar() {
   const startBody = [
     photoWorkflowSteps(state.assets.length ? (reviewStatus ? 3 : 2) : 1),
     startActions,
-    el('p', { className: 'hint photo-flow-note' }, 'Every new photo is checked for faces, hands, and bodies before editing.')
+    el('p', { className: 'hint photo-flow-note' }, 'New photos receive non-person media-quality checks automatically. Face, hand, and body mapping runs locally only after the pictured adult gives direct consent.'),
+    peopleMappingNotice()
   ];
   if (activeAsset) {
-    startBody.push(btn(reviewStatus?.status === 'complete' ? 'Review again' : 'Review',
-      'btn sm', () => reviewPeople(activeAsset)));
+    startBody.push(btn(activeAsset.kind === 'image' ? 'Map the pictured adult locally' : 'Create a local geometry reference set',
+      'btn sm', () => activeAsset.kind === 'image'
+        ? createSinglePhotoFaceMap(activeAsset)
+        : createPersonalGeometryReferencePack(activeAsset)));
   }
   startBody.push(generation);
   const photoStart = panel(el('span', { className: 'panel-label' },
-    el('span', {}, 'Create or open'), el('small', {}, 'Generate · import · review people')),
+    el('span', {}, 'Create or open'), el('small', {}, 'Generate · import · consented local mapping')),
   !state.assets.length, ...startBody);
   photoStart.dataset.photoStart = 'true';
 
@@ -875,6 +1395,7 @@ function renderSidebar() {
     el('span', {}, 'Library'), el('small', {}, 'Add files · checks · demo assets')), false,
     el('div', { style: 'display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap' }, addBtn, analyzeBtn, demoBtn),
     el('div', { className: 'dropzone' }, 'or drop images and video anywhere'),
+    peopleMappingNotice(),
     el('p', { className: 'hint', style: 'margin-top:12px;margin-bottom:0' },
       `${state.assets.length} asset(s) · ${state.assets.filter(a => a.auto).length} analysed`),
     storageLine
@@ -953,6 +1474,8 @@ function renderSidebar() {
     el('p', { className: 'hint' }, 'Choose the files you want to prepare.'),
     btn('Proof package (licensed, watermarked)', 'btn', () => doExport({ proof: true })),
     el('div', { style: 'height:6px' }),
+    btn('Finished photo', 'btn', openFinishedPhotoDelivery),
+    el('div', { style: 'height:6px' }),
     btn('Print-ready photo', 'btn', openPrintDelivery),
     el('div', { style: 'height:14px' }),
     (() => {
@@ -963,9 +1486,17 @@ function renderSidebar() {
       detectBridge().then(b => {
         if (b.ok && b.lan?.length) {
           // First address is the real Wi-Fi interface; the rest are virtual adapters.
-          line.textContent = `http://${b.lan[0]}:${location.port || 80}/`;
-          box.append(el('p', { className: 'hint' },
-            'Open this address on your phone while both devices use the same Wi-Fi.'));
+          const link = companionUrl(b.lan, location.port || 80, b.lanPin);
+          line.textContent = link.split('#')[0];
+          try {
+            const code = el('canvas', { className: 'companion-qr', role: 'img',
+              ariaLabel: 'Connection code for your phone camera' });
+            paintCompanionQr(code, companionQrMatrix(link));
+            box.append(code);
+          } catch { /* the typed address below still works */ }
+          box.append(el('p', { className: 'hint' }, b.lanPin
+            ? 'Point your phone camera at the code to connect with the Wi-Fi PIN already filled in, or type the address while both devices use the same Wi-Fi.'
+            : 'Point your phone camera at the code, or type the address on your phone while both devices use the same Wi-Fi.'));
         } else {
           line.textContent = 'Open MaterialLogix Studio on your computer to show its Wi-Fi address.';
         }
@@ -992,7 +1523,7 @@ function renderSidebar() {
     el('p', { className: 'hint', style: 'margin-top:12px' },
       `Created ${new Date(p.createdAt).toLocaleDateString()}. Changes auto-save locally. A recovery file includes the project, decisions, and original media.`));
 
-  const secondaryPanels = [brief, library, surfaces, qa, localTools, deliver, backup];
+  const secondaryPanels = [status, brief, library, surfaces, qa, localTools, deliver, backup];
   for (const secondary of secondaryPanels) secondary.setAttribute('name', 'settings-more-tools');
   const moreTools = panel(el('span', { className: 'panel-label' },
     el('span', {}, 'Project tools'),
@@ -1018,32 +1549,44 @@ function renameProject() {
   ]);
 }
 
+/** Full removal: no undo entry, because undo() can only restore field
+ * changes on an asset still present in state.assets — it cannot bring a
+ * deleted one back. Every path that deletes an asset goes through here. */
+async function removeAsset(asset) {
+  await deletePersonalGeometryAsset(asset.id, { deletedAt: new Date().toISOString() });
+  await store.deleteAsset(asset.id);
+  state.assets = state.assets.filter(a => a.id !== asset.id);
+  renderReview(); renderCounters();
+}
+
 function deleteProjectFlow() {
   dialog('Delete project',
     el('p', {}, `Delete "${state.project.name}" and its ${state.assets.length} asset(s)? Back up first — this cannot be undone.`),
     [btn('Cancel', 'btn', closeDialog),
      btn('Delete', 'btn primary', async () => {
-       await store.deleteProject(state.project.id);
-       closeDialog(); boot();
+       try {
+         await deletePersonalGeometryProject(state.project.id);
+         await store.deleteProject(state.project.id);
+         closeDialog(); boot();
+       } catch (cause) {
+         toast(cause?.message || 'The project could not be deleted completely.', true);
+       }
      })]);
 }
 
 async function backupProject() {
-  const cleanProject = {
-    ...state.project,
-    providers: Object.fromEntries(Object.entries(state.project.providers || {})
-      .map(([id, v]) => [id, { enabled: !!v.enabled }]))   // keys never leave the browser
-  };
+  const { providers: _retiredProviders, ...safeProject } = state.project;
+  const recovery = personalGeometrySafeRecoveryView({ project: safeProject, assets: state.assets });
   const manifest = JSON.stringify({
     schema: 'materiallogix/recovery@2',
     exportedAt: new Date().toISOString(),
-    project: cleanProject,
-    assets: state.assets
+    project: recovery.project,
+    assets: recovery.assets
   }, null, 2);
   const entries = [{ name: 'project.json', data: manifest }];
   try {
     await busy(async () => {
-      for (const asset of state.assets) {
+      for (const asset of recovery.assets) {
         const blob = await store.getBlob(asset.id);
         if (blob) entries.push({ name: `media/${asset.id}`, data: new Uint8Array(await blob.arrayBuffer()) });
       }
@@ -1064,22 +1607,35 @@ async function restoreProject(file) {
     if (backup.schema !== 'materiallogix/recovery@2' || !backup.project || !Array.isArray(backup.assets)) {
       throw new Error('This is not a MaterialLogix recovery file.');
     }
+    const recoverableProject = personalGeometrySafeRecoveryView(backup.project);
+    const recoverableAssets = backup.assets
+      .filter(asset => !hasLegacyPersonalGeometryLink(asset))
+      .map(asset => {
+        const clean = structuredClone(asset);
+        stripLegacyPersonalGeometryFields(clean);
+        return personalGeometrySafeRecoveryView(clean);
+      })
+      .filter(Boolean);
     const projectId = crypto.randomUUID();
-    const idMap = new Map(backup.assets.map(a => [a.id, crypto.randomUUID()]));
-    const project = { ...backup.project, id: projectId, name: `${backup.project.name} (recovered)`, providers: {} };
+    const idMap = new Map(recoverableAssets.map(a => [a.id, crypto.randomUUID()]));
+    const { providers: _legacyProviders, ...recoveredFields } = recoverableProject;
+    const project = { ...recoveredFields, id: projectId, name: `${recoverableProject.name} (recovered)` };
     if (project.brandOverlay?.assetId) project.brandOverlay.assetId = idMap.get(project.brandOverlay.assetId) || '';
     await busy(async () => {
       await store.saveProject(project);
-      for (const original of backup.assets) {
+      for (const original of recoverableAssets) {
         const bytes = entries.get(`media/${original.id}`);
         if (!bytes) throw new Error(`Media missing for ${original.filename}.`);
         const asset = { ...original, id: idMap.get(original.id), projectId };
+        if (asset.video?.proTimeline) {
+          asset.video = { ...asset.video, proTimeline: remapVideoTimelineAssets(asset.video.proTimeline, idMap) };
+        }
         const media = new File([bytes], asset.filename, { type: asset.mime || 'application/octet-stream' });
         await store.addAsset(asset, media);
       }
     });
     await boot(projectId);
-    toast(`Recovered ${backup.assets.length} media file(s) and all project decisions.`);
+    toast(`Recovered ${recoverableAssets.length} media file(s) and all project decisions.`);
   } catch (error) {
     toast(`Recovery failed: ${error.message}`, true);
   }
@@ -1139,11 +1695,13 @@ function renderBoardList() {
   for (const a of assets) {
     const thumb = el('div', { className: 'thumb' });
     const c = issueCount(a);
+    const edited = hasVisibleAdjustments(a.edit?.adjustments);
     const card = el('div', { className: 'card' }, thumb,
       el('div', { className: 'meta' },
         el('div', { className: 'name', title: a.filename }, a.filename),
         el('div', { className: 'sub' },
           el('span', { className: 'chip ' + a.status }, STATUS_BY_ID[a.status]?.label || a.status),
+          edited ? el('span', { className: 'chip edited', title: 'The card shows a quick preview. The full view and every export are exact.' }, 'Edited') : null,
           (a.rating ? el('span', { style: 'color:var(--gold)' }, '★'.repeat(a.rating)) : null),
           el('span', {}, a.kind === 'video' ? 'video' : a.width ? `${a.width}×${a.height}` : '—'),
           c.block ? el('span', { style: 'color:var(--bad)' }, `${c.block} blocking`) : null,
@@ -1157,9 +1715,14 @@ function renderBoardList() {
     grid.append(card);
     store.objectUrl(a.id).then(url => {
       if (!url) return;
-      thumb.append(a.kind === 'video'
+      const media = a.kind === 'video'
         ? el('video', { src: url, muted: true, preload: 'metadata' })
-        : el('img', { src: url, loading: 'lazy', alt: a.filename }));
+        : el('img', { src: url, loading: 'lazy', alt: a.filename });
+      // Board cards used to show the untouched file, so a graded shoot looked
+      // ungraded while culling. A CSS approximation is enough at card size and
+      // costs no decode; the stage and every export stay authoritative.
+      if (edited) media.style.filter = previewFilter(a.edit.adjustments);
+      thumb.append(media);
     });
   }
 }
@@ -1188,6 +1751,37 @@ function safeOverlay(surface) {
   return wrap;
 }
 
+// A slider fires input events far faster than a full-resolution grade can be
+// rendered. Without coalescing every one of them queued its own paint, so a
+// two-second drag on Noise reduction spent the next thirty seconds catching up
+// on frames nobody would ever see. One paint in flight, at most one queued.
+let paintInFlight = null;
+let paintQueued = false;
+function schedulePaint() {
+  if (paintInFlight) { paintQueued = true; return paintInFlight; }
+  paintInFlight = new Promise(resolve => {
+    let ran = false;
+    const run = async () => {
+      if (ran) return;
+      ran = true;
+      try { await paintStage(); }
+      finally {
+        paintInFlight = null;
+        resolve();
+        if (paintQueued) { paintQueued = false; schedulePaint(); }
+      }
+    };
+    requestAnimationFrame(run);
+    // A tab that is not compositing never fires the frame callback, and
+    // without a second path this promise never settles: paintInFlight stays
+    // set, every later call returns it unresolved, and the preview stops
+    // answering the controls until the page is reloaded. The guard makes the
+    // two paths idempotent, so whichever arrives first does the work.
+    setTimeout(run, 250);
+  });
+  return paintInFlight;
+}
+
 async function paintStage() {
   const viewport = $('#viewport');
   if (!viewport) return;
@@ -1205,7 +1799,9 @@ async function paintStage() {
   if (state.view === 'source' || !surface) {
     const wrap = el('div', {
       className: 'srcwrap', tabIndex: 0, role: 'group',
-      ariaLabel: 'Full source preview. Drag to move the crop. Use arrow keys to nudge, plus and minus to zoom, and zero to reset.'
+      ariaLabel: state.editTool === 'tattoo'
+        ? 'Tattoo placement map. Drag a visible anchor or use arrow keys to move the selected anchor; hold Shift for a larger step.'
+        : 'Full source preview. Drag to move the crop. Use arrow keys to nudge, plus and minus to zoom, and zero to reset.'
     });
     const scale = Math.min(1, PREVIEW_MAX / Math.max(d.w, d.h));
     const sourcePreview = renderCrop(d.source, d.w, d.h, { x: 0, y: 0, w: 1, h: 1 }, {
@@ -1224,7 +1820,14 @@ async function paintStage() {
       attachSourceDrag(wrap, rect, asset, surface);
     }
     const edit = ensureEditState(asset);
+    const tattooMap = tattooMapForAsset(asset);
     if (edit.pixelGrid.enabled) wrap.append(pixelGridOverlay(pixelGridReview(d.source, d.w, d.h, edit.pixelGrid.columns, edit.pixelGrid.sensitivity)));
+    if (tattooMap.controlPoints.length === TATTOO_CONTROL_POINT_COUNT
+        && (tattooMap.enabled || state.editTool === 'tattoo')) {
+      paintTattooOverlay(wrap, () => sourcePreview, tattooMap,
+        () => adjustmentFrame({ x: 0, y: 0, w: 1, h: 1 },
+          { x: 0, y: 0, w: sourcePreview.width, h: sourcePreview.height }, edit.adjustments.rotate));
+    }
     viewport.replaceChildren(wrap);
     attachLoupe(wrap, d, () => ({ x: 0, y: 0, w: 1, h: 1 }));
     if (asset.kind === 'image' && state.editTool) {
@@ -1238,10 +1841,13 @@ async function paintStage() {
   const p = ensurePlacement(asset, surface.id);
   const ps = previewSurface(surface);
   const edit = ensureEditState(asset);
+  const tattooMap = tattooMapForAsset(asset);
   const canvas = renderCrop(d.source, d.w, d.h, p.crop, ps, p.fill, null, edit.adjustments);
   const frame = el('div', {
     className: 'frame grab', tabIndex: 0, role: 'group',
-    ariaLabel: `${surface.label} placement. Drag to reframe. Use arrow keys to nudge, plus and minus to zoom, and zero to reset.`
+    ariaLabel: state.editTool === 'tattoo'
+      ? `${surface.label} tattoo placement map. Drag a visible anchor or use arrow keys to move the selected anchor; hold Shift for a larger step.`
+      : `${surface.label} placement. Drag to reframe. Use arrow keys to nudge, plus and minus to zoom, and zero to reset.`
   }, canvas);
   if (edit.pixelGrid.enabled) frame.append(pixelGridOverlay(pixelGridReview(d.source, d.w, d.h, edit.pixelGrid.columns, edit.pixelGrid.sensitivity)));
   if (state.thirds) frame.append(el('div', { className: 'thirds' }));
@@ -1251,22 +1857,40 @@ async function paintStage() {
   // Repaint the crop into the live frame during drags: replacing the frame
   // itself would release the pointer capture and kill the drag mid-gesture.
   let stageCanvas = canvas;
+  const tattooFrame = () => adjustmentFrame(p.crop, placementRect(d.w, d.h, p.crop, ps, p.fill), edit.adjustments.rotate);
+  if (tattooMap.controlPoints.length === TATTOO_CONTROL_POINT_COUNT
+      && (tattooMap.enabled || state.editTool === 'tattoo')) {
+    paintTattooOverlay(frame, () => stageCanvas, tattooMap, tattooFrame);
+  }
   const repaintPlacement = () => {
     const next = renderCrop(d.source, d.w, d.h, p.crop, ps, p.fill, null, edit.adjustments);
     stageCanvas.replaceWith(next);
     stageCanvas = next;
+    if (tattooMap.controlPoints.length === TATTOO_CONTROL_POINT_COUNT
+        && (tattooMap.enabled || state.editTool === 'tattoo')) {
+      paintTattooOverlay(frame, () => stageCanvas, tattooMap, tattooFrame);
+    }
   };
   attachPlacementDrag(frame, asset, surface, repaintPlacement);
   attachLoupe(frame, d, () => p.crop);
   if (asset.kind === 'image' && state.editTool) {
     attachEditTool(frame, () => stageCanvas, asset, d,
-      () => adjustmentFrame(p.crop, placementRect(d.w, d.h, p.crop, ps, p.fill), edit.adjustments.rotate));
+      tattooFrame);
   }
 }
 
 function attachPlacementDrag(frame, asset, surface, repaint = paintStage) {
   const p = asset.placements[surface.id];
   let drag = null;
+  // A repaint re-grades the whole frame, which takes longer than the gap
+  // between pointer events. One repaint per animation frame keeps the crop
+  // under the finger instead of minutes behind it.
+  let repaintPending = false;
+  const coalescedRepaint = () => {
+    if (repaintPending) return;
+    repaintPending = true;
+    requestAnimationFrame(() => { repaintPending = false; repaint(); });
+  };
   frame.onpointerdown = e => {
     if (state.loupe) return;
     drag = { x: e.clientX, y: e.clientY, crop: { ...p.crop } };
@@ -1274,11 +1898,12 @@ function attachPlacementDrag(frame, asset, surface, repaint = paintStage) {
   };
   frame.onpointermove = e => {
     if (!drag) return;
+    if (!drag.captured) { snapshot(asset, `reframed ${surface.label}`); drag.captured = true; }
     const r = frame.getBoundingClientRect();
     p.crop = panCrop(drag.crop,
       -((e.clientX - drag.x) / r.width) * drag.crop.w,
       -((e.clientY - drag.y) / r.height) * drag.crop.h);
-    repaint();
+    coalescedRepaint();
   };
   frame.onpointerup = frame.onpointercancel = () => {
     if (!drag) return;
@@ -1291,6 +1916,7 @@ function attachPlacementDrag(frame, asset, surface, repaint = paintStage) {
   frame.onwheel = e => {
     if (state.loupe) return;
     e.preventDefault();
+    captureCropBurst(asset, `reframed ${surface.label}`);
     p.crop = zoomCrop(p.crop, e.deltaY < 0 ? 1.08 : 1 / 1.08);
     touchAsset(asset);
     repaint();
@@ -1309,7 +1935,9 @@ function attachPlacementDrag(frame, asset, surface, repaint = paintStage) {
       ? defaultCrop(asset.width, asset.height, surface)
       : { x: 0, y: 0, w: 1, h: 1 };
     else return;
-    e.preventDefault(); p.crop = next; touchAsset(asset); paintStage(); renderIssuesOnly();
+    e.preventDefault();
+    captureCropBurst(asset, `reframed ${surface.label}`);
+    p.crop = next; touchAsset(asset); schedulePaint(); renderIssuesOnly();
   };
 }
 
@@ -1348,6 +1976,7 @@ function attachSourceDrag(wrap, rect, asset, surface) {
   };
   rect.onpointermove = e => {
     if (!drag) return;
+    if (!drag.captured) { snapshot(asset, `reframed ${surface.label}`); drag.captured = true; }
     const r = wrap.getBoundingClientRect();
     p.crop = clampCrop({
       ...drag.crop,
@@ -1383,15 +2012,26 @@ function attachSourceDrag(wrap, rect, asset, surface) {
     };
     handle.onpointermove = e => {
       if (!grab) return;
+      if (!grab.captured) { snapshot(asset, `resized crop for ${surface.label}`); grab.captured = true; }
       const r = wrap.getBoundingClientRect();
       const dx = (e.clientX - grab.x) / r.width;
       const dy = (e.clientY - grab.y) / r.height;
       const c = { ...grab.crop };
-      if (corner.includes('l')) { c.x = grab.crop.x + dx; c.w = grab.crop.w - dx; }
+      const fromRight = corner.includes('l');
+      const fromBottom = corner.startsWith('t');
+      if (fromRight) { c.x = grab.crop.x + dx; c.w = grab.crop.w - dx; }
       else { c.w = grab.crop.w + dx; }
-      if (corner.startsWith('t')) { c.y = grab.crop.y + dy; c.h = grab.crop.h - dy; }
+      if (fromBottom) { c.y = grab.crop.y + dy; c.h = grab.crop.h - dy; }
       else { c.h = grab.crop.h + dy; }
-      p.crop = snapToRatio(clampCrop(c), asset.width || 1, asset.height || 1, surface);
+      // Anchor the ratio snap to the fixed opposite corner, not the box's
+      // center, or the box drifts away from the corner being dragged.
+      const anchor = {
+        x: fromRight ? grab.crop.x + grab.crop.w : grab.crop.x,
+        y: fromBottom ? grab.crop.y + grab.crop.h : grab.crop.y,
+        fromRight,
+        fromBottom
+      };
+      p.crop = snapToRatio(clampCrop(c), asset.width || 1, asset.height || 1, surface, anchor);
       paint();
       e.stopPropagation();
     };
@@ -1408,6 +2048,7 @@ function attachSourceDrag(wrap, rect, asset, surface) {
   wrap.onwheel = e => {
     if (state.loupe) return;
     e.preventDefault();
+    captureCropBurst(asset, `reframed ${surface.label}`);
     p.crop = zoomCrop(p.crop, e.deltaY < 0 ? 1.08 : 1 / 1.08);
     Object.assign(rect.style, {
       left: p.crop.x * 100 + '%', top: p.crop.y * 100 + '%',
@@ -1418,18 +2059,83 @@ function attachSourceDrag(wrap, rect, asset, surface) {
   };
   wrap.onkeydown = e => {
     const step = e.shiftKey ? 0.06 : 0.018;
-    if (e.key === 'ArrowLeft') p.crop = panCrop(p.crop, -step * p.crop.w, 0);
-    else if (e.key === 'ArrowRight') p.crop = panCrop(p.crop, step * p.crop.w, 0);
-    else if (e.key === 'ArrowUp') p.crop = panCrop(p.crop, 0, -step * p.crop.h);
-    else if (e.key === 'ArrowDown') p.crop = panCrop(p.crop, 0, step * p.crop.h);
-    else if (e.key === '+' || e.key === '=') p.crop = zoomCrop(p.crop, 1.12);
-    else if (e.key === '-' || e.key === '_') p.crop = zoomCrop(p.crop, 1 / 1.12);
-    else if (e.key === '0' || e.key === 'Home') p.crop = asset.width
+    let next = p.crop;
+    if (e.key === 'ArrowLeft') next = panCrop(p.crop, -step * p.crop.w, 0);
+    else if (e.key === 'ArrowRight') next = panCrop(p.crop, step * p.crop.w, 0);
+    else if (e.key === 'ArrowUp') next = panCrop(p.crop, 0, -step * p.crop.h);
+    else if (e.key === 'ArrowDown') next = panCrop(p.crop, 0, step * p.crop.h);
+    else if (e.key === '+' || e.key === '=') next = zoomCrop(p.crop, 1.12);
+    else if (e.key === '-' || e.key === '_') next = zoomCrop(p.crop, 1 / 1.12);
+    else if (e.key === '0' || e.key === 'Home') next = asset.width
       ? defaultCrop(asset.width, asset.height, surface)
       : { x: 0, y: 0, w: 1, h: 1 };
     else return;
-    e.preventDefault(); paint(); touchAsset(asset); renderIssuesOnly();
+    e.preventDefault();
+    captureCropBurst(asset, `reframed ${surface.label}`);
+    p.crop = next; paint(); touchAsset(asset); renderIssuesOnly();
   };
+}
+
+function paintTattooOverlay(host, getCanvas, mapping, frameFor) {
+  const existing = host.querySelector('.tattoo-map-overlay');
+  const mesh = generateTattooMesh(mapping.controlPoints, mapping.meshDensity);
+  if (!mesh.length) { existing?.remove(); return; }
+  const canvas = getCanvas();
+  let overlay = existing;
+  if (!overlay) {
+    overlay = el('canvas', { className: 'tattoo-map-overlay', 'aria-hidden': 'true' });
+    host.append(overlay);
+  }
+  overlay.width = canvas.width;
+  overlay.height = canvas.height;
+  const ctx = overlay.getContext('2d');
+  const frame = frameFor();
+  const density = mapping.meshDensity;
+  const lineScale = Math.max(1, Math.min(canvas.width, canvas.height) / 720);
+  const at = point => frame.point(point.x, point.y);
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  ctx.lineWidth = lineScale;
+  ctx.strokeStyle = 'rgba(99, 224, 215, 0.72)';
+  const trace = indexes => {
+    ctx.beginPath();
+    indexes.forEach((index, order) => {
+      const [x, y] = at(mesh[index]);
+      if (order) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  };
+  for (let row = 0; row < density; row++) {
+    trace(Array.from({ length: density }, (_, column) => row * density + column));
+  }
+  for (let column = 0; column < density; column++) {
+    trace(Array.from({ length: density }, (_, row) => row * density + column));
+  }
+  ctx.fillStyle = 'rgba(99, 224, 215, 0.86)';
+  for (const point of mesh) {
+    const [x, y] = at(point);
+    ctx.beginPath(); ctx.arc(x, y, 1.5 * lineScale, 0, Math.PI * 2); ctx.fill();
+  }
+  mapping.controlPoints.forEach((point, index) => {
+    const [x, y] = at(point);
+    ctx.beginPath();
+    ctx.arc(x, y, (index === mapping.selectedAnchor ? 6 : 4) * lineScale, 0, Math.PI * 2);
+    ctx.fillStyle = index === mapping.selectedAnchor ? '#fff4c8' : '#c9a86a';
+    ctx.fill();
+    ctx.lineWidth = 1.5 * lineScale;
+    ctx.strokeStyle = 'rgba(10, 12, 13, 0.9)';
+    ctx.stroke();
+  });
+}
+
+function syncTattooAnchorControls(asset, mapping) {
+  for (const control of document.querySelectorAll('[data-tattoo-anchor-control]')) {
+    if (control.dataset.assetId !== asset.id) continue;
+    const point = mapping.controlPoints[mapping.selectedAnchor];
+    if (!point) continue;
+    if (control.dataset.tattooAnchorControl === 'select') control.value = String(mapping.selectedAnchor);
+    if (control.dataset.tattooAnchorControl === 'x') control.value = (point.x * 100).toFixed(2);
+    if (control.dataset.tattooAnchorControl === 'y') control.value = (point.y * 100).toFixed(2);
+  }
 }
 
 // --- loupe: true 1:1 source pixels, the only way to judge hands and skin ---
@@ -1446,6 +2152,68 @@ function attachEditTool(host, getCanvas, asset, decoded, frameFor) {
       (e.clientX - box.left) * canvas.width / box.width,
       (e.clientY - box.top) * canvas.height / box.height);
   };
+  if (state.editTool === 'tattoo') {
+    const mapping = tattooMapForAsset(asset);
+    let dragging = false;
+    const updateSelected = at => {
+      const point = mapping.controlPoints[mapping.selectedAnchor];
+      if (!point || !at) return;
+      point.x = Math.min(1, Math.max(0, at[0]));
+      point.y = Math.min(1, Math.max(0, at[1]));
+      point.source = 'manual';
+      mapping.method = 'manual';
+      mapping.updatedAt = new Date().toISOString();
+      paintTattooOverlay(host, getCanvas, mapping, frameFor);
+      syncTattooAnchorControls(asset, mapping);
+    };
+    host.onpointerdown = e => {
+      const canvas = getCanvas();
+      const box = canvas.getBoundingClientRect();
+      const px = (e.clientX - box.left) * canvas.width / box.width;
+      const py = (e.clientY - box.top) * canvas.height / box.height;
+      const frame = frameFor();
+      let nearest = -1;
+      let distance = 30 * canvas.width / Math.max(1, box.width);
+      mapping.controlPoints.forEach((point, index) => {
+        const [x, y] = frame.point(point.x, point.y);
+        const candidate = Math.hypot(x - px, y - py);
+        if (candidate < distance) { nearest = index; distance = candidate; }
+      });
+      if (nearest < 0) return;
+      mapping.selectedAnchor = nearest;
+      dragging = true;
+      host.setPointerCapture(e.pointerId);
+      updateSelected(sourcePoint(e));
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    host.onpointermove = e => {
+      if (!dragging) return;
+      updateSelected(sourcePoint(e));
+      e.preventDefault();
+    };
+    host.onpointerup = host.onpointercancel = () => {
+      if (!dragging) return;
+      dragging = false;
+      touchTattooMap(asset, mapping);
+    };
+    host.onlostpointercapture = () => { dragging = false; };
+    host.onkeydown = e => {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      const point = mapping.controlPoints[mapping.selectedAnchor];
+      if (!point) return;
+      const step = e.shiftKey ? 0.01 : 0.002;
+      updateSelected([
+        point.x + (e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0),
+        point.y + (e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0)
+      ]);
+      touchTattooMap(asset, mapping);
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    paintTattooOverlay(host, getCanvas, mapping, frameFor);
+    return;
+  }
   // The champagne overlay marks the painted mask; the true grade lands on the next repaint.
   const paintOverlay = () => {
     if (state.editTool !== 'brush') return;
@@ -1536,6 +2304,9 @@ function attachLoupe(host, decoded, cropFn) {
   host.onpointerenter = host.onpointermove = e => {
     if (!state.loupe) return removeLoupe();
     const r = host.getBoundingClientRect();
+    // A host with no box yields NaN coordinates, and drawImage(NaN) paints a
+    // black square instead of throwing.
+    if (!r.width || !r.height) return removeLoupe();
     const fx = (e.clientX - r.left) / r.width;
     const fy = (e.clientY - r.top) / r.height;
     if (fx < 0 || fx > 1 || fy < 0 || fy > 1) return removeLoupe();
@@ -1546,6 +2317,14 @@ function attachLoupe(host, decoded, cropFn) {
 }
 
 function removeLoupe() { document.querySelector('.loupe')?.remove(); }
+
+function setLoupeZoom(factor) {
+  if (!LOUPE_ZOOMS.includes(factor)) return state.loupeZoom;
+  state.loupeZoom = factor;
+  try { localStorage.setItem('cros:loupeZoom', String(factor)); } catch { /* storage full or blocked */ }
+  removeLoupe();
+  return state.loupeZoom;
+}
 
 function drawLoupe(decoded, sx, sy, clientX, clientY) {
   const SIZE = 260;
@@ -1568,7 +2347,9 @@ function drawLoupe(decoded, sx, sy, clientX, clientY) {
   ctx.moveTo(SIZE / 2, SIZE / 2 - 8); ctx.lineTo(SIZE / 2, SIZE / 2 + 8);
   ctx.moveTo(SIZE / 2 - 8, SIZE / 2); ctx.lineTo(SIZE / 2 + 8, SIZE / 2);
   ctx.stroke();
-  node.querySelector('.mag').textContent = `${zoom * 100}% · source pixels`;
+  node.querySelector('.mag').textContent = zoom === 1
+    ? '100% · source pixels'
+    : `${zoom * 100}% · ${zoom}× source pixels`;
   node.style.left = `${Math.min(window.innerWidth - 150, Math.max(150, clientX + 190))}px`;
   node.style.top = `${Math.min(window.innerHeight - 150, Math.max(150, clientY))}px`;
 }
@@ -1620,9 +2401,19 @@ function issueList(items, emptyText) {
 function metricsBlock(asset) {
   const a = asset.auto;
   const wrap = el('div', { className: 'block' });
+  const faceMapActions = () => {
+    if (asset.kind !== 'image') return null;
+    return el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap;margin-top:10px' },
+      btn('Open saved face map', 'btn sm', () => showLocalFaceMap(asset)),
+      btn('Map face locally', 'btn sm', () => createSinglePhotoFaceMap(asset)),
+      btn('Review skin detail', 'btn sm', () => reviewSkinDetail(asset)),
+      btn('Manage local reference Packs', 'btn sm', () => showPersonalGeometryManager()));
+  };
   if (!a) {
     wrap.append(el('p', { className: 'hint' }, 'Not analysed yet.'),
-      btn('Run checks on this asset', 'btn sm', async () => { await runAnalysis(asset); renderReview(); }));
+      btn('Run checks on this asset', 'btn sm', async () => { await runAnalysis(asset); renderReview(); }),
+      el('p', { className: 'hint' }, 'General checks do not map a person. Face mapping has its own direct-consent step.'),
+      faceMapActions());
     return wrap;
   }
   const cell = (k, v, extra) => el('div', {}, el('div', { className: 'k' }, k), el('div', { className: 'v' }, v, extra || null));
@@ -1630,9 +2421,7 @@ function metricsBlock(asset) {
   wrap.append(el('div', { className: 'metrics' },
     cell('Resolution', `${a.megapixels} MP`, el('small', {}, ` · ${a.width}×${a.height}`)),
     cell('Sharpness', String(a.sharpness), el('small', {}, ` · ${sharpLabel}`)),
-    cell('Blown highlights', `${(a.exposure.blown * 100).toFixed(1)}%`),
-    cell('Skin detail', a.skin ? `${Math.round(a.skin.ratio * 100)}%` : '—',
-      a.skin ? el('small', {}, a.skin.ratio < 0.35 ? ' · detail review' : ' · detail retained') : null)));
+    cell('Blown highlights', `${(a.exposure.blown * 100).toFixed(1)}%`)));
 
   const sw = el('div', { className: 'swatches' }, ...a.palette.map(c => el('i', { style: `background:${c.hex}`, title: `${c.hex} · ${Math.round(c.pct * 100)}%` })));
   wrap.append(el('div', { style: 'font-size:11px;color:var(--faint);margin-bottom:4px' }, 'Dominant colour'), sw);
@@ -1653,19 +2442,15 @@ function metricsBlock(asset) {
         ? 'Color converted to sRGB for digital delivery.'
         : 'Color profile checked for digital delivery.'));
 
-  const g = asset.geometry;
   wrap.append(el('p', { className: 'hint', style: 'margin:12px 0 0' },
-    g
-      ? (g.faces.length || g.hands.length
-        ? `${g.faces.length} face${g.faces.length === 1 ? '' : 's'} and ${g.hands.length} hand${g.hands.length === 1 ? '' : 's'} found.`
-        : 'No people found.')
-      : 'People check unavailable; review manually.'));
+    'People mapping is not part of general checks. It requires the depicted adult’s direct consent and uses separate local storage.'),
+    faceMapActions());
 
   const prov = a.provenance;
   if (prov) {
     const bits = [];
     if (prov.c2pa || prov.contentCredentials) bits.push('Content Credentials present');
-    if (prov.aiDigitalSource) bits.push('AI-origin label present');
+    if (prov.syntheticDigitalSource) bits.push('Synthetic-origin label present');
     wrap.append(el('p', { className: 'hint', style: 'margin:12px 0 0' },
       bits.length ? bits.join(' · ') : 'No content credentials found.'));
   }
@@ -1696,7 +2481,16 @@ function placementCard(asset, surface) {
   card.append(decide);
 
   const note = el('input', { className: 'pnote', type: 'text', placeholder: 'Note for this placement', value: p.note });
-  note.oninput = () => { p.note = note.value; touchAsset(asset); };
+  let noteCaptured = false;
+  note.oninput = () => {
+    if (!noteCaptured) { snapshot(asset, `changed ${surface.label} note`); noteCaptured = true; }
+    p.note = note.value;
+    touchAsset(asset);
+  };
+  note.onchange = () => {
+    log(asset, `${surface.label} note → ${note.value.trim() || 'cleared'}`, state.reviewer);
+    noteCaptured = false;
+  };
   card.append(note);
 
   if (p.client) {
@@ -1732,8 +2526,12 @@ function syncStatusFromPlacements(asset) {
 function qaBlock(asset) {
   const wrap = el('div', { className: 'block' });
   const checks = qaChecksForAsset(asset);
-  const failed = checks.filter(c => asset.qa[c.id] === 'fail').length;
-  const answered = checks.filter(c => asset.qa[c.id]).length;
+  // An asset restored from an older project file, or recovered from a partial
+  // import, can arrive without a qa map. Reading through it unguarded threw and
+  // took the whole review screen down rather than showing zero answers.
+  const qa = asset.qa || (asset.qa = {});
+  const failed = checks.filter(c => qa[c.id] === 'fail').length;
+  const answered = checks.filter(c => qa[c.id]).length;
 
   wrap.append(el('div', { style: 'display:flex;align-items:center;gap:9px;margin:2px 0 6px' },
     el('span', { style: 'font-size:11.5px;color:var(--muted)' }, `${answered} of ${checks.length} answered`),
@@ -1776,10 +2574,99 @@ function qaBlock(asset) {
   return wrap;
 }
 
+/** The delivery contract the local and cloud renderers both encode to.
+ * Mirrors SPECS in tools/video_ops.py; the delivery check measures against it. */
+const VIDEO_DELIVERY_SPECS = Object.freeze({
+  vertical: { w: 1080, h: 1920, fps: 30, lufs: -14 },
+  portrait: { w: 1080, h: 1350, fps: 30, lufs: -14 },
+  square: { w: 1080, h: 1080, fps: 30, lufs: -14 },
+  wide: { w: 1920, h: 1080, fps: 30, lufs: -14 }
+});
+
+/** A delivered length, stated exactly. plainWait rounds because it describes a
+ * wait; this describes the file, so a 1.5-second clip must not read as 2. */
+function exactDuration(seconds) {
+  const total = Math.round(seconds * 10) / 10;
+  if (total < 60) return `${total.toFixed(1)} seconds`;
+  const minutes = Math.floor(total / 60);
+  const rest = Math.round((total - minutes * 60) * 10) / 10;
+  return rest ? `${minutes} min ${rest.toFixed(1)} s` : `${minutes} min`;
+}
+
+const VIDEO_PRO_PITCH = 'Included with Pro Studio, or with Single Studio Pro and Video selected.';
+
+/** Pro capability a Standard customer can see and ask about, never a hidden one. */
+function proGate(control, entitled, name, explanation) {
+  if (entitled) return control;
+  // A locked control must not read as this customer's main call to action.
+  control.classList.remove('primary');
+  control.classList.add('pro-only');
+  control.append(el('span', { className: 'pro-tag' }, 'Pro'));
+  control.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    dialog(`${name} is a Pro feature`, el('div', {},
+      el('p', {}, explanation),
+      el('p', { className: 'hint' }, VIDEO_PRO_PITCH),
+      el('p', { className: 'hint' }, 'Activate a matching Pro license in Deliver. Everything else in Video Studio stays available on your plan.')),
+    [btn('Close', 'btn primary', closeDialog)]);
+  }, true);
+  return control;
+}
+
 function videoBlock(asset) {
   const v = asset.video;
-  const edit = ensureEditState(asset);
+  v.workspaceMode = v.workspaceMode || 'guided';
+  const entitled = hasVideoProEntitlement(globalThis.lic);
+  const proActive = v.workspaceMode === 'pro' && entitled;
   const wrap = el('div', { className: 'block' });
+  // The first paint has no verified license yet, so an entitled customer would
+  // otherwise be shown the Pro tags until they clicked something.
+  activeLicense().then(license => {
+    globalThis.lic = license;
+    if (wrap.isConnected && hasVideoProEntitlement(license) !== entitled) renderReview();
+  }).catch(() => { /* the locked state is the safe one */ });
+  const guidedMode = btn('Guided delivery', `btn sm${proActive ? '' : ' on'}`, () => {
+    if (v.workspaceMode === 'guided') return;
+    mutate(asset, 'Video workspace → Guided', () => { v.workspaceMode = 'guided'; });
+    renderReview();
+  });
+  guidedMode.setAttribute('aria-pressed', String(!proActive));
+  const openPro = async () => {
+    const license = await activeLicense();
+    globalThis.lic = license;
+    if (!hasVideoProEntitlement(license)) {
+      return dialog('Video Pro is locked', el('div', {},
+        el('p', {}, 'Video Pro requires Pro Studio or Single Studio Pro with Video selected.'),
+        el('p', {}, 'Pro adds a three-track timeline, keyframes, real frame and audio analysis, and a deterministic export.'),
+        el('p', { className: 'hint' }, 'Already bought it? Activate the key under Deliver in the project sidebar. An unknown, expired, suspended, or different-product license does not unlock the timeline.'),
+        el('p', { className: 'hint' }, 'Guided delivery keeps working either way.')),
+      [linkBtn('See Video Pro plans', PRICING_URL, 'btn primary'), btn('Close', 'btn', closeDialog)]);
+    }
+    if (v.workspaceMode !== 'pro') {
+      mutate(asset, 'Video workspace → Pro', () => { v.workspaceMode = 'pro'; });
+      renderReview();
+    }
+    try {
+      await openVideoProEditor({
+        license, asset, assets: state.assets,
+        objectUrl: id => store.objectUrl(id), getBlob: id => store.getBlob(id),
+        saveAsset: value => store.saveAsset(value),
+        renderTimeline: timeline => renderVideoTimeline(asset, timeline),
+        requestImport: () => $('#fileInput')?.click()
+      });
+    } catch (error) {
+      if (error?.code !== VIDEO_TOOLS_UNREADY) toast(error.message, true);
+    }
+  };
+  const proMode = btn(entitled ? 'Pro timeline' : 'Pro timeline · locked', `btn sm${proActive ? ' on' : ''}`, openPro);
+  proMode.setAttribute('aria-pressed', String(proActive));
+  wrap.append(
+    el('div', { className: 'seg video-workspace-tabs', role: 'group', ariaLabel: 'Video workspace mode' }, guidedMode, proMode),
+    el('p', { className: 'hint video-workspace-explainer' }, proActive
+      ? 'Pro adds a local three-track timeline, real frame and audio analysis, keyframes, preview, and deterministic CPU export.'
+      : 'Guided keeps delivery direction and a single-clip local render. Pro is a separate licensed editing workspace.'),
+    el('div', { className: 'editor-group-title' }, 'Guided delivery controls'));
   const bind = (key, label, placeholder = '') => {
     const i = el('input', { type: 'text', value: v[key] || '', placeholder });
     let captured = false;
@@ -1802,33 +2689,106 @@ function videoBlock(asset) {
     input.onchange = () => { mutate(asset, `${label} → ${input.options[input.selectedIndex].text}`, () => { v[key] = isNaN(Number(input.value)) ? input.value : Number(input.value); }); };
     return el('label', { className: 'field' }, el('span', {}, label), input);
   };
+  const number = (key, label, min, max, step, format) => {
+    const input = el('input', { type: 'number', value: String(v[key] ?? 0), min, max, step, inputMode: 'decimal' });
+    input.onchange = () => {
+      const value = Math.min(max, Math.max(min, Number(input.value) || 0));
+      input.value = String(value);
+      mutate(asset, `${label} → ${format ? format(value) : value}`, () => { v[key] = value; });
+    };
+    return el('label', { className: 'field' }, el('span', {}, label), input);
+  };
   wrap.append(el('div', { className: 'video-delivery-grid' },
     select('spec', 'Delivery frame', [['vertical', 'Vertical 9:16'], ['portrait', 'Portrait 4:5'], ['square', 'Square 1:1'], ['wide', 'Landscape 16:9']]),
     select('speed', 'Playback speed', [[0.5, '0.5×'], [0.75, '0.75×'], [1, 'Source speed'], [1.25, '1.25×'], [1.5, '1.5×'], [2, '2×']]),
     select('rotate', 'Orientation', [[0, 'Source orientation'], [90, '90° clockwise'], [180, '180°'], [270, '90° counterclockwise']]),
     select('audioEq', 'Audio profile', [['flat', 'Full range'], ['voice', 'Dialogue focus'], ['music', 'Music focus']])));
-  if (edit.mode === 'advanced') {
-    const number = (key, label, min, max, step) => {
-      const input = el('input', { type: 'number', min, max, step, value: v[key] || 0 });
-      input.onchange = () => { mutate(asset, `${label} → ${input.value}`, () => { v[key] = Math.min(max, Math.max(min, Number(input.value) || 0)); }); };
-      return el('label', { className: 'field' }, el('span', {}, label), input);
-    };
-    const denoise = el('input', { type: 'checkbox', checked: !!v.denoise });
-    denoise.onchange = () => { mutate(asset, `Audio cleanup ${denoise.checked ? 'on' : 'off'}`, () => { v.denoise = denoise.checked; }); };
-    const captions = el('input', { type: 'checkbox', checked: !!v.burnCaptions });
-    captions.onchange = () => { mutate(asset, `Automatic captions ${captions.checked ? 'on' : 'off'}`, () => { v.burnCaptions = captions.checked; }); };
-    wrap.append(el('div', { className: 'video-delivery-grid' },
-      number('fadeIn', 'Fade in (seconds)', 0, 10, .1), number('fadeOut', 'Fade out (seconds)', 0, 10, .1),
-      number('volumeDb', 'Output gain (dB)', -24, 12, .5)),
-      el('label', { className: 'toggle' }, denoise, 'Reduce consistent background noise'),
-      el('label', { className: 'toggle' }, captions, 'Transcribe and burn captions'),
-      el('details', { className: 'editor-control-group cloud-render-control' },
-        el('summary', {}, 'Optional cloud render'),
-        el('div', { className: 'editor-control-body' },
-          el('p', { className: 'hint' },
-            'Review the price before sending this video to the cloud.'),
-          btn('Review cloud quote', 'btn sm', () => reviewCloudVideoRender(asset)))));
-  }
+
+  // These reach real filters in the delivery render. Before they had controls
+  // the render always ran at 0 dB with no fades, no cleanup and no captions,
+  // whatever the delivery notes said.
+  wrap.append(el('div', { className: 'editor-group-title' }, 'Sound and timing'),
+    el('div', { className: 'video-delivery-grid' },
+      number('volumeDb', 'Level (dB)', -24, 12, 0.5, value => `${value > 0 ? '+' : ''}${value} dB`),
+      number('fadeIn', 'Fade in (s)', 0, 10, 0.1),
+      number('fadeOut', 'Fade out (s)', 0, 10, 0.1)),
+    el('p', { className: 'hint' },
+      `Every delivery is levelled to −${Math.abs((VIDEO_DELIVERY_SPECS[v.spec] || VIDEO_DELIVERY_SPECS.vertical).lufs)} LUFS under a −1 dBTP ceiling. Leave this at 0 unless you want the clip quieter or louder than that.`));
+  const denoiseToggle = el('input', { type: 'checkbox', checked: !!v.denoise });
+  denoiseToggle.onchange = () => mutate(asset, `background noise cleanup: ${denoiseToggle.checked}`,
+    () => { v.denoise = denoiseToggle.checked; });
+  const captionToggle = el('input', { type: 'checkbox', checked: !!v.burnCaptions });
+  captionToggle.onchange = () => mutate(asset, `burned captions: ${captionToggle.checked}`,
+    () => { v.burnCaptions = captionToggle.checked; });
+  const captionNote = el('p', { className: 'hint' }, 'Checking the caption engine on this computer…');
+  // What this edit actually delivers. The trim points and the speed already
+  // decide it exactly, and the renderer has always known - it was just never
+  // said out loud, so someone could set an in point, an out point and 1.5x
+  // and have nothing tell them the result was two seconds long. A bad in or
+  // out point is reported here too, rather than waiting for the render to
+  // refuse it.
+  const deliveryLine = el('p', { className: 'hint video-delivery-summary' });
+  // These fields deliberately do not re-render the panel on every keystroke,
+  // because that would take the caret out of whatever is being typed. So this
+  // line keeps itself current instead of waiting to be rebuilt.
+  const refreshDeliveryLine = () => {
+    try {
+      const planned = videoRenderPlan(asset);
+      const frame = VIDEO_DELIVERY_SPECS[v.spec] || VIDEO_DELIVERY_SPECS.vertical;
+      deliveryLine.textContent = `Delivers ${exactDuration(planned.outputSeconds)} at ${frame.w} × ${frame.h}, ${frame.fps} fps.`;
+      deliveryLine.classList.remove('warn');
+    } catch (error) {
+      deliveryLine.textContent = error.message;
+      deliveryLine.classList.add('warn');
+    }
+  };
+  refreshDeliveryLine();
+  wrap.addEventListener('input', refreshDeliveryLine);
+  wrap.addEventListener('change', refreshDeliveryLine);
+  wrap.append(
+    el('label', { className: 'toggle' }, denoiseToggle, 'Reduce background noise'),
+    el('label', { className: 'toggle' }, captionToggle, 'Burn spoken captions into the video'),
+    captionNote, deliveryLine);
+  const proLaunch = el('section', { className: 'video-pro-launch' },
+    el('div', {}, el('strong', {}, 'Pro timeline'),
+      el('p', { className: 'hint' }, 'Edit multiple local clips and tracks. The Pro renderer is CPU-only and does not submit cloud jobs.')),
+    proGate(btn(asset.video.proTimeline?.clips?.length ? 'Continue Pro edit' : 'Open Pro editor', 'btn primary sm', openPro),
+      entitled, 'The Pro timeline',
+      'A local three-track timeline with clip trimming, dissolves, keyframed motion and opacity, scopes, audio waveforms, and a deterministic CPU export.'));
+  const motionRow = el('div', { className: 'video-motion-actions' },
+    proGate(btn('Smooth motion 2×', 'btn sm', () => runVideoMotionEngine(asset, 'interpolate')), entitled,
+      'Smooth motion',
+      'Doubles the frame rate on this computer by generating the in-between frames, so slow motion and pans read smoothly.'),
+    proGate(btn('Restore detail 2×', 'btn sm', () => runVideoMotionEngine(asset, 'upscale')), entitled,
+      'Detail restoration',
+      'Rebuilds detail at twice the frame size on this computer, then re-encodes to the delivery contract with the audio kept.'));
+  const motionNote = el('p', { className: 'hint' }, 'Checking the motion engines on this computer…');
+  wrap.append(proLaunch, el('section', { className: 'video-motion' },
+    el('div', { className: 'editor-group-title' }, 'Pro Motion Engine'),
+    el('p', { className: 'hint' }, 'Runs on this computer and adds the result to the project as a new take. The source is never replaced.'),
+    motionRow, motionNote));
+
+  detectBridge().then(bridge => {
+    if (!captionNote.isConnected) return;
+    if (!bridge.ok) {
+      captionNote.textContent = 'Open MaterialLogix Studio on this computer to render, caption, or check a delivery.';
+      motionNote.textContent = 'Available once Studio is open on this computer.';
+      return;
+    }
+    captionNote.textContent = bridge.video?.whisper
+      ? 'Captions are transcribed on this computer and burned into the render. Read them before delivery.'
+      : 'Automatic captions need the optional Video pack. Add it from the setup panel on this computer, or leave captions off.';
+    // Detail restoration always runs: without the optional model the engine
+    // falls back to its own scaler, so only smooth motion is actually blocked.
+    const notes = [
+      !bridge.video?.rife && 'Smooth motion needs the optional Video pack on this computer.',
+      !bridge.video?.esrgan_video && 'Detail restoration uses the built-in scaler until the optional model is added.'
+    ].filter(Boolean);
+    motionNote.textContent = notes.join(' ') || 'Both engines are installed on this computer.';
+  }).catch(() => {
+    captionNote.textContent = 'The caption engine could not be checked on this computer.';
+    motionNote.textContent = 'The motion engines could not be checked on this computer.';
+  });
 
   const stars = el('div', { className: 'stars' });
   for (let i = 1; i <= 5; i++) {
@@ -1844,7 +2804,7 @@ function videoBlock(asset) {
     cb.onchange = () => { mutate(asset, `${label}: ${cb.checked}`, () => { v[key] = cb.checked; }); };
     return el('label', { className: 'toggle' }, cb, label);
   };
-  wrap.append(mkToggle('looksAI', 'Flag synthetic-looking motion or performance'), mkToggle('recast', 'Request a new performance or cast selection'));
+  wrap.append(mkToggle('looksSynthetic', 'Flag synthetic-looking motion or performance'), mkToggle('recast', 'Request a new performance or cast selection'));
 
   // The poster remains the crop reference; automated QA also samples the full
   // timeline so soft, blown, or black sections do not hide between stills.
@@ -1875,12 +2835,15 @@ function videoBlock(asset) {
     // Scripts written to fit beat scripts trimmed after: the same cadence
     // model that renders the voice sizes the copy for this exact cut.
     wrap.append(el('p', { className: 'hint' },
-      `Voiceover fit: about ${wordBudgetForSeconds(asset.duration)} words fill these ${asset.duration.toFixed(0)} seconds at house pace.`));
+      `Voiceover fit: about ${wordBudgetForSeconds(asset.duration, HOUSE_VOICE_BY_ID['studio-clear'].pace)} words fill these ${asset.duration.toFixed(0)} seconds at the default house pace.`));
   }
-  wrap.append(el('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
+  wrap.append(el('div', { className: 'video-actions', style: 'display:flex;gap:6px;flex-wrap:wrap' },
     btn('Review with timecoded notes', 'btn sm', () => playWithComments(asset)),
-    btn('Create identity reference set', 'btn sm', () => extractIdentityPack(asset)),
-    btn('Render video', 'btn primary sm', () => renderEditedVideo(asset))));
+    btn('Create Personal Geometry reference set', 'btn sm', () => createPersonalGeometryReferencePack(asset)),
+    btn('Manage local reference Packs', 'btn sm', () => showPersonalGeometryManager()),
+    btn('Check delivery', 'btn sm', () => checkVideoDelivery(asset)),
+    btn('Render in the cloud', 'btn sm', () => reviewCloudVideoRender(asset)),
+    btn('Render this clip', 'btn primary sm', () => renderEditedVideo(asset))));
   return wrap;
 }
 
@@ -1899,11 +2862,7 @@ function videoRenderPlan(asset) {
   if (v.trimStart && trimStart == null) throw new Error('Enter the in point as seconds or timecode, for example 0:03.5.');
   if (v.trimEnd && trimEnd == null) throw new Error('Enter the out point as seconds or timecode, for example 0:12.');
   if (trimEnd != null && trimEnd <= (trimStart || 0)) throw new Error('The out point must be later than the in point.');
-  const deliveryFrames = {
-    vertical: { w: 1080, h: 1920 }, portrait: { w: 1080, h: 1350 },
-    square: { w: 1080, h: 1080 }, wide: { w: 1920, h: 1080 }
-  };
-  const frame = deliveryFrames[v.spec] || deliveryFrames.vertical;
+  const frame = VIDEO_DELIVERY_SPECS[v.spec] || VIDEO_DELIVERY_SPECS.vertical;
   const activePlacement = state.activeSurface ? ensurePlacement(asset, state.activeSurface) : null;
   const crop = snapToRatio(
     activePlacement?.crop || defaultCrop(asset.width, asset.height, frame),
@@ -1971,11 +2930,39 @@ window.addEventListener('materiallogix:cancel-job', event => {
 });
 window.dispatchEvent(new Event('materiallogix:cancel-ready'));
 
+const OUT_OF_CLOUD_CREDIT = new Set(['insufficient_cloud_balance', 'insufficient_entitlement', 'cloud_402']);
+
+function offerLocalRender(asset, plan) {
+  const wait = localFallbackMessage(plan.outputSeconds);
+  return dialog('You are out of cloud credit', el('div', {},
+    el('p', {}, 'Nothing has been charged and your edit is intact. This video can be rendered on this computer instead.'),
+    el('p', { className: 'hint' }, wait.detail)),
+  [btn('Add credit', 'btn', () => { closeDialog(); location.href = 'usage.html'; }),
+   btn('Render on this computer', 'btn primary', () => { closeDialog(); renderEditedVideo(asset); })]);
+}
+
 async function reviewCloudVideoRender(asset) {
   const availability = await cloudVideoAvailability();
-  if (!availability.available) return dialog('Cloud render is not open yet', el('div', {},
-    el('p', {}, 'Use this device to render your video for now.')),
-  [btn('Close', 'btn', closeDialog), btn('Use local render', 'btn primary', () => { closeDialog(); renderEditedVideo(asset); })]);
+  if (!availability.available) {
+    // Three different problems used to share one sentence. Each needs a
+    // different thing from the reader, so each gets its own.
+    const [title, reason, next] = !availability.reachable
+      ? ['Cloud render could not be reached',
+         'The cloud service did not answer, so nothing was sent and nothing was charged.',
+         'Check your connection and try again, or render on this computer instead.']
+      : !availability.authenticated
+        ? ['Sign in to render in the cloud',
+           'Cloud rendering runs under your account, and this browser is not signed in.',
+           'Sign in from Account and settings, or render on this computer instead.']
+        : ['Cloud render is not on this account',
+           'Your account does not have cloud rendering enabled yet.',
+           'Rendering on this computer produces the same file from the same edit.'];
+    return dialog(title, el('div', {},
+      el('p', {}, reason),
+      el('p', { className: 'hint' }, next)),
+    [btn('Close', 'btn', closeDialog),
+     btn('Render on this computer', 'btn primary', () => { closeDialog(); renderEditedVideo(asset); })]);
+  }
   let plan;
   try { plan = videoRenderPlan(asset); }
   catch (error) { return toast(error.message, true); }
@@ -2016,6 +3003,10 @@ async function reviewCloudVideoRender(asset) {
       toast('Complete package uploaded. Cloud rendering has started.');
     } catch (error) {
       cloudActivity({ id: activityId, status: 'failed', progress: 100, detail: error.message });
+      // The same edit can be rendered on this computer, so running out of
+      // credit is a choice to offer rather than a wall to stop at. The wait is
+      // stated only when this machine has actually measured one.
+      if (OUT_OF_CLOUD_CREDIT.has(error.message)) return offerLocalRender(asset, plan);
       toast('Cloud render was not started: ' + error.message, true);
     }
   });
@@ -2024,13 +3015,59 @@ async function reviewCloudVideoRender(asset) {
   dialog('Review cloud render', el('div', {},
     el('p', {}, `Estimated charge: $${(quote.amountCents / 100).toFixed(2)} for ${quote.billedSeconds} seconds; included Video credit is used first.`),
     el('label', { className: 'checkline' }, consent,
-      el('span', {}, 'I agree to cloud processing and temporary private storage for this job. Input and output are scheduled for deletion within 24 hours.'))),
+      el('span', {}, 'I agree to cloud processing on RunPod Secure Cloud and temporary private storage for this job. Faces in the file may be processed as part of the render. Face and body geometry stay on this device. Input and output are scheduled for deletion within about 72 hours after completion or failure, or sooner if I delete them. We do not train models on your media.'))),
   [btn('Cancel', 'btn', closeDialog), btn('Use local render', 'btn', () => { closeDialog(); renderEditedVideo(asset); }), continueButton]);
 }
 
+/** Distinguishes "Studio is closed" from "Studio is open but has no encoder",
+ * because the two need different things from the person reading it. */
+const VIDEO_TOOLS_UNREADY = 'video-tools-unready';
+
+/**
+ * What to show when a video action cannot run on this computer.
+ *
+ * This used to be a toast reading "Video tools are not ready on this device."
+ * It named the problem, offered no route, and then disappeared - including for
+ * people who had already paid for Pro. A blocked action needs somewhere to go,
+ * so this states what is missing, offers the download, and re-checks and
+ * resumes the action that was blocked, rather than making anyone find their
+ * way back to it.
+ */
+function videoToolsUnready(bridge, retry) {
+  const studioClosed = !bridge?.ok;
+  const body = el('div', {},
+    el('p', {}, studioClosed
+      ? 'This step encodes video, which happens in MaterialLogix Studio on your computer. Studio is not open here yet.'
+      : 'Studio is open, but its video tools are not installed on this computer, so there is nothing here to encode with.'),
+    el('p', { className: 'hint' }, studioClosed
+      ? 'Open Studio and this picks up where it left off. If it is not installed yet, the Windows download is below.'
+      : 'Reinstalling Studio from the download below restores the video tools.'),
+    el('p', { className: 'hint' }, 'Editing, review and cloud rendering do not need it. Only local encoding does.'));
+
+  const again = btn('Check again', 'btn', async () => {
+    again.disabled = true;
+    again.textContent = 'Checking…';
+    const fresh = await detectBridge().catch(() => null);
+    if (fresh?.ok && fresh.video?.ffmpeg) {
+      closeDialog();
+      if (retry) retry();
+      return;
+    }
+    again.disabled = false;
+    again.textContent = 'Check again';
+    toast(fresh?.ok ? 'Studio is open, but its video tools are still missing.' : 'Studio is still not open on this computer.', true);
+  });
+
+  return dialog('Video tools are not on this computer', body, [
+    linkBtn('Download Studio for Windows · about 82 MB', STUDIO_DOWNLOAD_URL, 'btn primary'),
+    retry ? again : null,
+    btn('Close', 'btn', closeDialog)]);
+}
+
 async function renderEditedVideo(asset) {
+  const localRenderStartedAt = Date.now();
   const bridge = await detectBridge();
-  if (!bridge.ok || !bridge.video?.ffmpeg) return toast('Video tools are not ready on this device.', true);
+  if (!bridge.ok || !bridge.video?.ffmpeg) return videoToolsUnready(bridge, () => renderEditedVideo(asset));
   if (asset.video.burnCaptions && !bridge.video?.whisper) {
     return toast('Captions need the optional Video pack; add it or turn captions off.', true);
   }
@@ -2043,6 +3080,8 @@ async function renderEditedVideo(asset) {
   const jobId = await stableLocalVideoJobId(asset, opts);
   const controller = new AbortController();
   localVideoJobs.set(jobId, { controller, base: bridge.base, cancelRequested: false, progress: 18 });
+  const stopProgress = watchLocalVideoProgress(bridge.base, jobId, localVideoActivity);
+  let loudness = null;
   try {
     await busy(async () => {
       toast('Rendering video with the saved editorial settings…');
@@ -2054,7 +3093,9 @@ async function renderEditedVideo(asset) {
         body: source,
         signal: controller.signal
       });
+      stopProgress();
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `engine ${response.status}`);
+      loudness = readDeliveryLoudness(response);
       const reusedSegments = Math.max(0, Number(response.headers.get('X-MaterialLogix-Video-Reused-Segments')) || 0);
       if (reusedSegments) localVideoActivity({ id: jobId, status: 'processing', progress: 82,
         detail: `Recovered ${reusedSegments} completed segment${reusedSegments === 1 ? '' : 's'} · finalizing` });
@@ -2063,6 +3104,7 @@ async function renderEditedVideo(asset) {
       const file = new File([blob], asset.filename.replace(/\.[^.]+$/, '') + '-edited.mp4', { type: 'video/mp4' });
       const rendered = newAsset(state.project.id, file);
       rendered.provenance = `Rendered locally from ${asset.filename} with the saved non-destructive edit settings.`;
+      if (loudness?.linear) rendered.provenance += ` Levelled to ${loudness.deliveredLufs} LUFS.`;
       await store.addAsset(rendered, file);
       const url = await store.objectUrl(rendered.id);
       Object.assign(rendered, await probe(file, url));
@@ -2070,8 +3112,10 @@ async function renderEditedVideo(asset) {
       await store.saveAsset(rendered);
       state.assets.push(rendered);
     });
-    localVideoActivity({ id: jobId, status: 'complete', progress: 100, detail: 'Added to project' });
-    render(); toast('Video render completed and added to the project.');
+    localVideoActivity({ id: jobId, status: 'complete', progress: 100, detail: deliveryDetail(loudness) });
+    recordVideoPace((Date.now() - localRenderStartedAt) / 1000, plan.outputSeconds);
+    render();
+    toast(`Video render completed and added to the project. ${deliveryLoudnessNote(loudness)}`.trim());
   } catch (error) {
     const cancelled = localVideoJobs.get(jobId)?.cancelRequested || error.name === 'AbortError';
     const release = await releaseUsage(authorization.authorization.id, cancelled ? 'user_cancelled' : 'render_failed');
@@ -2079,15 +3123,326 @@ async function renderEditedVideo(asset) {
       detail: cancelled ? `Stopped locally · ${release.message}` : `${error.message} · ${release.message}` });
     if (!cancelled) toast(`Video render failed: ${error.message}. ${release.message}`, true);
   } finally {
+    stopProgress();
+    localVideoJobs.delete(jobId);
+  }
+}
+
+/** The engine's own account of where the delivery level landed. */
+function readDeliveryLoudness(response) {
+  try {
+    const raw = response.headers.get('X-MaterialLogix-Video-Loudness');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+/**
+ * Say where the level actually landed. A mix whose peaks are already at the
+ * ceiling cannot also reach the loudness target, and the customer is told the
+ * distance rather than left to measure the file themselves.
+ */
+function deliveryLoudnessNote(loudness) {
+  if (!loudness || !loudness.linear) {
+    return loudness?.sourceAudio === false ? 'This clip had no sound, so it carries a silent track.' : '';
+  }
+  if (loudness.shortfallDb > 0.3) {
+    return `Levelled to ${loudness.deliveredLufs} LUFS, ${loudness.shortfallDb} dB under the ${loudness.targetLufs} LUFS target: any louder and the peaks pass ${loudness.truePeakCeilingDb} dBTP.`;
+  }
+  return `Levelled to ${loudness.deliveredLufs} LUFS.`;
+}
+
+/** Activity rows lead with the outcome, then the level. */
+function deliveryDetail(loudness) {
+  return ['Added to project', deliveryLoudnessNote(loudness)].filter(Boolean).join(' · ');
+}
+
+const VIDEO_STAGE_LABELS = Object.freeze({
+  preparing: 'Preparing', captions: 'Transcribing speech', rendering: 'Rendering',
+  motion: 'Generating in-between frames', detail: 'Restoring detail'
+});
+
+/**
+ * Poll the engine's own encoder position. A multi-minute render otherwise sits
+ * at a single unchanging number until the response arrives.
+ */
+function watchLocalVideoProgress(base, jobId, report, intervalMs = 1200) {
+  let stopped = false;
+  let timer = 0;
+  const tick = async () => {
+    if (stopped) return;
+    try {
+      const response = await bridgeFetch(`${base}/video/progress?job=${encodeURIComponent(jobId)}`,
+        { signal: AbortSignal.timeout(2500) });
+      if (response.ok && !stopped) {
+        const reading = await response.json();
+        const stage = VIDEO_STAGE_LABELS[reading.stage] || 'Rendering';
+        const detail = Number.isFinite(reading.percent)
+          ? `${stage} · ${Math.round(reading.percent)}% of ${reading.totalSeconds}s${reading.speed ? ` · ${reading.speed}× real time` : ''}`
+          : `${stage} on this computer`;
+        report({ id: jobId, status: 'processing', detail,
+          progress: Number.isFinite(reading.percent) ? 18 + reading.percent * 0.74 : 18 });
+      }
+    } catch { /* the render's own result still reports the terminal state */ }
+    if (!stopped) timer = setTimeout(tick, intervalMs);
+  };
+  timer = setTimeout(tick, intervalMs);
+  return () => { stopped = true; clearTimeout(timer); };
+}
+
+/**
+ * Frame interpolation and detail restoration on this computer. Both add a new
+ * take rather than replacing the source, so the original stays deliverable.
+ */
+async function runVideoMotionEngine(asset, operation) {
+  const bridge = await detectBridge();
+  if (!bridge.ok || !bridge.video?.ffmpeg) return videoToolsUnready(bridge, () => runVideoMotionEngine(asset, operation));
+  if (operation === 'interpolate' && !bridge.video?.rife) {
+    return toast('Smooth motion needs the optional Video pack on this computer.', true);
+  }
+  if (!(asset.duration > 0)) return toast('Decode this video before running a motion pass.', true);
+  const label = operation === 'interpolate' ? 'Smooth motion' : 'Detail restoration';
+  const suffix = operation === 'interpolate' ? '-smooth.mp4' : '-detail.mp4';
+  const authorization = await authorizeOutbound({ product: 'video', artifactKind: 'upload', quantity: 1 });
+  if (!authorization.ok) return toast(`Online authorization failed: ${authorization.reason || 'authorization_required'}.`, true);
+  const jobId = await stableLocalVideoJobId(asset, { operation });
+  const controller = new AbortController();
+  localVideoJobs.set(jobId, { controller, base: bridge.base, cancelRequested: false, progress: 18 });
+  const activity = detail => window.dispatchEvent(new CustomEvent('materiallogix:job', { detail: {
+    title: `${label} · ${asset.filename}`, kind: 'video', location: 'local', cancellable: true, ...detail } }));
+  const stopProgress = watchLocalVideoProgress(bridge.base, jobId, activity);
+  try {
+    let produced;
+    await busy(async () => {
+      activity({ id: jobId, status: 'processing', progress: 18, detail: `${label} running on this computer` });
+      const source = await store.getBlob(asset.id);
+      const response = await bridgeFetch(`${bridge.base}/video/${operation}`, {
+        method: 'POST',
+        headers: { 'Content-Type': source.type || 'video/mp4', 'X-MaterialLogix-Job-Id': jobId },
+        body: source,
+        signal: controller.signal
+      });
+      stopProgress();
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `engine ${response.status}`);
+      const engineUsed = response.headers.get('X-MaterialLogix-Upscale-Engine') || '';
+      const blob = await response.blob();
+      await settleOutbound(authorization.authorization.id, await blobEvidenceHash(blob));
+      const file = new File([blob], asset.filename.replace(/\.[^.]+$/, '') + suffix, { type: 'video/mp4' });
+      produced = newAsset(state.project.id, file);
+      produced.labels = { ...asset.labels };
+      produced.video.spec = asset.video?.spec || 'vertical';
+      produced.provenance = operation === 'interpolate'
+        ? `Frame rate doubled locally from ${asset.filename} by the local motion engine.`
+        : `Detail restored locally from ${asset.filename} by ${localUpscaleEngineLabel(engineUsed)}.`;
+      await store.addAsset(produced, file);
+      const url = await store.objectUrl(produced.id);
+      Object.assign(produced, await probe(file, url));
+      log(produced, `${label.toLowerCase()} from ${asset.filename}`, state.reviewer);
+      await store.saveAsset(produced);
+      state.assets.push(produced);
+    });
+    activity({ id: jobId, status: 'complete', progress: 100, detail: 'Added to project' });
+    render();
+    toast(`${label} finished and was added to the project.`);
+  } catch (error) {
+    const cancelled = localVideoJobs.get(jobId)?.cancelRequested || error.name === 'AbortError';
+    const release = await releaseUsage(authorization.authorization.id, cancelled ? 'user_cancelled' : 'render_failed');
+    activity({ id: jobId, status: cancelled ? 'cancelled' : 'failed', progress: 100,
+      detail: cancelled ? `Stopped locally · ${release.message}` : `${error.message} · ${release.message}` });
+    if (!cancelled) toast(`${label} failed: ${error.message}. ${release.message}`, true);
+  } finally {
+    stopProgress();
     localVideoJobs.delete(jobId);
   }
 }
 
 /**
- * Turn a 360° turntable video (face or full body) into a set of reference
- * frames. The pack becomes the ground truth that every generated candidate is
- * compared against — and in Phase 2 it is exactly the training set a per-person
- * LoRA fine-tune wants.
+ * Measure a finished file against the delivery contract the renderer encodes
+ * to, so nobody has to take the render's word for frame, rate, or loudness.
+ */
+async function checkVideoDelivery(asset) {
+  const bridge = await detectBridge();
+  if (!bridge.ok || !bridge.video?.ffmpeg) return videoToolsUnready(bridge, () => checkVideoDelivery(asset));
+  const spec = VIDEO_DELIVERY_SPECS[asset.video?.spec] || VIDEO_DELIVERY_SPECS.vertical;
+  try {
+    const source = await store.getBlob(asset.id);
+    const measure = async path => {
+      const response = await bridgeFetch(`${bridge.base}/video/${path}`, {
+        method: 'POST', headers: { 'Content-Type': source.type || 'video/mp4' }, body: source
+      });
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `engine ${response.status}`);
+      return response.json();
+    };
+    const [probed, loudness] = await busy(async () => [
+      await measure('probe'),
+      await measure('loudness').catch(() => null)
+    ]);
+    const stream = probed.streams?.[0] || {};
+    const [numerator, denominator] = String(stream.r_frame_rate || '0/1').split('/').map(Number);
+    const fps = denominator ? numerator / denominator : 0;
+    const header = new Uint8Array(await source.slice(0, 256 * 1024).arrayBuffer());
+    const marker = [0x6d, 0x6f, 0x6f, 0x76];
+    let fastStart = false;
+    for (let index = 0; index + 3 < header.length && !fastStart; index++) {
+      fastStart = marker.every((byte, offset) => header[index + offset] === byte);
+    }
+    const seconds = Number(stream.duration || asset.duration || 0);
+    let planned = null;
+    try { planned = videoRenderPlan(asset).outputSeconds; } catch { planned = null; }
+    const rows = [
+      ['Frame size', `${stream.width || 0}×${stream.height || 0}`, `${spec.w}×${spec.h}`,
+        stream.width === spec.w && stream.height === spec.h],
+      ['Frame rate', `${fps ? fps.toFixed(3).replace(/\.?0+$/, '') : '—'} fps`, `${spec.fps} fps`,
+        Math.abs(fps - spec.fps) < 0.01],
+      ['Length', `${seconds.toFixed(2)}s`,
+        planned ? `${planned.toFixed(2)}s from your in and out points` : 'longer than zero',
+        planned ? Math.abs(seconds - planned) < 0.25 : seconds > 0],
+      ['Starts playing while it loads', fastStart ? 'yes' : 'no', 'yes', fastStart]
+    ];
+    if (loudness) {
+      rows.push(['Loudness', `${loudness.lufs.toFixed(2)} LUFS`, `${spec.lufs} LUFS ±1`,
+        Math.abs(loudness.lufs - spec.lufs) <= 1]);
+      rows.push(['Loudest peak', `${loudness.truePeakDb.toFixed(2)} dBTP`, 'at or below −1.0 dBTP',
+        loudness.truePeakDb <= -0.5]);
+    } else {
+      rows.push(['Sound', 'no audio track', 'one levelled stereo track', false]);
+    }
+    const failures = rows.filter(row => !row[3]).length;
+    const table = el('div', { className: 'delivery-check' });
+    for (const [name, measured, target, ok] of rows) {
+      table.append(el('div', { className: `delivery-check-row${ok ? '' : ' bad'}` },
+        el('span', {}, name), el('b', {}, measured),
+        el('span', { className: 'hint' }, `target ${target}`),
+        el('strong', {}, ok ? 'meets' : 'differs')));
+    }
+    dialog(failures ? `${failures} delivery check${failures === 1 ? ' differs' : 's differ'}` : 'Delivery checks pass',
+      el('div', {},
+        el('p', { className: 'hint' },
+          `Measured on this computer against the ${asset.video?.spec || 'vertical'} delivery frame. A rendered delivery meets it. A source file usually will not until you render.`),
+        table),
+      [btn('Close', 'btn primary', closeDialog)]);
+  } catch (error) {
+    toast(`Delivery check failed: ${error.message}`, true);
+  }
+}
+
+function localTimelineMediaExtension(asset) {
+  const mime = String(asset?.mime || '').toLowerCase();
+  if (mime.includes('webm')) return '.webm';
+  if (mime.includes('quicktime')) return '.mov';
+  if (mime.includes('matroska')) return '.mkv';
+  if (mime.includes('x-m4v')) return '.m4v';
+  return '.mp4';
+}
+
+async function buildLocalVideoTimelinePackage(asset, value) {
+  const knownAssets = new Map(state.assets.filter(item => item.kind === 'video').map(item => [item.id, item]));
+  const timeline = sanitizeVideoTimeline(value, knownAssets);
+  const durationSeconds = timelineDuration(timeline);
+  if (!timeline.clips.length || durationSeconds <= 0) throw new Error('Add at least one measurable video clip to the Pro timeline.');
+  const sourceEntries = new Map();
+  for (const clip of timeline.clips) {
+    if (sourceEntries.has(clip.assetId)) continue;
+    const sourceAsset = knownAssets.get(clip.assetId);
+    if (!sourceAsset) throw new Error(`The local source for ${clip.name} is no longer in this project.`);
+    sourceEntries.set(clip.assetId,
+      `media/${String(sourceEntries.size).padStart(2, '0')}${localTimelineMediaExtension(sourceAsset)}`);
+  }
+  const manifest = {
+    schema: VIDEO_TIMELINE_SCHEMA,
+    spec: asset.video?.spec || 'vertical',
+    revision: timeline.revision,
+    durationSeconds,
+    clips: timeline.clips.map(clip => ({ ...clip, source: sourceEntries.get(clip.assetId) }))
+  };
+  const fixedDate = new Date(1980, 0, 1, 0, 0, 0, 0);
+  const entries = [{ name: 'manifest.json', data: JSON.stringify(manifest), date: fixedDate }];
+  for (const [assetId, name] of sourceEntries) {
+    const blob = await store.getBlob(assetId);
+    entries.push({ name, data: new Uint8Array(await blob.arrayBuffer()), date: fixedDate });
+  }
+  const archive = makeZip(entries);
+  if (archive.size > 2 * 1024 * 1024 * 1024) {
+    throw new Error('This timeline package exceeds the local engine’s 2 GB request limit. Shorten it or render in sections.');
+  }
+  return { archive, timeline, manifest };
+}
+
+async function renderVideoTimeline(asset, value, licenseOverride = null) {
+  const license = licenseOverride || await activeLicense();
+  globalThis.lic = license;
+  if (!hasVideoProEntitlement(license)) throw new Error('Video Pro entitlement is unavailable or could not be verified.');
+  const bridge = await detectBridge();
+  if (!bridge.ok || !bridge.video?.ffmpeg) {
+    videoToolsUnready(bridge, null);
+    const blocked = new Error('Video tools are not on this computer.');
+    blocked.code = VIDEO_TOOLS_UNREADY;
+    throw blocked;
+  }
+  // Metered the same way renderEditedVideo meters a Regular local render:
+  // Pro Mix's own monthly-unit allowance (see LANES/Pro's higher unit cap)
+  // covers this, but nothing consumed it until this fix - a Pro timeline
+  // render was previously free of the unit cost every other local render
+  // pays. See docs/TASK_LIST_2026-09-04.md for the reasoning.
+  const authorization = await authorizeOutbound({ product: 'video', artifactKind: 'upload', quantity: 1 });
+  if (!authorization.ok) throw new Error(`Render authorization failed: ${authorization.reason || 'authorization_required'}.`);
+  const { archive, timeline } = await buildLocalVideoTimelinePackage(asset, value);
+  const jobId = await stableLocalVideoJobId(asset, {
+    operation: 'pro-timeline', timeline: videoTimelineFingerprint(timeline),
+    sourceAssetIds: [...new Set(timeline.clips.map(clip => clip.assetId))]
+  });
+  const controller = new AbortController();
+  localVideoJobs.set(jobId, { controller, base: bridge.base, cancelRequested: false, progress: 18 });
+  const stopProgress = watchLocalVideoProgress(bridge.base, jobId, localVideoActivity);
+  try {
+    let rendered;
+    let loudness = null;
+    await busy(async () => {
+      localVideoActivity({ id: jobId, status: 'processing', progress: 18,
+        detail: 'Rendering the saved Pro timeline locally on CPU' });
+      const response = await bridgeFetch(`${bridge.base}/video/timeline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/zip', 'X-MaterialLogix-Job-Id': jobId },
+        body: archive,
+        signal: controller.signal
+      });
+      stopProgress();
+      if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `engine ${response.status}`);
+      loudness = readDeliveryLoudness(response);
+      const blob = await response.blob();
+      await settleOutbound(authorization.authorization.id, await blobEvidenceHash(blob));
+      const file = new File([blob], asset.filename.replace(/\.[^.]+$/, '') + '-pro-edit.mp4', { type: 'video/mp4' });
+      downloadBlob(blob, file.name);
+      rendered = newAsset(state.project.id, file);
+      rendered.provenance = `Rendered locally on CPU from a saved ${timeline.clips.length}-clip Video Pro timeline.`;
+      if (loudness?.linear) rendered.provenance += ` Levelled to ${loudness.deliveredLufs} LUFS.`;
+      await store.addAsset(rendered, file);
+      const url = await store.objectUrl(rendered.id);
+      Object.assign(rendered, await probe(file, url));
+      log(rendered, `rendered from ${timeline.clips.length}-clip Video Pro timeline`, state.reviewer);
+      await store.saveAsset(rendered);
+      state.assets.push(rendered);
+    });
+    localVideoActivity({ id: jobId, status: 'complete', progress: 100,
+      detail: deliveryDetail(loudness) });
+    render();
+    return rendered;
+  } catch (error) {
+    const cancelled = localVideoJobs.get(jobId)?.cancelRequested || error.name === 'AbortError';
+    const release = await releaseUsage(authorization.authorization.id, cancelled ? 'user_cancelled' : 'render_failed');
+    localVideoActivity({ id: jobId, status: cancelled ? 'cancelled' : 'failed', progress: 100,
+      detail: cancelled ? `Stopped locally; renderer termination requested · ${release.message}` : `${error.message} · ${release.message}` });
+    if (cancelled) throw new Error('The local render was stopped safely.');
+    throw error;
+  } finally {
+    stopProgress();
+    localVideoJobs.delete(jobId);
+  }
+}
+
+/**
+ * Turn a turntable video into local reference frames and consent-bound
+ * landmark observations. The output is not a calibrated 3D scan, contains no
+ * source images, and cannot become model-training data.
  */
 /**
  * Frame-anchored video comments: every note is pinned to a timestamp, the list
@@ -2144,12 +3499,393 @@ async function playWithComments(asset) {
   paint();
 }
 
-async function extractIdentityPack(asset) {
-  if (!(await ensureGuardianAck())) return;
-  const nameInput = el('input', { type: 'text', placeholder: 'Approved subject name or identifier' });
+const PERSONAL_APPEARANCE_LABELS = Object.freeze({
+  tattoos: 'Tattoo locations and artwork appearance'
+});
+
+function personalGeometryAccountRef() {
+  if (!personalGeometrySubjectRef) {
+    const saved = localStorage.getItem(PERSONAL_GEOMETRY_ACCOUNT_REF_KEY);
+    personalGeometrySubjectRef = /^account-[A-Za-z0-9._:-]{8,127}$/.test(saved || '')
+      ? saved
+      : `account-${crypto.randomUUID()}`;
+    localStorage.setItem(PERSONAL_GEOMETRY_ACCOUNT_REF_KEY, personalGeometrySubjectRef);
+  }
+  return personalGeometrySubjectRef;
+}
+
+/**
+ * Direct self-subject release used by both supported geometry operations.
+ * Another-person and group sources stop here because this interface cannot
+ * collect a direct third-party signature or prove local subject isolation.
+ */
+function requestPersonalGeometryConsent({
+  packId,
+  specificPurpose,
+  coreCategories,
+  algorithms,
+  allowedOptionalLayers = [],
+  receiptBindings = {},
+  directSelfOnly = false
+}) {
+  return new Promise(resolve => {
+    const enabledOptionalLayers = OPTIONAL_APPEARANCE_LAYERS
+      .filter(layer => allowedOptionalLayers.includes(layer) && PERSONAL_APPEARANCE_LABELS[layer]);
+    const role = el('select', {},
+      el('option', { value: 'self' }, 'I am the person shown'),
+      directSelfOnly ? null : el('option', { value: 'third_party' }, 'Another adult is shown'));
+    const jurisdiction = el('select', {},
+      el('option', { value: '' }, 'Select state or district'),
+      ...PERSONAL_GEOMETRY_US_JURISDICTIONS.map(item => el('option', { value: item.value }, item.label)));
+    const sourceScope = el('select', {},
+      el('option', { value: '' }, 'Select who appears'),
+      el('option', { value: 'self_only' }, 'Only me'),
+      el('option', { value: 'group' }, 'Other people also appear'));
+    const check = label => {
+      const input = el('input', { type: 'checkbox', checked: false });
+      return { input, row: el('label', { className: 'toggle' }, input, label) };
+    };
+    const adult = check('I confirm that I am the person shown and I am at least 18.');
+    const rights = check('I have the right to use this source photo or video for this Pack.');
+    const release = check('I read the exact notice above and directly sign this limited release.');
+    const appearanceRights = check('I have the right to include the selected tattoo artwork or other protected appearance material.');
+    appearanceRights.row.hidden = true;
+    const optional = Object.fromEntries(enabledOptionalLayers.map(layer => {
+      const control = check(PERSONAL_APPEARANCE_LABELS[layer]);
+      return [layer, control];
+    }));
+    const guidance = el('p', { className: 'hint', ariaLive: 'polite' });
+    const error = el('p', { className: 'hint', style: 'color:var(--bad)', ariaLive: 'assertive' });
+    const go = btn('Sign release and continue', 'btn primary');
+    let settled = false;
+    let d;
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      d?.removeEventListener('close', closed);
+      if (d?.open) closeDialog();
+      resolve(result);
+    };
+    // HTMLDialogElement dispatches `close` asynchronously. If a person cancels
+    // one release and immediately opens another, the earlier close event can
+    // arrive after the new dialog is already open. Ignore that stale event;
+    // only an actually closed dialog may cancel this request.
+    const closed = () => { if (!d?.open) finish(null); };
+    const update = () => {
+      const thirdParty = role.value === 'third_party';
+      const group = sourceScope.value === 'group';
+      const tattooSelected = optional.tattoos?.input.checked === true;
+      appearanceRights.row.hidden = !tattooSelected;
+      if (thirdParty) {
+        guidance.textContent = 'This release must come directly from the depicted adult. Another-person mapping is unavailable in this version because this screen cannot collect that person’s signature.';
+      } else if (group) {
+        guidance.textContent = 'This flow requires a source that shows only you. Studio does not map bystanders, so group sources are unavailable on this screen.';
+      } else {
+        guidance.textContent = 'Processing and storage stay on this device. Every optional appearance layer is off unless you select it.';
+      }
+      const tattooPurpose = specificPurpose === PERSONAL_GEOMETRY_PURPOSES.tattooPlacement;
+      go.disabled = thirdParty || group || !jurisdiction.value || sourceScope.value !== 'self_only'
+        || !adult.input.checked || !rights.input.checked || !release.input.checked
+        || (tattooPurpose && !tattooSelected)
+        || (tattooSelected && !appearanceRights.input.checked);
+    };
+    for (const control of [role, jurisdiction, sourceScope, adult.input, rights.input, release.input,
+      appearanceRights.input, ...Object.values(optional).map(item => item.input)]) {
+      control.onchange = update;
+    }
+    go.onclick = async () => {
+      go.disabled = true;
+      error.textContent = '';
+      const signedAt = new Date().toISOString();
+      const subjectRef = personalGeometryAccountRef();
+      try {
+        const decision = await evaluatePersonalGeometryConsent({
+          consent_granted: true,
+          consent_id: `consent-${crypto.randomUUID()}`,
+          pack_id: packId,
+          subject_ref: subjectRef,
+          account_ref: subjectRef,
+          notice_version: PERSONAL_GEOMETRY_NOTICE_VERSION,
+          notice_sha256: PERSONAL_GEOMETRY_NOTICE_SHA256,
+          locale: document.documentElement.lang || 'en-US',
+          subject_role: 'self',
+          subject_state_or_region: jurisdiction.value,
+          adult_confirmed: adult.input.checked,
+          specific_purpose: specificPurpose,
+          core_categories: coreCategories,
+          optional_layers: Object.fromEntries(OPTIONAL_APPEARANCE_LAYERS
+            .map(layer => [layer, optional[layer]?.input.checked === true])),
+          processing_mode: 'local_only',
+          local_retention_policy_id: PERSONAL_GEOMETRY_RETENTION_POLICY_ID,
+          local_expires_at: personalGeometryRetentionExpiry(signedAt),
+          group_source: false,
+          manual_subject_crop_confirmed: false,
+          source_rights_confirmed: rights.input.checked,
+          appearance_rights_confirmed: appearanceRights.input.checked,
+          ...receiptBindings,
+          subject_signature: {
+            signed_by: 'subject',
+            direct_subject_action: true,
+            subject_ref: subjectRef,
+            signature_event_ref: `signature-${crypto.randomUUID()}`,
+            signature_method: 'affirmative_release_button',
+            notice_version: PERSONAL_GEOMETRY_NOTICE_VERSION,
+            notice_sha256: PERSONAL_GEOMETRY_NOTICE_SHA256,
+            signed_at: signedAt,
+            channel: 'current_subject_session'
+          },
+          algorithm_ids_and_digests: algorithms
+        });
+        if (!decision.allowed) {
+          error.textContent = `Consent did not pass: ${decision.blockers.join(', ')}.`;
+          update();
+          return;
+        }
+        await savePersonalGeometryConsentReceipt(decision.receipt, { projectId: state.project.id });
+        finish(decision.receipt);
+      } catch (cause) {
+        error.textContent = cause?.message || 'Consent could not be recorded.';
+        update();
+      }
+    };
+
+    const operation = specificPurpose === PERSONAL_GEOMETRY_PURPOSES.singlePhotoFaceMap
+      ? 'one local 468-point relative face map from this photo'
+      : specificPurpose === PERSONAL_GEOMETRY_PURPOSES.tattooPlacement
+        ? 'one local 2D tattoo-placement map for this photo'
+        : specificPurpose === PERSONAL_GEOMETRY_PURPOSES.skinDetailReview
+          ? 'one local skin-detail continuity review from this photo'
+          : 'one local multi-view reference Pack from this video';
+    const optionalRows = enabledOptionalLayers.map(layer => optional[layer].row);
+    d = dialog('Your direct consent is required', el('div', {},
+      el('p', {}, `You are authorizing ${operation}. Refusing or cancelling starts no person analysis.`),
+      el('div', { className: 'notice-bar', style: 'white-space:pre-line;max-height:220px;overflow:auto' }, PERSONAL_GEOMETRY_NOTICE_TEXT),
+      el('label', { className: 'field' }, el('span', {}, 'Who is shown'), role),
+      el('label', { className: 'field' }, el('span', {}, 'Your state or district'), jurisdiction),
+      el('label', { className: 'field' }, el('span', {}, 'People in the source'), sourceScope),
+      adult.row,
+      rights.row,
+      release.row,
+      optionalRows.length ? el('details', {}, el('summary', {}, 'Optional tattoo mapping · off'),
+        el('p', { className: 'hint' }, 'Selecting this permits a separate local tattoo-placement record. The landmark Pack does not copy source pixels.'),
+        ...optionalRows,
+        appearanceRights.row) : null,
+      guidance,
+      error),
+    [btn('Cancel without analysis', 'btn', () => finish(null)), go]);
+    d.addEventListener('close', closed, { once: true });
+    update();
+  });
+}
+
+async function latestLocalFaceMap(asset) {
+  const records = await getPersonalGeometryFaceMapsForAsset(asset.id);
+  for (const record of records) {
+    if (validateLocalFaceMap(record.faceMap, { consentReceipt: record.receipt }).valid) return record;
+  }
+  return null;
+}
+
+function faceMapPreview(faceMap) {
+  const canvas = el('canvas', {
+    width: 560,
+    height: 440,
+    role: 'img',
+    ariaLabel: 'Front projection of the stored 468-point relative face map',
+    style: 'width:100%;height:auto;background:#070708;border:1px solid var(--hair)'
+  });
+  const points = faceMap.points || [];
+  const xs = points.map(point => point.x);
+  const ys = points.map(point => point.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const spanX = Math.max(0.001, maxX - minX), spanY = Math.max(0.001, maxY - minY);
+  const pad = 30;
+  const scale = Math.min((canvas.width - 2 * pad) / spanX, (canvas.height - 2 * pad) / spanY);
+  const offsetX = (canvas.width - spanX * scale) / 2;
+  const offsetY = (canvas.height - spanY * scale) / 2;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#070708';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(201,168,106,.84)';
+  for (const point of points) {
+    const x = offsetX + (point.x - minX) * scale;
+    const y = offsetY + (point.y - minY) * scale;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.65, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  return canvas;
+}
+
+function confirmPersonalGeometryWithdrawal(packId, recordLabel = 'local Personal Geometry record') {
+  dialog('Withdraw consent and delete', el('div', {},
+    el('p', {}, `Withdraw consent and permanently delete this ${recordLabel} from this device?`),
+    el('p', { className: 'hint' }, 'Studio verifies that the derived record and its local associations are gone. This cannot be undone.')),
+  [btn('Keep it', 'btn', closeDialog),
+    btn('Withdraw and delete', 'btn primary', async () => {
+      try {
+        await withdrawAndDeletePersonalGeometry(packId, { withdrawnAt: new Date().toISOString() });
+        closeDialog();
+        toast('Consent withdrawn and the local Personal Geometry record was deleted.');
+      } catch (cause) {
+        toast(cause?.message || 'Consent withdrawal could not be verified.', true);
+      }
+    })]);
+}
+
+async function showPersonalGeometryManager() {
+  if (!state.project?.id) return toast('Open a project to manage local reference Packs.', true);
+  try {
+    const records = await getPersonalGeometryPacksForProject(state.project.id);
+    const body = el('div', {});
+    if (!records.length) {
+      body.append(el('p', {}, 'No active local reference Packs are saved for this project.'));
+    } else {
+      body.append(
+        el('p', { className: 'hint' },
+          'These landmark-only records stay in separate storage on this device. You can withdraw consent and permanently delete any Pack here.'),
+        ...records.map(record => {
+          const pack = record.pack;
+          const frames = Array.isArray(pack?.canonical?.referenceViews)
+            ? pack.canonical.referenceViews.length : 0;
+          const expires = new Date(record.expiresAt).toLocaleDateString();
+          const label = pack?.captureMode === 'body' ? 'Full-body reference' : 'Facial reference';
+          const remove = btn('Withdraw and delete', 'btn sm', () =>
+            confirmPersonalGeometryWithdrawal(pack.packId, `${label.toLowerCase()} Pack`));
+          return el('section', { className: 'notice-bar', style: 'margin:10px 0' },
+            el('strong', {}, label),
+            el('p', { className: 'hint', style: 'margin:6px 0' },
+              `${frames} normalized landmark view${frames === 1 ? '' : 's'} · expires ${expires}`),
+            remove);
+        })
+      );
+    }
+    dialog('Local reference Packs', body, [btn('Close', 'btn', closeDialog)]);
+  } catch (cause) {
+    toast(cause?.message || 'Local reference Packs could not be read.', true);
+  }
+}
+
+async function showLocalFaceMap(asset, selectedRecord = null) {
+  try {
+    const record = selectedRecord || await latestLocalFaceMap(asset);
+    if (!record) return toast('No active local face map is saved for this photo.', true);
+    const { faceMap, receipt } = record;
+    const validation = validateLocalFaceMap(faceMap, { consentReceipt: receipt });
+    if (!validation.valid) throw new Error(`Saved face map is blocked: ${validation.findings.join(', ')}.`);
+    const expires = new Date(faceMap.authorization.localExpiresAt).toLocaleDateString();
+    dialog('Local face map', el('div', {},
+      faceMapPreview(faceMap),
+      el('p', {}, `${faceMap.points.length} face-relative points · stored on this device · consent expires ${expires}.`),
+      el('p', { className: 'hint' }, 'This is a lower-confidence single-photo map. Its depth is model-relative, not a metric measurement. It cannot see the back of the head or prove hidden surface detail, and it is not a calibrated 3D scan or identity verification.'),
+      ...faceMap.quality.warnings.map(warning => el('p', { className: 'hint' }, warning.replaceAll('_', ' ')))),
+    [btn('Close', 'btn', closeDialog),
+      btn('Withdraw consent and delete', 'btn primary', () => confirmPersonalGeometryWithdrawal(faceMap.packId, 'face map'))]);
+  } catch (cause) {
+    toast(cause?.message || 'The saved local face map is unavailable.', true);
+  }
+}
+
+async function createSinglePhotoFaceMap(asset) {
+  if (asset.kind !== 'image') return toast('Single-photo face mapping requires a still image.', true);
+  const packId = `pack-${crypto.randomUUID()}`;
+  const consentReceipt = await requestPersonalGeometryConsent({
+    packId,
+    specificPurpose: PERSONAL_GEOMETRY_PURPOSES.singlePhotoFaceMap,
+    coreCategories: ['source_media', 'face_geometry'],
+    algorithms: [
+      {
+        algorithm_id: PERSON_GEOMETRY_OBSERVATION_ALGORITHM_ID,
+        sha256: PERSON_GEOMETRY_OBSERVATION_MANIFEST_SHA256
+      },
+      {
+        algorithm_id: LOCAL_FACE_MAP_ALGORITHM_ID,
+        sha256: LOCAL_FACE_MAP_ALGORITHM_SHA256
+      }
+    ]
+  });
+  if (!consentReceipt) return;
+  try {
+    const analysis = await busy(() => runAnalysis(asset, {
+      quiet: true,
+      geometryConsentReceipt: consentReceipt,
+      geometryPackId: packId,
+      geometryRequiredCategories: ['source_media', 'face_geometry']
+    }));
+    if (!analysis?.geometry?.mapping) throw new Error('Local face observation was unavailable. Check the local model connection and try again.');
+    const faceMap = buildSinglePhotoFaceMap({
+      mapId: `face-map-${crypto.randomUUID()}`,
+      packId,
+      observation: { id: `face-view-${crypto.randomUUID()}`, geometry: analysis.geometry.mapping },
+      consentReceipt,
+      createdAt: new Date().toISOString()
+    });
+    await savePersonalGeometryFaceMap(faceMap, {
+      projectId: state.project.id,
+      assetId: asset.id,
+      retentionClass: 'saved'
+    });
+    await showLocalFaceMap(asset, { faceMap, receipt: consentReceipt });
+  } catch (cause) {
+    toast(cause?.message || 'The local face map could not be created.', true);
+  }
+}
+
+async function reviewSkinDetail(asset) {
+  if (asset.kind !== 'image') return toast('Skin-detail review requires a still image.', true);
+  const packId = `skin-review-${crypto.randomUUID()}`;
+  const consentReceipt = await requestPersonalGeometryConsent({
+    packId,
+    specificPurpose: PERSONAL_GEOMETRY_PURPOSES.skinDetailReview,
+    coreCategories: ['source_media', 'skin_detail'],
+    algorithms: [{
+      algorithm_id: SKIN_DETAIL_CONTINUITY_ALGORITHM_ID,
+      sha256: SKIN_DETAIL_CONTINUITY_ALGORITHM_SHA256
+    }],
+    directSelfOnly: true
+  });
+  if (!consentReceipt) return;
+  try {
+    const result = await busy(async () => {
+      const decoded = await decode(asset);
+      if (!decoded) throw new Error('The photo could not be decoded.');
+      const blob = await store.getBlob(asset.id);
+      return analyzeAsset(
+        decoded.source,
+        decoded.w,
+        decoded.h,
+        blob,
+        decoded.colorTransform || null,
+        {
+          skinDetailAuthorized: true,
+          skinDetailConsentReceipt: consentReceipt,
+          skinDetailPackId: packId
+        }
+      );
+    });
+    const metric = result.skin;
+    const message = !metric
+      ? 'No stable skin-detail region was measured. Inspect the photo at 100%.'
+      : metric.ratio < 0.45
+        ? 'Skin detail is much smoother than nearby texture. Inspect the transition at 100%.'
+        : 'No strong skin-detail mismatch was measured. A final visual check is still required.';
+    dialog('Skin-detail review', el('div', {},
+      el('p', {}, message),
+      el('p', { className: 'hint' },
+        'This one-time local check estimates texture continuity. It does not identify anyone or infer age, gender, race, health, or any other personal trait.')),
+    [btn('Close', 'btn primary', closeDialog)]);
+  } catch (cause) {
+    toast(cause?.message || 'Skin-detail review could not run.', true);
+  } finally {
+    await completePersonalGeometryPurpose(packId).catch(() => null);
+  }
+}
+
+async function createPersonalGeometryReferencePack(asset) {
   const modeSel = el('select', {});
-  modeSel.append(el('option', { value: 'face' }, 'Facial reference set — verified 180°'));
-  modeSel.append(el('option', { value: 'body' }, 'Full-body reference set — verified 360°'));
+  modeSel.append(el('option', { value: 'face' }, 'Facial reference set — requested profile-to-profile sweep'));
+  modeSel.append(el('option', { value: 'body' }, 'Full-body reference set — requested full turn'));
   const countSel = el('select', {});
   for (const n of [8, 12, 16]) countSel.append(el('option', { value: String(n) }, `${n} frames`));
   const shootGuide = el('div', { className: 'spin-shoot-guide' });
@@ -2174,67 +3910,141 @@ async function extractIdentityPack(asset) {
       el('p', { className: 'hint' }, guide.graded));
   };
   modeSel.onchange = paintShootGuide;
-  dialog('Create identity reference set',
+  const cancelSetup = () => {
+    if (stopGuide) stopGuide();
+    stopGuide = null;
+    closeDialog();
+  };
+  dialog('Create Personal Geometry reference set',
     el('div', {},
       el('p', { className: 'hint' },
-        'Creates evenly spaced reference frames from this video for one approved subject.'),
+        'Creates local multi-view landmark observations for one consented adult, not a calibrated 3D face or body surface. The frames are not used for model training.'),
       shootGuide,
       el('div', { className: 'pace-row' }, guideDial,
         el('div', {}, playGuide,
           el('p', { className: 'hint' }, 'Turn with the ticks. The last few drop in pitch as you finish.'))),
-      el('label', { className: 'field' }, el('span', {}, 'Subject'), nameInput),
       el('label', { className: 'field' }, el('span', {}, 'Capture type'), modeSel),
       el('label', { className: 'field' }, el('span', {}, 'Frames'), countSel)),
-    [btn('Cancel', 'btn', closeDialog),
+    [btn('Cancel', 'btn', cancelSetup),
      btn('Create reference set', 'btn primary', async () => {
-       const person = nameInput.value.trim() || 'unnamed';
        const count = Number(countSel.value);
        const captureMode = modeSel.value;
-       const packId = crypto.randomUUID();
-       closeDialog();
+       const packId = `pack-${crypto.randomUUID()}`;
+       if (stopGuide) stopGuide();
+       stopGuide = null;
+       const consentReceipt = await requestPersonalGeometryConsent({
+         packId,
+         specificPurpose: PERSONAL_GEOMETRY_PURPOSES.multiviewGeometryPack,
+         coreCategories: captureMode === 'body'
+           ? ['source_media', 'hand_geometry', 'pose_geometry', 'body_geometry']
+           : ['source_media', 'face_geometry'],
+         algorithms: [{
+           algorithm_id: PERSON_GEOMETRY_OBSERVATION_ALGORITHM_ID,
+           sha256: PERSON_GEOMETRY_OBSERVATION_MANIFEST_SHA256
+          }],
+          allowedOptionalLayers: captureMode === 'body' ? ['tattoos'] : []
+        });
+       if (!consentReceipt) return;
+       const person = captureMode === 'body' ? 'My body reference' : 'My facial reference';
        let extracted = 0;
-       await busy(async () => {
-         const url = await store.objectUrl(asset.id);
-         const probeFrame = await grabVideoFrame(url, 0);
-         const duration = probeFrame.duration || asset.duration || 0;
-         if (!duration) return toast('Could not read the video duration.', true);
-         for (let i = 0; i < count; i++) {
-           const t = duration * ((i + 0.5) / count);
-           const { canvas } = await grabVideoFrame(url, t);
-           const corners = cornerSignature(canvas);
-           const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-           const file = new File([blob], `${slug(person)}_identity_${String(i + 1).padStart(2, '0')}.png`, { type: 'image/png' });
-           const ref = newAsset(state.project.id, file);
-           ref.role = 'reference';
-           ref.status = 'reference-only';
-           ref.labels.lane = person;
-           ref.identityPackId = packId;
-           ref.identityCaptureMode = captureMode;
-           ref.width = canvas.width;
-           ref.height = canvas.height;
-           ref.provenance = `Identity frame ${i + 1}/${count} at ${t.toFixed(2)}s from ${asset.filename}`;
-           ref.captureCorners = corners;
-           log(ref, `extracted from ${asset.filename}`, state.reviewer);
-           await store.addAsset(ref, file);
-           await runAnalysis(ref, { quiet: true });
-           extracted += 1;
-         }
-       });
+       const captured = [];
+       let previewsReleased = false;
+       let previewExpiryTimer = null;
+       const releasePreviews = () => {
+         if (previewsReleased) return;
+         previewsReleased = true;
+         if (previewExpiryTimer) clearTimeout(previewExpiryTimer);
+         for (const frame of captured) URL.revokeObjectURL(frame.url);
+       };
+       previewExpiryTimer = setTimeout(() => {
+         releasePreviews();
+         toast('Temporary reference-frame previews expired. The saved landmark Pack contains no source images.');
+       }, PERSONAL_GEOMETRY_TEMPORARY_TTL_MS);
+       try {
+         await busy(async () => {
+           const url = await store.objectUrl(asset.id);
+           const probeFrame = await grabVideoFrame(url, 0);
+           const duration = probeFrame.duration || asset.duration || 0;
+           if (!duration) throw new Error('Could not read the video duration.');
+           for (let i = 0; i < count; i++) {
+             const t = duration * ((i + 0.5) / count);
+             const { canvas } = await grabVideoFrame(url, t);
+             const corners = cornerSignature(canvas);
+             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+             if (!blob) throw new Error(`Reference frame ${i + 1} could not be prepared locally.`);
+             const [auto, geometry] = await Promise.all([
+               analyzeAsset(canvas, canvas.width, canvas.height, blob),
+               analyzeGeometry(canvas, canvas.width, canvas.height, {
+                 consentReceipt,
+                 packId,
+                 specificPurpose: PERSONAL_GEOMETRY_PURPOSES.multiviewGeometryPack,
+                 requiredCategories: consentReceipt.core_categories
+               })
+             ]);
+             captured.push({
+               id: `view-${String(i + 1).padStart(2, '0')}`,
+               url: URL.createObjectURL(blob),
+               width: canvas.width,
+               height: canvas.height,
+               captureCorners: corners,
+               auto,
+               geometry,
+               capturedAt: new Date().toISOString()
+             });
+             extracted += 1;
+           }
+         });
+       } catch (cause) {
+         releasePreviews();
+         toast(cause?.message || 'The local reference set could not be created.', true);
+         return;
+       }
        if (!extracted) return;
-       state.assets = await store.listAssets(state.project.id);
-       render();
 
        // Coverage check: did the turn actually sweep the angles?
-       const packAssets = state.assets
-         .filter(a => a.role === 'reference' && a.identityPackId === packId)
-         .sort((a, b) => a.filename.localeCompare(b.filename));
-       const packFrames = packAssets.map(a => a.geometry);
+       const packAssets = captured;
+       const packFrames = captured.map(item => item.geometry);
        if (packFrames.some(Boolean)) {
          const rep = captureMode === 'body'
            ? captureCoverageBody(packFrames)
            : captureCoverage(packFrames);
          rep.flags = [...rep.flags, ...captureFrameQuality(packAssets, captureMode)];
+         const yawByFrame = new Map(rep.samples.map(sample => [sample.frame, sample.yaw]));
+         let savedPack = null;
+         let packBlocker = '';
+         try {
+           const geometryFrames = captured
+             .map((item, index) => item.geometry?.mapping ? {
+               id: `view-${String(index + 1).padStart(2, '0')}`,
+               geometry: item.geometry.mapping,
+               capturedAt: item.capturedAt,
+               yawDeg: yawByFrame.get(index) ?? null
+             } : null)
+             .filter(Boolean);
+           const candidatePack = buildPersonalGeometryPack({
+             packId,
+             captureMode,
+             frames: geometryFrames,
+             consentReceipt,
+             retentionPolicyId: PERSONAL_GEOMETRY_RETENTION_POLICY_ID,
+             createdAt: new Date().toISOString()
+           });
+             await savePersonalGeometryPack(candidatePack, {
+               projectId: state.project.id,
+               assetId: asset.id,
+               retentionClass: 'saved'
+             });
+           savedPack = candidatePack;
+         } catch (cause) {
+           packBlocker = cause?.message || 'The landmark observations did not pass Pack validation.';
+         }
          const lines = el('div', {},
+           el('p', { className: 'hint' }, rep.verdict === 'good'
+            ? 'Observed angle coverage is verified for this reference capture.'
+            : 'Observed angle coverage is not verified; review the gaps and re-shoot before relying on this set.'),
+           el('p', { className: 'hint' }, savedPack
+             ? 'The landmark-only Pack was saved in separate local storage without source images or names.'
+             : `No Pack was saved: ${packBlocker}`),
            el('p', {}, captureMode === 'body'
              ? `Coverage: ${rep.bodiesFound}/${rep.frames} frames tracked · ${rep.coveredBuckets}/8 angle zones of the full 360° · verdict: ${rep.verdict}.`
              : `Coverage: ${rep.facesFound}/${rep.frames} frames tracked · ${rep.yawSpreadDeg}° of head turn · verdict: ${rep.verdict}.`),
@@ -2251,26 +4061,35 @@ async function extractIdentityPack(asset) {
            })(),
            rep.verdict !== 'good' ? el('p', { className: 'hint' }, 'Re-shoot with a slower turn to fill the gaps — the pack works better the wider the sweep.') : null,
            el('p', { className: 'hint' }, 'Laptop controls: open the spin preview, then drag directly on the picture, use a two-finger trackpad scroll, or press the left and right arrow keys.'));
-         dialog('Capture report — ' + person, lines, [
-           btn('Close', 'btn', closeDialog),
-           btn('Open easy spin preview', 'btn primary', () => openIdentitySpinPreview(person, packAssets, captureMode))
+         const reportDialog = dialog('Personal Geometry capture report', lines, [
+           btn('Close', 'btn', () => { releasePreviews(); closeDialog(); }),
+           savedPack ? btn('Withdraw consent and delete Pack', 'btn', () => {
+             releasePreviews();
+             confirmPersonalGeometryWithdrawal(savedPack.packId, 'landmark-only Pack');
+           }) : null,
+            btn('Open easy spin preview', 'btn primary', () =>
+              openPersonalGeometrySpinPreview(person, packAssets, captureMode, releasePreviews))
          ]);
+         reportDialog.addEventListener('close', releasePreviews, { once: true });
        } else {
-         dialog('Reference set created — ' + person, el('div', {},
+         const reportDialog = dialog('Reference frames created', el('div', {},
            el('p', {}, `${extracted} frames were extracted successfully.`),
-           el('p', { className: 'hint' }, 'Tracking was unavailable offline, so angle coverage is not verified. You can still inspect every frame with the easy spin preview.')),
-         [btn('Close', 'btn', closeDialog),
-          btn('Open easy spin preview', 'btn primary', () => openIdentitySpinPreview(person, packAssets, captureMode))]);
+           el('p', { className: 'hint' }, 'Tracking was unavailable, so no Personal Geometry Pack was saved and angle coverage is not verified. You can still inspect every frame with the easy spin preview.')),
+         [btn('Close', 'btn', () => { releasePreviews(); closeDialog(); }),
+           btn('Open easy spin preview', 'btn primary', () =>
+             openPersonalGeometrySpinPreview(person, packAssets, captureMode, releasePreviews))]);
+         reportDialog.addEventListener('close', releasePreviews, { once: true });
        }
      })]);
   paintShootGuide();
 }
 
-async function openIdentitySpinPreview(person, assets, mode = 'body') {
-  const frames = (await Promise.all([...assets]
-    .sort((a, b) => a.filename.localeCompare(b.filename))
-    .map(async asset => ({ asset, url: await store.objectUrl(asset.id) })))).filter(frame => frame.url);
-  if (frames.length < 2) return toast('This reference set needs at least two readable frames to spin.', true);
+async function openPersonalGeometrySpinPreview(person, referenceFrames, mode = 'body', onRelease = () => {}) {
+  const frames = [...referenceFrames].filter(frame => frame?.url);
+  if (frames.length < 2) {
+    onRelease();
+    return toast('This reference set needs at least two readable frames to spin.', true);
+  }
 
   let index = 0;
   let grab = null;
@@ -2339,9 +4158,9 @@ async function openIdentitySpinPreview(person, assets, mode = 'body') {
     stage, controls,
     el('div', { className: 'spin-actions' },
       btn('Front / reset', 'btn sm', () => { stop(); paint(0); stage.focus(); }), play));
-  const close = () => { stop(); closeDialog(); };
+  const close = () => { stop(); onRelease(); closeDialog(); };
   const spinDialog = dialog(`${person} · easy spin preview`, body, [btn('Close', 'btn primary', close)]);
-  spinDialog.addEventListener('close', stop, { once: true });
+  spinDialog.addEventListener('close', () => { stop(); onRelease(); }, { once: true });
   paint(0);
   requestAnimationFrame(() => stage.focus());
 }
@@ -2380,17 +4199,35 @@ function metaBlock(asset) {
   roleRow.append(el('label', { className: 'field', style: 'flex:1;margin-bottom:0' }, el('span', {}, 'Role'), roleSel));
   if (asset.kind === 'image') roleRow.append(btn('Upscale', 'btn sm', () => upscaleAsset(asset)));
   wrap.append(el('div', { style: 'margin-bottom:11px' }, roleRow));
-  if (asset.kind === 'image' && asset.identityPackId) {
-    const peers = state.assets.filter(item => item.role === 'reference' && item.identityPackId === asset.identityPackId);
+  // The capture report offers the spin preview once; after that dialog closes
+  // this is the only way back into it for a frame that belongs to a Pack.
+  if (asset.kind === 'image' && asset.personalGeometryPackId) {
+    const peers = state.assets.filter(item => item.role === 'reference' && item.personalGeometryPackId === asset.personalGeometryPackId);
     if (peers.length > 1) wrap.append(el('div', { style: 'margin-bottom:11px' },
-      btn('Open easy spin preview', 'btn sm', () => openIdentitySpinPreview(
-        asset.labels.lane || 'Reference set', peers, asset.identityCaptureMode || 'body'))));
+      btn('Open easy spin preview', 'btn sm', async () => {
+        // The preview takes frames with a url, the shape the capture report
+        // hands it; stored assets are resolved to the same shape here.
+        const frames = await Promise.all([...peers]
+          .sort((a, b) => String(a.filename || '').localeCompare(String(b.filename || '')))
+          .map(async item => ({ asset: item, url: await store.objectUrl(item.id) })));
+        openPersonalGeometrySpinPreview(asset.labels?.lane || 'Reference set', frames, asset.personalGeometryCaptureMode || 'body');
+      })));
   }
 
+  // Same capture-once-per-edit shape the video block uses: one snapshot when
+  // typing starts, so undo restores what was there before the edit rather than
+  // silently dropping it, and one log line when the field is committed. Rights
+  // and provenance in particular has no business changing without a record.
   const text = (key, label, placeholder = '', multi = false, obj = asset) => {
     const i = multi ? el('textarea', { value: obj[key] || '', placeholder })
                     : el('input', { type: 'text', value: obj[key] || '', placeholder });
-    i.oninput = () => { obj[key] = i.value; touchAsset(asset); };
+    let captured = false;
+    i.oninput = () => {
+      if (!captured) { snapshot(asset, `changed ${label}`); captured = true; }
+      obj[key] = i.value;
+      touchAsset(asset);
+    };
+    i.onchange = () => { log(asset, `${label} → ${i.value.trim() || 'cleared'}`, state.reviewer); captured = false; };
     return el('label', { className: 'field' }, el('span', {}, label), i);
   };
   wrap.append(
@@ -2410,39 +4247,55 @@ function brandOverlayControls() {
   const position = el('select', {});
   for (const id of ['top-left','top-right','bottom-left','bottom-right','center']) position.append(el('option', { value:id, selected:id===config.position }, id.replace('-', ' ')));
   const width = el('input', { type:'number', min:5, max:60, value:config.widthPct || 18 });
+  const margin = el('input', { type:'number', min:0, max:15, value:config.marginPct ?? 4 });
   const opacity = el('input', { type:'number', min:0.1, max:1, step:0.1, value:config.opacity ?? 1 });
-  const save = () => { Object.assign(config, { assetId:logo.value, position:position.value, widthPct:Number(width.value), opacity:Number(opacity.value) }); touchProject(); };
-  logo.onchange=position.onchange=width.oninput=opacity.oninput=save;
+  const save = () => {
+    Object.assign(config, {
+      assetId:logo.value, position:position.value,
+      widthPct:Number(width.value), marginPct:Number(margin.value), opacity:Number(opacity.value)
+    });
+    touchProject();
+  };
+  logo.onchange=position.onchange=width.oninput=margin.oninput=opacity.oninput=save;
   return el('div', { className:'brand-overlay-controls' },
     el('p', { className:'hint', style:'margin:12px 0 8px' }, 'Apply supplied artwork as-is to exported photos and video render instructions.'),
     el('label', { className:'field' }, el('span', {}, 'Logo overlay'), logo),
-    el('div', { style:'display:grid;grid-template-columns:1fr 72px 72px;gap:6px' },
+    el('div', { style:'display:grid;grid-template-columns:1fr 68px 68px 68px;gap:6px' },
       el('label', { className:'field' }, el('span', {}, 'Position'), position),
       el('label', { className:'field' }, el('span', {}, 'Width %'), width),
+      el('label', { className:'field' }, el('span', {}, 'Margin %'), margin),
       el('label', { className:'field' }, el('span', {}, 'Opacity'), opacity)));
 }
 
 function rejectionDialog(asset, targetStatus) {
-  const current = asset.rejectionFeedback || { reasons: [], note: '', shareForImprovement: false };
+  const current = asset.rejectionFeedback || { reasons: [], note: '' };
   const reasonInputs = REJECTION_REASONS.map(reason => {
     const input = el('input', { type: 'checkbox', value: reason.id, checked: current.reasons.includes(reason.id) });
     return el('label', { className: 'checkline' }, input, el('span', {}, reason.label));
   });
   const note = el('textarea', { placeholder: 'What should be different next time?', value: current.note || '' });
-  const share = el('input', { type: 'checkbox', checked: !!current.shareForImprovement });
+  const isFinalReject = targetStatus.id === 'rejected';
   const body = el('div', {},
-    el('p', { className: 'hint' }, 'Choose every reason that applies. This feedback becomes project memory and travels with the audit record.'),
+    el('p', { className: 'hint' }, isFinalReject
+      ? 'Choose every reason that applies. The file is deleted once you save — there is no in-between state for something that already didn’t pass.'
+      : 'Choose every reason that applies. It stays with the project and appears in the rejected-work list you export.'),
     el('div', { className: 'reason-grid' }, ...reasonInputs),
     el('label', { className: 'field', style: 'margin-top:14px' }, el('span', {}, 'Optional note'), note),
-    el('label', { className: 'checkline' }, share, el('span', {}, 'Allow anonymized ratings and reason codes to improve MaterialLogix. Media is never included without a separate upload confirmation.')));
+    el('p', { className: 'hint' }, 'These reasons stay on this computer. Nothing is sent anywhere.'));
   dialog('Why are you declining this result?', body, [
     btn('Cancel', 'btn', closeDialog),
-    btn('Save rejection', 'btn primary', () => {
+    btn(isFinalReject ? 'Delete file' : 'Save rejection', 'btn primary', async () => {
       const reasons = reasonInputs.filter(label => label.querySelector('input').checked).map(label => label.querySelector('input').value);
       if (!reasons.length) return toast('Choose at least one reason.', true);
+      if (isFinalReject) {
+        await removeAsset(asset);
+        closeDialog();
+        toast('File deleted.');
+        return;
+      }
       mutate(asset, `status → ${targetStatus.label}`, () => {
         asset.status = targetStatus.id;
-        asset.rejectionFeedback = { reasons, note: note.value.trim(), shareForImprovement: share.checked, recordedAt: new Date().toISOString() };
+        asset.rejectionFeedback = { reasons, note: note.value.trim(), recordedAt: new Date().toISOString() };
       });
       closeDialog(); renderReview(); renderCounters();
       toast('Thanks — this helps the next result.');
@@ -2466,7 +4319,7 @@ const canvasBlob = (canvas, type = 'image/png') => new Promise((resolve, reject)
 
 async function generativeFillDialog(asset) {
   if (asset.kind !== 'image') return toast('Generative Fill currently supports still images only.', true);
-  const base = localStorage.getItem('cros:comfyBase') || `http://${location.hostname}:8188`;
+  const base = localStorage.getItem('cros:comfyBase') || DEFAULT_BASE;
   const engine = await detectComfy(base);
   if (!engine.ok) {
     return dialog('Generative Fill unavailable', el('div', {},
@@ -2494,8 +4347,8 @@ async function generativeFillDialog(asset) {
     el('option', { value: 'remove' }, 'Remove from selection'),
     el('option', { value: 'replace' }, 'Replace selection'));
   const model = el('select', {}, ...checkpoints.map((name, index) => el('option', { value: name }, `Fill quality ${index + 1}`)));
-  const promptInput = el('textarea', { maxLength: 1000, placeholder: 'Describe what to add, remove, or replace…' });
-  const negative = el('textarea', { maxLength: 1000, placeholder: 'Optional: details to avoid' });
+  const promptInput = el('textarea', { minLength: PROMPT_MIN_LENGTH, maxLength: PROMPT_MAX_LENGTH, placeholder: 'Describe what to add, remove, or replace…' });
+  const negative = el('textarea', { maxLength: PROMPT_MAX_LENGTH, placeholder: 'Optional: details to avoid' });
   const styleIntent = el('select', {},
     el('option', { value: 'natural' }, 'Match believable photography'),
     el('option', { value: 'film' }, 'Add film character'),
@@ -2703,8 +4556,55 @@ async function generativeFillDialog(asset) {
   requestAnimationFrame(paintPreview);
 }
 
+function requestTattooPackLink(asset, records) {
+  const accountRef = personalGeometryAccountRef();
+  const eligible = records.filter(record => tattooPoseGeometryFromPackRecords([record])
+    && record.receipt?.subject_role === 'self'
+    && record.receipt?.subject_ref === accountRef
+    && record.receipt?.account_ref === accountRef);
+  if (!eligible.length) return Promise.resolve(null);
+  return new Promise(resolve => {
+    const selection = el('select', { ariaLabel: 'Tattoo-authorized local body Pack' },
+      ...eligible.map((record, index) => el('option', {
+        value: String(index)
+      }, `Body Pack ${record.pack.packId.slice(-12)} · ${record.pack.canonical.referenceViews.filter(view => view.body).length} views · expires ${new Date(record.expiresAt).toLocaleDateString()}`)));
+    const error = el('p', { className: 'hint', style: 'color:var(--bad)', ariaLive: 'assertive' });
+    let settled = false;
+    let d;
+    const finish = value => {
+      if (settled) return;
+      settled = true;
+      d?.removeEventListener('close', closed);
+      if (d?.open) closeDialog();
+      resolve(value);
+    };
+    const closed = () => { if (!d?.open) finish(null); };
+    const link = btn('Use Pack and review consent', 'btn primary', () => {
+      const selected = eligible[Number(selection.value) || 0];
+      finish(selected);
+    });
+    d = dialog('Choose a local body Pack', el('div', {},
+      el('p', {}, 'Choose one active body Pack for the same directly consenting person. Studio requests a new release bound to this exact photo before it creates or stores any placement coordinates.'),
+      el('label', { className: 'field' }, el('span', {}, 'Body Pack'), selection),
+      error),
+    [btn('Cancel without analysis', 'btn', () => finish(null)), link]);
+    d.addEventListener('close', closed, { once: true });
+  });
+}
+
 function editingBlock(asset) {
   const edit = ensureEditState(asset);
+  if (!tattooMapDiscoveryComplete.has(asset.id) && !tattooMapLoads.has(asset.id)) {
+    hydrateTattooMap(asset)
+      .then(() => renderReview())
+      .catch(cause => toast(cause?.message || 'The local tattoo-placement map could not be opened.', true));
+  }
+  const isolatedTattooMap = tattooMapForAsset(asset);
+  if (state.editTool === 'tattoo'
+      && (!activeTattooMapRecord(asset, isolatedTattooMap)
+        || isolatedTattooMap.controlPoints.length !== TATTOO_CONTROL_POINT_COUNT)) {
+    state.editTool = null;
+  }
   const wrap = el('div', { className: 'block editor-block' });
   const modes = el('div', { className: 'seg editor-mode', role: 'group', ariaLabel: 'Editing mode' });
   for (const [value, label] of [['guided', 'Guided'], ['advanced', 'Advanced']]) {
@@ -2716,17 +4616,25 @@ function editingBlock(asset) {
     modes.append(b);
   }
   if (asset.kind === 'image') {
-    const fillButton = el('button', { type: 'button', className: 'editor-fill-tab' }, 'Generative Fill Beta');
+    const fillButton = el('button', { type: 'button', className: 'editor-fill-tab' }, 'Generative Fill · Beta');
     fillButton.dataset.release = GENERATIVE_FILL_RELEASE;
-    fillButton.title = 'Beta feature; review every result before use.';
+    fillButton.title = 'Pro Beta feature; review every result before use.';
     fillButton.setAttribute('aria-haspopup', 'dialog');
-    fillButton.onclick = () => generativeFillDialog(asset);
+    // Entitlement is resolved asynchronously; the control is present and
+    // labelled from the first paint either way.
+    markProFeature(fillButton, 'generative-fill');
+    activeLicense().then(license => setProEntitlement(fillButton, hasProAccess(license, 'photo')));
+    fillButton.onclick = async () => {
+      const license = await activeLicense();
+      if (!hasProAccess(license, 'photo')) return explainProFeature('generative-fill');
+      return generativeFillDialog(asset);
+    };
     modes.append(fillButton);
   }
   wrap.append(modes, el('p', { className: 'hint editor-explainer' },
     edit.mode === 'guided'
-      ? 'Essential adjustments with balanced defaults and non-destructive control.'
-      : 'Precision tone, color, detail, finishing, and spatial quality controls.'));
+      ? `The adjustments most ${asset.kind === 'video' ? 'footage needs' : 'photos need'}. Your original file is never changed.`
+      : 'Every control, grouped: tone, color, detail, curves, and repair.'));
 
   const applyPreset = (label, values) => {
     mutate(asset, `applied ${label} edit preset`, () => {
@@ -2742,6 +4650,25 @@ function editingBlock(asset) {
   );
   wrap.append(presets);
 
+  // The noise estimate already carries a measured starting amount. Until this
+  // it was computed on every analysis and shown to nobody.
+  const noiseSuggestion = () => {
+    const measured = asset.auto?.cameraNoise;
+    if (!measured || !(measured.suggestedReduction > 0)) return null;
+    if (Math.abs((edit.adjustments.denoise || 0) - measured.suggestedReduction) < 0.5) {
+      return el('p', { className: 'hint' },
+        `Noise cleanup is set to the amount measured for this photo (${measured.class} noise).`);
+    }
+    return el('div', { className: 'editor-tool-row editor-noise-suggestion' },
+      btn(`Use the measured amount (${measured.suggestedReduction})`, 'btn sm', () => {
+        mutate(asset, `noise cleanup → measured suggestion ${measured.suggestedReduction}`, () => {
+          edit.adjustments.denoise = measured.suggestedReduction;
+        });
+        renderReview();
+      }),
+      el('span', { className: 'note' }, `${sentence(measured.class)} camera noise in this photo`));
+  };
+
   const boundSlider = (target, key, label, min, max, step = 1) => {
     const value = target[key] ?? 0;
     const readout = el('output', {}, String(value));
@@ -2753,7 +4680,7 @@ function editingBlock(asset) {
       target[key] = Number(input.value);
       readout.textContent = input.value;
       touchAsset(asset);
-      paintStage();
+      schedulePaint();
     };
     input.onchange = () => { log(asset, `${label} → ${input.value}`, state.reviewer); captured = false; };
     return el('label', { className: 'editor-slider' }, el('span', {}, label), input, readout);
@@ -2809,6 +4736,256 @@ function editingBlock(asset) {
       el('p', { className: 'hint' }, armed
         ? 'Paint on the photo; these adjustments apply only inside the mask.'
         : 'Paint a soft mask, then grade only what it covers.'));
+  };
+
+  const tattooTools = () => {
+    const mapping = tattooMapForAsset(asset);
+    const record = activeTattooMapRecord(asset, mapping);
+    const authorized = Boolean(record);
+    const pointsReady = authorized && mapping.controlPoints.length === TATTOO_CONTROL_POINT_COUNT;
+
+    const region = el('select', { ariaLabel: 'Tattoo body region' },
+      ...TATTOO_REGIONS.map(option => el('option', {
+        value: option.id, selected: option.id === mapping.region
+      }, option.label)));
+    region.onchange = () => {
+      if (!authorized) {
+        mapping.region = region.value;
+        return;
+      }
+      mapping.region = region.value;
+      mapping.updatedAt = new Date().toISOString();
+      touchTattooMap(asset, mapping);
+    };
+
+    const beginExistingMap = (controlPoints, method, label) => {
+      if (!activeTattooMapRecord(asset, mapping)) {
+        toast('A current direct release for this exact photo is required.', true);
+        return;
+      }
+      snapshot(asset, label);
+      mapping.controlPoints = controlPoints;
+      mapping.method = method;
+      mapping.selectedAnchor = 0;
+      mapping.enabled = true;
+      mapping.updatedAt = new Date().toISOString();
+      state.editTool = 'tattoo';
+      log(asset, label, state.reviewer);
+      touchAsset(asset);
+      touchTattooMap(asset, mapping);
+      renderReview();
+    };
+    const posePreset = btn('Seed from consented local body landmarks', 'btn sm', async () => {
+      if (mapping.region === 'custom') return toast('Choose a body region or start a manual map.', true);
+      if (authorized) {
+        if (!record.sourcePackRecord) {
+          return toast('This map has a manual-only release. Withdraw it before starting a new map from a body Pack.', true);
+        }
+        const geometry = tattooPoseGeometryFromPackRecords([record.sourcePackRecord]);
+        const controlPoints = tattooControlLatticeForRegion(geometry, mapping.region);
+        if (!controlPoints) return toast('The stored local landmarks cannot seed this region. Use the manual map.', true);
+        beginExistingMap(controlPoints, 'local-pose-preset', `seeded tattoo placement to ${mapping.region} from local 2D landmarks`);
+        return;
+      }
+      let available;
+      try {
+        available = await getPersonalGeometryPacksForProject(state.project.id);
+      } catch (cause) {
+        return toast(cause?.message || 'Local body Packs could not be listed.', true);
+      }
+      const selected = await requestTattooPackLink(asset, available);
+      if (!selected) {
+        if (!available.some(item => tattooPoseGeometryFromPackRecords([item]))) {
+          toast('No active self-consented body Pack with tattoo scope is available in this project. Create one or start a manual map.', true);
+        }
+        return;
+      }
+      try {
+        const created = await createAuthorizedTattooMap(asset, {
+          sourcePackRecord: selected,
+          buildControlPoints: () => tattooControlLatticeForRegion(
+            tattooPoseGeometryFromPackRecords([selected]), mapping.region),
+          region: mapping.region,
+          method: 'local-pose-preset'
+        });
+        if (created) {
+          state.editTool = 'tattoo';
+          renderReview();
+        }
+      } catch (cause) {
+        toast(cause?.message || 'The tattoo-placement map could not be created.', true);
+      }
+    });
+    const manual = btn(authorized ? 'Reset manual map' : 'Start manual map', 'btn sm', async () => {
+      if (authorized) {
+        beginExistingMap(manualTattooControlLattice(), 'manual', 'reset the manual tattoo placement map');
+        return;
+      }
+      try {
+        const created = await createAuthorizedTattooMap(asset, {
+          buildControlPoints: () => manualTattooControlLattice(),
+          region: mapping.region,
+          method: 'manual'
+        });
+        if (created) {
+          state.editTool = 'tattoo';
+          renderReview();
+        }
+      } catch (cause) {
+        toast(cause?.message || 'The tattoo-placement map could not be created.', true);
+      }
+    });
+
+    const enabled = el('input', {
+      type: 'checkbox', checked: mapping.enabled,
+      disabled: !pointsReady
+    });
+    enabled.onchange = () => {
+      mapping.enabled = enabled.checked;
+      if (!enabled.checked && state.editTool === 'tattoo') state.editTool = null;
+      mapping.updatedAt = new Date().toISOString();
+      touchTattooMap(asset, mapping);
+      renderReview();
+    };
+
+    const density = el('input', {
+      type: 'range', min: TATTOO_MESH_MIN_DENSITY, max: TATTOO_MESH_MAX_DENSITY,
+      step: 1, value: mapping.meshDensity, disabled: !pointsReady
+    });
+    const densityOut = el('output', {}, `${mapping.meshDensity ** 2}`);
+    density.oninput = () => {
+      mapping.meshDensity = Number(density.value);
+      mapping.updatedAt = new Date().toISOString();
+      densityOut.textContent = String(mapping.meshDensity ** 2);
+      touchTattooMap(asset, mapping);
+      schedulePaint();
+    };
+
+    const anchor = el('select', {
+      disabled: !pointsReady,
+      dataset: { tattooAnchorControl: 'select', assetId: asset.id },
+      ariaLabel: 'Selected tattoo control anchor'
+    }, ...Array.from({ length: TATTOO_CONTROL_POINT_COUNT }, (_, index) => el('option', {
+      value: String(index), selected: index === mapping.selectedAnchor
+    }, `Anchor ${index + 1} · row ${Math.floor(index / 4) + 1}, column ${(index % 4) + 1}`)));
+    anchor.onchange = () => {
+      mapping.selectedAnchor = Number(anchor.value);
+      touchTattooMap(asset, mapping);
+      syncTattooAnchorControls(asset, mapping);
+      schedulePaint();
+    };
+
+    const coordinate = axis => {
+      const point = mapping.controlPoints[mapping.selectedAnchor];
+      const input = el('input', {
+        type: 'number', min: 0, max: 100, step: 0.1,
+        value: point ? (point[axis] * 100).toFixed(2) : '', disabled: !point,
+        dataset: { tattooAnchorControl: axis, assetId: asset.id },
+        ariaLabel: `Selected tattoo anchor ${axis.toUpperCase()} coordinate in percent`
+      });
+      input.oninput = () => {
+        const selected = mapping.controlPoints[mapping.selectedAnchor];
+        if (!selected || !Number.isFinite(Number(input.value))) return;
+        selected[axis] = Math.min(1, Math.max(0, Number(input.value) / 100));
+        selected.source = 'manual';
+        mapping.method = 'manual';
+        mapping.updatedAt = new Date().toISOString();
+        touchTattooMap(asset, mapping);
+        schedulePaint();
+      };
+      return input;
+    };
+    const xInput = coordinate('x');
+    const yInput = coordinate('y');
+
+    const arm = btn(state.editTool === 'tattoo' ? 'Edit 16 anchors · armed' : 'Edit 16 anchors',
+      'btn sm' + (state.editTool === 'tattoo' ? ' on' : ''), () => {
+        if (!pointsReady) return toast('Create a directly authorized map first.', true);
+        state.editTool = state.editTool === 'tattoo' ? null : 'tattoo';
+        mapping.enabled = true;
+        touchTattooMap(asset, mapping);
+        renderReview();
+      });
+    arm.disabled = !pointsReady;
+    arm.setAttribute('aria-pressed', String(state.editTool === 'tattoo'));
+    const clear = btn('Withdraw and delete map', 'btn sm', async () => {
+      if (!record) return;
+      clear.disabled = true;
+      const pendingKey = `tattoo:${asset.id}`;
+      clearTimeout(pendingSaves.get(pendingKey)?.timer);
+      pendingSaves.delete(pendingKey);
+      try {
+        const result = await withdrawAndDeletePersonalGeometry(record.packId);
+        if (result?.verified !== true || result.readback?.derivedRecords
+            || result.readback?.associations || result.readback?.activeReceipts) {
+          throw new Error('Tattoo-placement deletion did not pass read-back verification.');
+        }
+        const reopenedMaps = await getPersonalGeometryTattooMapsForAsset(asset.id);
+        if (reopenedMaps.length) {
+          throw new Error('The deleted tattoo-placement map still reopened from the isolated store.');
+        }
+        state.tattooMaps.delete(asset.id);
+        tattooMapDiscoveryComplete.add(asset.id);
+        clearUndo();
+        if (state.editTool === 'tattoo') state.editTool = null;
+        await store.saveAsset(asset);
+        const reopened = await store.getAsset(asset.id);
+        if (reopened?.edit?.tattooMap || reopened?.edit?.tattooMapRef) {
+          throw new Error('The ordinary asset record still referenced the deleted tattoo map.');
+        }
+        renderReview();
+        toast('Consent withdrawn and the local tattoo-placement map was deleted.');
+      } catch (cause) {
+        clear.disabled = false;
+        toast(cause?.message || 'The tattoo-placement map could not be deleted.', true);
+      }
+    });
+    clear.disabled = !authorized;
+
+    const artworkReference = el('input', {
+      type: 'text', maxLength: 180, value: mapping.artworkReference,
+      placeholder: 'Local artwork filename or design ID', disabled: !pointsReady
+    });
+    artworkReference.oninput = () => {
+      mapping.artworkReference = artworkReference.value;
+      mapping.updatedAt = new Date().toISOString();
+      touchTattooMap(asset, mapping);
+    };
+    const notes = el('textarea', {
+      maxLength: 1000, value: mapping.notes, disabled: !pointsReady,
+      placeholder: 'Placement, orientation, scale, edge, or production notes'
+    });
+    notes.oninput = () => {
+      mapping.notes = notes.value;
+      mapping.updatedAt = new Date().toISOString();
+      touchTattooMap(asset, mapping);
+    };
+
+    return el('div', { className: 'editor-tool tattoo-map-controls' },
+      el('p', { className: 'tattoo-sterile-notice' },
+        'Local 2D placement guide only. Coordinates are non-metric landmark observations—not a scan, calibrated body surface, 3D reconstruction, or digital double. No tattoo artwork is applied, no identity is inferred, and no mapping or media is sent to a server.'),
+      el('p', { className: 'hint tattoo-consent' }, authorized
+        ? `Direct self release active for this photo until ${new Date(record.expiresAt).toLocaleDateString()}. Coordinates stay in the dedicated local Personal Geometry store.`
+        : tattooMapLoads.has(asset.id)
+          ? 'Opening the local authorization record…'
+          : 'No map is authorized. Starting either map opens the exact notice and requires a direct self release for this photo before coordinates are created.'),
+      el('label', { className: 'tattoo-field' }, el('span', {}, 'Body region'), region),
+      el('div', { className: 'editor-tool-row' }, posePreset, manual, clear),
+      el('label', { className: 'toggle' }, enabled, 'Show placement mesh'),
+      el('label', { className: 'editor-slider tattoo-density' },
+        el('span', {}, 'Mesh density'), density, densityOut),
+      el('p', { className: 'hint tattoo-point-count' }, pointsReady
+        ? `${TATTOO_CONTROL_POINT_COUNT} editable anchors · ${mapping.meshDensity ** 2} mapped points · normalized 2D source coordinates · non-metric`
+        : 'No authorized coordinates are open.'),
+      el('div', { className: 'editor-tool-row' }, arm),
+      el('label', { className: 'tattoo-field' }, el('span', {}, 'Selected anchor'), anchor),
+      el('div', { className: 'tattoo-coordinate-grid' },
+        el('label', {}, el('span', {}, 'X position (%)'), xInput),
+        el('label', {}, el('span', {}, 'Y position (%)'), yInput)),
+      el('label', { className: 'tattoo-field' }, el('span', {}, 'Artwork reference · text only'), artworkReference),
+      el('label', { className: 'tattoo-field' }, el('span', {}, 'Placement notes'), notes),
+      el('p', { className: 'hint' },
+        'Drag an anchor on the preview, use arrow keys while the preview is focused, or enter exact X/Y percentages. Shift + arrow moves one percent. Ordinary asset records, rendered image pixels, and campaign packages exclude this sensitive map.'));
   };
 
   const curveTools = () => {
@@ -2872,7 +5049,7 @@ function editingBlock(asset) {
       }
       redraw();
       touchAsset(asset);
-      paintStage();
+      schedulePaint();
     };
     svg.onpointerup = svg.onpointercancel = () => {
       if (drag < 0) return;
@@ -2896,6 +5073,8 @@ function editingBlock(asset) {
       slider('exposure', 'Light', -1, 1, 0.05), slider('contrast', 'Contrast', -50, 50),
       slider('temperature', 'Warmth', -50, 50), slider('vibrance', 'Color', -50, 50),
       slider('denoise', 'Noise cleanup', 0, 100));
+    const guidedNoiseHint = noiseSuggestion();
+    if (guidedNoiseHint) wrap.append(guidedNoiseHint);
     if (asset.kind === 'image') wrap.append(healTools());
   } else {
     wrap.append(
@@ -2912,10 +5091,17 @@ function editingBlock(asset) {
         slider('temperature', 'Temperature', -100, 100), slider('tint', 'Tint', -100, 100),
         slider('saturation', 'Saturation', -100, 100), slider('vibrance', 'Vibrance', -100, 100)),
       controlGroup('Detail and finishing',
-        slider('denoise', 'Noise reduction', 0, 100), slider('sharpen', 'Sharpening', 0, 100),
+        slider('denoise', 'Noise reduction', 0, 100), noiseSuggestion(), slider('sharpen', 'Sharpening', 0, 100),
         slider('blur', 'Optical blur', 0, 20, 0.25),
         slider('grain', 'Film grain', 0, 100), slider('vignette', 'Vignette', 0, 100)));
     if (asset.kind === 'image') wrap.append(controlGroup('Curves', curveTools()));
+  }
+
+  if (asset.kind === 'image') {
+    const tattooGroup = controlGroup('Tattoo placement map', tattooTools());
+    tattooGroup.open = tattooMapForAsset(asset).controlPoints.length === TATTOO_CONTROL_POINT_COUNT
+      || state.editTool === 'tattoo';
+    wrap.append(tattooGroup);
   }
 
   const gridToggle = el('input', { type: 'checkbox', checked: edit.pixelGrid.enabled });
@@ -2934,7 +5120,7 @@ function editingBlock(asset) {
       input.oninput = () => {
         if (!captured) { snapshot(asset, `adjusted spatial continuity ${key}`); captured = true; }
         edit.pixelGrid[key] = Number(input.value); output.textContent = input.value;
-        touchAsset(asset); if (edit.pixelGrid.enabled) paintStage();
+        touchAsset(asset); if (edit.pixelGrid.enabled) schedulePaint();
       };
       input.onchange = () => { log(asset, `Spatial continuity ${key} → ${input.value}`, state.reviewer); captured = false; };
     };
@@ -3246,7 +5432,7 @@ async function upscaleAsset(asset) {
   if (bridge.ok && bridge.upscale?.available) {
     models = bridge.upscale.models;
   } else {
-    const savedBase = localStorage.getItem('cros:comfyBase') || `http://${location.hostname}:8188`;
+    const savedBase = localStorage.getItem('cros:comfyBase') || DEFAULT_BASE;
     engine = await detectComfy(savedBase);
     if (!engine.ok) {
       return toast('Photo enhancement is not ready on this device.', true);
@@ -3391,13 +5577,13 @@ function renderReview() {
             try { sessionStorage.setItem('mlx:start-product', 'photo'); } catch { /* unavailable */ }
             renderReview();
           })),
-        photoWorkflowSteps(1)));
+        photoWorkflowSteps(1, 'Video')));
       return;
     }
     main.replaceChildren(el('div', { className: 'empty photo-start-view' },
       el('span', { className: 'eyebrow' }, 'Photo Studio'),
       el('h2', {}, 'Create or open a photo'),
-      el('p', {}, 'Generate something new or bring in a photo, then Studio checks people before you edit.'),
+      el('p', {}, 'Generate something new or bring in a photo. Face, hand, and body mapping stays off until you give direct consent.'),
       el('div', { className: 'photo-start-actions' },
         btn('Generate photo', 'btn primary', openPhotoCreationDialog),
         btn('Import photo or video', 'btn', () => $('#fileInput').click())),
@@ -3493,11 +5679,18 @@ function stageTools(asset, surface, surfaces) {
     renderReview();
   });
   const thirdsBtn = btn('Thirds', 'btn sm' + (state.thirds ? ' on' : ''), () => { state.thirds = !state.thirds; renderReview(); });
-  const zoomOutBtn = btn('Zoom out', 'btn sm', () => { p.crop = zoomCrop(p.crop, 1 / 1.15); touchAsset(asset); paintStage(); renderIssuesOnly(); });
-  const zoomInBtn = btn('Zoom in', 'btn sm', () => { p.crop = zoomCrop(p.crop, 1.15); touchAsset(asset); paintStage(); renderIssuesOnly(); });
+  const loupeZoomSeg = el('div', { className: 'seg loupe-zoom', role: 'group', ariaLabel: 'Loupe magnification' });
+  for (const factor of LOUPE_ZOOMS) {
+    const b = el('button', { className: state.loupeZoom === factor ? 'on' : '' }, `${factor * 100}%`);
+    b.onclick = () => { setLoupeZoom(factor); renderReview(); };
+    loupeZoomSeg.append(b);
+  }
+  const zoomOutBtn = btn('Zoom out', 'btn sm', () => { captureCropBurst(asset, `reframed ${surface.label}`); p.crop = zoomCrop(p.crop, 1 / 1.15); touchAsset(asset); schedulePaint(); renderIssuesOnly(); });
+  const zoomInBtn = btn('Zoom in', 'btn sm', () => { captureCropBurst(asset, `reframed ${surface.label}`); p.crop = zoomCrop(p.crop, 1.15); touchAsset(asset); schedulePaint(); renderIssuesOnly(); });
   const resetBtn = btn('Reset view', 'btn sm', () => {
+    snapshot(asset, `reset the ${surface.label} view`);
     p.crop = asset.width ? defaultCrop(asset.width, asset.height, surface) : { x: 0, y: 0, w: 1, h: 1 };
-    touchAsset(asset); paintStage(); renderIssuesOnly();
+    touchAsset(asset); schedulePaint(); renderIssuesOnly();
   });
   const autoBtn = btn('Auto-reframe', 'btn sm', () => {
     if (!asset.auto?.energy) return toast('Run automated checks first.', true);
@@ -3508,13 +5701,15 @@ function stageTools(asset, surface, surfaces) {
   });
   const viewMenu = el('details', { className: 'stage-tool-menu' },
     el('summary', { className: 'btn sm' }, 'View options'),
-    el('div', { className: 'stage-tool-menu-body' }, fills, loupeBtn, thirdsBtn));
+    el('div', { className: 'stage-tool-menu-body' }, fills, loupeBtn,
+      el('label', { className: 'stage-tool-field' }, el('span', {}, 'Loupe magnification'), loupeZoomSeg),
+      thirdsBtn));
 
   tools.append(
     el('span', { className: 'note' }, `${surface.groupLabel} · ${surface.label}`),
     resetBtn, zoomOutBtn, zoomInBtn, autoBtn, viewMenu,
     el('div', { className: 'spacer' }),
-    el('span', { className: 'note direct-help' }, 'Grab picture to move · trackpad scroll to zoom · arrows nudge · 0 resets'),
+    el('span', { className: 'note direct-help' }, `Grab ${asset?.kind === 'video' ? 'frame' : 'picture'} to move · trackpad scroll to zoom · arrows nudge · 0 resets`),
     el('span', { className: 'kbd' }, 'A R D'),
     el('span', { className: 'kbd' }, '?'));
   return tools;
@@ -3536,8 +5731,61 @@ function renderCounters() {
     cell('Assets', state.assets.length),
     cell('Unreviewed', unreviewed),
     cell('Approved', pairs.length),
-    cell('Gaps', gaps, gaps > 0),
+    cell('Gaps', gaps, gaps > 0 && state.assets.length > 0),
     cell('Blocking', blocks, blocks > 0));
+}
+
+// ---------------------------------------------------------------------------
+// Pro capabilities, shown to everyone
+//
+// A Standard customer who cannot see what Pro does has no way to decide whether
+// to buy it, and a hidden control reads as a missing feature rather than a paid
+// one. Every Pro affordance therefore stays on screen in both Guided and
+// Advanced, dimmed and tagged when it is not owned, and explains itself when
+// pressed instead of doing nothing.
+
+const PRO_PHOTO_FEATURES = Object.freeze({
+  'generative-fill': Object.freeze({
+    title: 'Generative Fill is a Photo Pro tool',
+    lines: Object.freeze([
+      'Select an area of the photograph and Studio rebuilds it on your own graphics card. Nothing is uploaded and the original is always preserved.',
+      'Included with Single Studio Pro — Photo and with Pro Studio.'
+    ])
+  }),
+  'export-ceiling': Object.freeze({
+    title: 'Larger finished photos are Photo Pro',
+    lines: Object.freeze([
+      `Standard delivers a finished photo up to ${LANES.paid.imageMaxEdge} px on the long edge. Photo Pro delivers up to ${LANES.studioPro.imageMaxEdge} px, for film and commercial work.`,
+      'Your photograph, your edits, and every other export are unchanged either way.'
+    ])
+  })
+});
+
+function proTag() {
+  return el('span', { className: 'pro-tag', ariaLabel: 'Pro feature' }, 'PRO');
+}
+
+function explainProFeature(id) {
+  const feature = PRO_PHOTO_FEATURES[id];
+  if (!feature) return;
+  dialog(feature.title, el('div', {}, ...feature.lines.map(line => el('p', {}, line)),
+    el('p', { className: 'hint' }, 'Already bought it? Activate the key under Deliver in the project sidebar.')),
+  [linkBtn('See plans', PRICING_URL, 'btn primary'), btn('Close', 'btn', closeDialog)]);
+}
+
+/** Marks a control as Pro without ever hiding it. */
+function markProFeature(node, id, entitled = false) {
+  node.classList.add('pro-only');
+  node.dataset.proFeature = id;
+  node.append(proTag());
+  return setProEntitlement(node, entitled);
+}
+
+function setProEntitlement(node, entitled) {
+  node.classList.toggle('locked', !entitled);
+  if (entitled) node.removeAttribute('aria-description');
+  else node.setAttribute('aria-description', 'Included with Photo Pro');
+  return node;
 }
 
 function preflightDialog(onProceed) {
@@ -3561,6 +5809,137 @@ function preflightDialog(onProceed) {
     btn('Cancel', 'btn', closeDialog),
     proceed
   ]);
+}
+
+/**
+ * The finished photograph, at its own pixels. Everything else in Deliver
+ * renders a placement, a paper size, or a contact sheet, so an edited photo
+ * could be graded and never leave the application at its own size and shape.
+ */
+async function openFinishedPhotoDelivery() {
+  const asset = currentAsset();
+  if (!asset || asset.kind !== 'image') return toast('Select a photo first.', true);
+  const decoded = await decode(asset);
+  if (!decoded) return toast('That photo could not be prepared.', true);
+  if (!asset.auto?.color) await runAnalysis(asset, { quiet: true });
+
+  const license = await activeLicense();
+  const ceiling = imageExportCeiling(license, 'photo');
+  const entitled = hasProAccess(license, 'photo');
+  const edit = ensureEditState(asset);
+  const surface = SURFACE_BY_ID[state.activeSurface];
+
+  const framing = el('select', { ariaLabel: 'Framing' },
+    el('option', { value: 'full' }, 'Whole photograph'),
+    surface ? el('option', { value: 'placement' }, `Current crop — ${surface.label}`) : null);
+  const longEdge = el('input', { type: 'number', min: 256, step: 1, ariaLabel: 'Long edge in pixels' });
+  const summary = el('div', { className: 'block', ariaLive: 'polite' });
+  const status = el('p', { className: 'hint', role: 'status', ariaLive: 'polite' });
+  const ceilingRow = el('p', { className: 'hint pro-ceiling' },
+    entitled
+      ? `Photo Pro — up to ${LANES.studioPro.imageMaxEdge} px on the long edge.`
+      : `Photo Pro delivers up to ${LANES.studioPro.imageMaxEdge} px.`);
+  markProFeature(ceilingRow, 'export-ceiling', entitled);
+  if (!entitled) {
+    ceilingRow.tabIndex = 0;
+    ceilingRow.setAttribute('role', 'button');
+    ceilingRow.onclick = () => explainProFeature('export-ceiling');
+    ceilingRow.onkeydown = event => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      explainProFeature('export-ceiling');
+    };
+  }
+  const download = btn('Download finished photo', 'btn primary');
+  let plan = null;
+
+  const cropFor = () => framing.value === 'placement' && surface
+    ? ensurePlacement(asset, surface.id).crop
+    : { x: 0, y: 0, w: 1, h: 1 };
+
+  const update = () => {
+    const colorDelivery = colorExportDecision(asset.auto?.color || {});
+    plan = planFinishedPhoto({
+      sourceWidth: decoded.w, sourceHeight: decoded.h, crop: cropFor(),
+      longEdge: Number(longEdge.value) || 0, ceiling
+    });
+    longEdge.max = Math.min(plan.nativeLongEdge, ceiling);
+    setChildren(summary,
+      el('p', {}, `${plan.width} × ${plan.height} px · ${plan.megapixels} MP · sRGB JPEG`),
+      el('p', { className: 'hint', style: 'margin-top:6px' },
+        `Your photo is ${plan.nativeWidth} × ${plan.nativeHeight} px. This license delivers up to ${ceiling} px on the long edge.`),
+      plan.limitedByCeiling
+        ? el('p', { style: 'color:var(--warn);margin-top:6px' },
+          `Held to ${ceiling} px by your license. The photo itself is ${plan.nativeLongEdge} px.`)
+        : null,
+      !colorDelivery.allowed
+        ? el('p', { style: 'color:var(--bad);margin-top:6px' },
+          'This photo needs an accepted sRGB conversion before delivery.')
+        : null);
+    download.disabled = !colorDelivery.allowed;
+    status.textContent = download.disabled ? 'Prepare the color first.' : '';
+  };
+
+  framing.onchange = () => { longEdge.value = ''; update(); };
+  longEdge.oninput = update;
+
+  download.onclick = async () => {
+    const lic = await activeLicense();
+    // A finished photo is a metered clean export, exactly like the package and
+    // the print. Subscription coverage is primary; leftover local_units only
+    // fulfill already-issued legacy entitlements.
+    const covered = covers(lic, 'photo');
+    const credits = Number(lic?.entitlements?.local_units || 0);
+    if (!covered && credits < 1) {
+      return dialog('A Photo license is required to download',
+        el('div', {},
+          el('p', {}, 'It is ready to preview. Downloading it needs Photo Single Studio, Full Studio, or Pro Studio.'),
+          el('p', { className: 'hint' }, 'Already bought it? Activate the key under Deliver in the project sidebar, then reconnect for usage confirmation.')),
+        [linkBtn('See plans', PRICING_URL, 'btn primary'), btn('Close', 'btn', closeDialog)]);
+    }
+    download.disabled = true;
+    status.style.color = '';
+    status.textContent = 'Rendering your photo…';
+    let authorizationId = null;
+    try {
+      const canvas = await busy(() => renderCrop(decoded.source, decoded.w, decoded.h, plan.crop,
+        { w: plan.width, h: plan.height }, 'crop', null, edit.adjustments));
+      const blob = new Blob([canvasToBytes(canvas, 'image/jpeg', 0.94)], { type: 'image/jpeg' });
+      canvas.width = canvas.height = 0;
+      const evidenceHash = await blobEvidenceHash(blob);
+      const authorization = await authorizeOutbound({
+        product: 'photo', artifactKind: 'clean_export', quantity: 1, operationId: evidenceHash
+      });
+      if (!authorization.ok) throw new Error(authorization.reason || 'authorization_required');
+      authorizationId = authorization.authorization.id;
+      const stem = slug(String(asset.filename || 'photo').replace(/\.[^.]+$/, ''));
+      await settleOutboundBeforeDelivery(authorizationId, evidenceHash,
+        () => downloadBlob(blob, `${stem}-${plan.width}x${plan.height}.jpg`));
+      if (!covered) {
+        const spent = await consumeEntitlement({ entitlement: 'local_units', quantity: 1, operationId: evidenceHash });
+        if (!spent.ok) console.warn('finished photo delivered but the credit did not record:', spent.reason);
+      }
+      recordExport(1);
+      log(asset, `delivered a finished photo at ${plan.width}×${plan.height}`, state.reviewer);
+      touchAsset(asset);
+      status.textContent = `Downloaded ${plan.width} × ${plan.height} px.`;
+    } catch (error) {
+      const release = authorizationId ? await releaseUsage(authorizationId, 'finished_photo_export_failed') : null;
+      status.textContent = `Photo was not downloaded: ${error.message}.${release ? ` ${release.message}` : ''}`;
+      status.style.color = 'var(--bad)';
+    } finally {
+      download.disabled = !colorExportDecision(asset.auto?.color || {}).allowed;
+    }
+  };
+
+  const body = el('div', {},
+    el('p', { className: 'hint' }, 'Every edit you have made, at the photo’s own size and shape.'),
+    el('label', { className: 'field' }, el('span', {}, 'Framing'), framing),
+    el('label', { className: 'field' }, el('span', {}, 'Long edge (px)'), longEdge),
+    el('p', { className: 'hint' }, 'Leave the long edge empty for the largest size your license allows.'),
+    ceilingRow, summary, status);
+  update();
+  dialog('Finished photo', body, [btn('Cancel', 'btn', closeDialog), download]);
 }
 
 async function openPrintDelivery() {
@@ -3597,7 +5976,7 @@ async function openPrintDelivery() {
       : currentPlan.quality === 'review'
         ? `Review recommended at ${currentPlan.effectivePpi} effective PPI.`
         : `Source is too small at ${currentPlan.effectivePpi} effective PPI.`;
-    summary.replaceChildren(
+    setChildren(summary,
       el('p', {}, `${currentPlan.pixelWidth} × ${currentPlan.pixelHeight} px · ${currentPlan.ppi} PPI · sRGB JPEG`),
       el('p', { className: 'hint', style: 'margin-top:6px' },
         `${qualityText}${currentPlan.bleedInches ? ' Includes 0.125 in bleed.' : ''}`),
@@ -3610,10 +5989,17 @@ async function openPrintDelivery() {
   for (const control of [preset, orientation, fit, bleed]) control.onchange = update;
   download.onclick = async () => {
     const lic = await activeLicense();
-    if (!covers(lic, 'photo')) {
+    // A print is a metered clean export, the same class as the package export.
+    // Subscription coverage is primary; leftover local_units only fulfill
+    // already-issued legacy entitlements. Spent on finish, below, never here.
+    const printCovered = covers(lic, 'photo');
+    const printCredits = Number(lic?.entitlements?.local_units || 0);
+    if (!printCovered && printCredits < 1) {
       return dialog('A Photo license is required to download',
-        el('p', {}, 'Activate Photo Single Studio or Full Studio in Deliver, then reconnect for usage confirmation.'),
-        [btn('Close', 'btn primary', closeDialog)]);
+        el('div', {},
+          el('p', {}, 'It is ready to preview. Downloading it needs Photo Single Studio, Full Studio, or Pro Studio.'),
+          el('p', { className: 'hint' }, 'Already bought it? Activate the key under Deliver in the project sidebar, then reconnect for usage confirmation.')),
+        [linkBtn('See plans', PRICING_URL, 'btn primary'), btn('Close', 'btn', closeDialog)]);
     }
     download.disabled = true;
     status.style.color = '';
@@ -3634,6 +6020,10 @@ async function openPrintDelivery() {
       const suffix = `${currentPlan.presetId}-${currentPlan.orientation}-${currentPlan.ppi}ppi`;
       await settleOutboundBeforeDelivery(authorizationId, evidenceHash,
         () => downloadBlob(blob, `${stem}-${suffix}.jpg`));
+      if (!printCovered) {
+        const spent = await consumeEntitlement({ entitlement: 'local_units', quantity: 1, operationId: evidenceHash });
+        if (!spent.ok) console.warn('print delivered but the credit did not record:', spent.reason);
+      }
       recordExport(1);
       status.textContent = `Downloaded ${currentPlan.pixelWidth} × ${currentPlan.pixelHeight} px at ${currentPlan.ppi} PPI.`;
     } catch (error) {
@@ -3661,14 +6051,23 @@ async function doExport(exportOpts = {}) {
   if (!approvedPairs(state.assets).length) return toast('Nothing approved yet \u2014 approve at least one placement.', true);
   const product = state.assets.some(asset => asset.kind === 'video') ? 'video' : 'photo';
   const lic = await activeLicense();
-  if (!covers(lic, product)) {
+  // A subscription covers the product outright. Failing that, leftover
+  // local_units / clean_video_exports only fulfill already-issued legacy
+  // entitlements — spent on finish, never here, so a failed export costs nothing.
+  const covered = covers(lic, product);
+  const exportEntitlement = product === 'video' ? 'clean_video_exports' : 'local_units';
+  const credits = Number(lic?.entitlements?.[exportEntitlement] || 0);
+  if (!covered && credits < 1) {
     return dialog('A matching license is required to download',
       el('div', {},
         el('p', {}, 'Free preview lets you edit, compare, and review inside MaterialLogix. It does not create downloadable files.'),
         el('p', { className: 'hint', style: 'margin-top:10px' },
-          `Activate a ${product === 'video' ? 'Video' : 'Photo'} Single Studio or Full Studio license in Deliver, then reconnect for usage confirmation.`)),
-      [btn('Close', 'btn primary', closeDialog)]);
+          `Already bought it? Activate a ${product === 'video' ? 'Video' : 'Photo'} Single Studio or Full Studio license under Deliver in the project sidebar, then reconnect for usage confirmation.`)),
+      [linkBtn('See plans', PRICING_URL, 'btn primary'), btn('Close', 'btn', closeDialog)]);
   }
+  // What this licence is entitled to, from the single tier table, rather than
+  // from whichever button was pressed.
+  const lane = laneFor(lic, product);
   preflightDialog(async () => {
     const pairs = approvedPairs(state.assets);
     let authorizationId = null;
@@ -3687,7 +6086,7 @@ async function doExport(exportOpts = {}) {
         buildPackage(state.project, state.assets, (done, total, name) => {
           status.textContent = `Rendering ${done} / ${total} — ${name}`;
           bar.style.width = `${(done / total) * 100}%`;
-        }, extra, exportOpts));
+        }, extra, { ...exportOpts, lane }));
       const evidenceHash = await blobEvidenceHash(blob);
       const authorization = await authorizeOutbound({
         product,
@@ -3698,6 +6097,13 @@ async function doExport(exportOpts = {}) {
       if (!authorization.ok) throw new Error(authorization.reason || 'authorization_required');
       authorizationId = authorization.authorization.id;
       await settleOutboundBeforeDelivery(authorizationId, evidenceHash, () => downloadBlob(blob, filename));
+      // Delivered. Only now does a credit-funded export spend its credit, and
+      // only when no subscription covered it. The evidence hash keys the
+      // idempotency, so re-delivering the same artifact cannot double-charge.
+      if (!covered && !exportOpts.proof) {
+        const spent = await consumeEntitlement({ entitlement: exportEntitlement, quantity: 1, operationId: evidenceHash });
+        if (!spent.ok) console.warn('export delivered but the credit did not record:', spent.reason);
+      }
       if (!exportOpts.proof) recordExport(pairs.length);
       status.textContent = `Done — ${stats.placements} placement(s), ${stats.files} files, ${(blob.size / 1048576).toFixed(1)} MB.`;
       if (stats.failures.length) {
@@ -3831,7 +6237,8 @@ function showHelp() {
     ['1 – 9', 'Jump to that placement'],
     ['F', 'Toggle full-source view'],
     ['C', 'Toggle compare view'],
-    ['L', 'Toggle the loupe (1:1 source pixels)'],
+    ['L', 'Toggle the loupe'],
+    ['Shift+L', 'Cycle loupe magnification 100 / 200 / 400%'],
     ['T', 'Toggle thirds grid'],
     ['G', 'Auto-reframe the active placement'],
     ['B', 'Toggle board'],
@@ -3878,6 +6285,9 @@ function applyWorkspaceTheme() {
 
 async function boot(selectId) {
   clearUndo();
+  // Expired or withdrawn sensitive records are purged before the workspace
+  // can offer any Pack or face-map action.
+  try { await sweepExpiredPersonalGeometryData(); } catch { /* dedicated storage reports failures on access */ }
   if (location.hash === '#workspace') applyWorkspaceTheme();
   state.projects = await store.listProjects();
   if (!state.projects.length) {
@@ -3889,14 +6299,42 @@ async function boot(selectId) {
   }
   const wanted = selectId || localStorage.getItem('cros:project');
   state.project = state.projects.find(p => p.id === wanted) || state.projects[0];
-  // Remove credentials saved by the retired provider placeholder. Cloud keys
-  // belong only in the future server-side secret store.
-  if (Object.values(state.project.providers || {}).some(v => v?.key)) {
-    state.project.providers = {};
+  const recoverySafeProject = personalGeometrySafeRecoveryView(state.project);
+  if (JSON.stringify(recoverySafeProject) !== JSON.stringify(state.project)) {
+    state.project = recoverySafeProject;
+    state.projects = state.projects.map(project => project.id === state.project.id ? state.project : project);
+    await store.saveProject(state.project);
+  }
+  // Drop the retired provider placeholder wherever an older project still
+  // carries it, credentials included. Cloud keys belong only in a server-side
+  // secret store.
+  if (Object.prototype.hasOwnProperty.call(state.project, 'providers')) {
+    delete state.project.providers;
     await store.saveProject(state.project);
   }
   localStorage.setItem('cros:project', state.project.id);
-  state.assets = await store.listAssets(state.project.id);
+  const loadedAssets = await store.listAssets(state.project.id);
+  state.tattooMaps.clear();
+  tattooMapLoads.clear();
+  tattooMapDiscoveryComplete.clear();
+  state.assets = [];
+  for (const asset of loadedAssets) {
+    if (hasLegacyPersonalGeometryLink(asset)) {
+      await deletePersonalGeometryAsset(asset.id, { deletedAt: new Date().toISOString() });
+      await store.deleteAsset(asset.id);
+      continue;
+    }
+    if (stripLegacyPersonalGeometryFields(asset)) await store.saveAsset(asset);
+    state.assets.push(asset);
+  }
+  await Promise.all(state.assets.filter(asset => asset.kind === 'image').map(async asset => {
+    try {
+      await hydrateTattooMap(asset);
+    } catch (cause) {
+      tattooMapDiscoveryComplete.add(asset.id);
+      toast(cause?.message || 'A local tattoo-placement record could not be reopened.', true);
+    }
+  }));
   state.index = 0;
   state.decoded.clear();
   state.activeSurface = state.project.surfaces[0] || null;
@@ -4000,6 +6438,15 @@ function wire() {
       e.preventDefault();
       return;
     }
+    if (e.shiftKey && e.key.toLowerCase() === 'l') {
+      const next = LOUPE_ZOOMS[(LOUPE_ZOOMS.indexOf(state.loupeZoom) + 1) % LOUPE_ZOOMS.length];
+      setLoupeZoom(next);
+      state.loupe = true;
+      renderReview();
+      toast(`Loupe magnification ${next * 100}%.`);
+      e.preventDefault();
+      return;
+    }
     if (/^[1-9]$/.test(e.key)) {
       const s = surfaces[Number(e.key) - 1];
       if (s) { state.activeSurface = s.id; renderReview(); e.preventDefault(); }
@@ -4035,7 +6482,15 @@ if (['localhost', '127.0.0.1', '::1'].includes(location.hostname) && new URLSear
   window.__cros = {
     state, render, importFiles, runAnalysis, reframeAll, decidePlacement,
     preflight: () => preflight(state.project, state.assets),
-    issueCount, visibleAssets, ensurePlacement, generativeFillDialog, backupProject
+    issueCount, visibleAssets, ensurePlacement, generativeFillDialog, backupProject,
+    buildVideoProPackage: buildLocalVideoTimelinePackage,
+    openVideoProForTest: (asset, license, adapters = {}) => openVideoProEditor({
+      license, asset, assets: state.assets,
+      objectUrl: id => store.objectUrl(id), getBlob: id => store.getBlob(id),
+      saveAsset: value => store.saveAsset(value),
+      renderTimeline: adapters.renderTimeline || (timeline => renderVideoTimeline(asset, timeline, license)),
+      requestImport: () => $('#fileInput')?.click()
+    })
   };
 }
 

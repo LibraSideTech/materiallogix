@@ -9,13 +9,21 @@ const ENGINE_VOICE_BY_PROFILE = Object.freeze({
   'avenue-composed': 'am_onyx', 'studio-clear': 'af_aoede', 'signal-social': 'af_nova'
 });
 
+// The two states a house profile can be in, named here so the audit that gates
+// on them cannot drift from the value the profiles carry. A candidate renders
+// and is selectable; only the blinded listening panel moves one to accepted.
+export const HOUSE_VOICE_STATUS = Object.freeze({
+  candidate: 'local-voice-candidate',
+  accepted: 'local-voice-accepted'
+});
+
 const voice = ({ id, name, locale, region, register, pace, exaggeration, cfgWeight,
   temperature, personality, attitude, cadence, direction, avoid }) => ({
   id, name, locale, region, register, provider: 'local-kokoro',
   modelVoice: ENGINE_VOICE_BY_PROFILE[id], engineLanguage: locale.startsWith('es') ? 'es' : 'en', pace,
   exaggeration, cfgWeight, temperature, personality, attitude, cadence, avoid,
   description: `${personality}. ${attitude}. ${cadence}. ${direction}.`,
-  status: 'local-voice-candidate'
+  status: HOUSE_VOICE_STATUS.candidate
 });
 
 export const HOUSE_VOICES = [

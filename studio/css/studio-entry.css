@@ -1,13 +1,16 @@
 .studio-entry {
-  --entry-gold: linear-gradient(112deg, #6d481c 0%, #b98232 14%, #f6e4ad 34%, #c99b4d 48%, #fff0bd 58%, #ad772d 78%, #e1c277 91%, #76501f 100%);
   position: fixed;
   inset: 0;
   z-index: 500;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: clamp(16px, 2.6vh, 30px);
+  /* min-content on the product row is what stops a card ever being clipped:
+     the row grows to the tallest card and the entrance scrolls, instead of
+     the shell holding a fixed height and hiding whatever did not fit. */
+  grid-template-rows: auto auto minmax(min-content, 1fr) auto;
+  gap: clamp(14px, 2.2vh, 26px);
   padding: clamp(18px, 3vw, 48px);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   color: #f3efe7;
   background:
     radial-gradient(90% 75% at 50% 108%, rgba(67, 84, 88, .28), transparent 65%),
@@ -26,6 +29,11 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
 }
 
+/* Grid items default to min-width:auto. The narrow product rail used to make
+   that minimum wider than the viewport, which pushed the plan pill off-screen
+   even though the fixed entrance itself hid horizontal overflow. */
+.studio-entry > * { min-width: 0; }
+
 .studio-entry__head,
 .studio-entry__footer {
   display: flex;
@@ -37,25 +45,21 @@
 .studio-entry__brand {
   display: flex;
   align-items: baseline;
-  font: 300 clamp(18px, 1.7vw, 25px)/1 var(--serif);
+  font: 300 clamp(18px, 1.7vw, 25px)/1.18 var(--serif);
   letter-spacing: -.02em;
+  padding-bottom: 2px;
 }
 
-.studio-entry__brand em {
-  padding-inline: 1px;
-  color: transparent;
-  background: var(--entry-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  font-style: normal;
-}
+/* The lockup's own rules live in app.css. Only the entrance's larger scale and
+   its fixed dark ground are set here - the entrance ignores the light theme,
+   so the wordmark cannot inherit a theme-dependent ink colour. */
+.studio-entry__brand .brand-material { color: #f3efe7; }
 
-.studio-entry__brand small {
+.studio-entry__brand .brand-studio {
   margin-left: 9px;
   color: #9d978c;
-  font: 500 9px/1 var(--sans);
+  font-size: 9px;
   letter-spacing: .2em;
-  text-transform: uppercase;
 }
 
 .studio-entry__plan {
@@ -72,16 +76,19 @@
   backdrop-filter: blur(12px);
 }
 
+/* Hero: centred, and deliberately restrained so the four Studios stay the
+   subject of the screen rather than the headline. */
 .studio-entry__intro {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 36vw);
-  align-items: end;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-items: center;
+  row-gap: clamp(8px, 1.2vh, 14px);
+  text-align: center;
 }
 
 .studio-entry__eyebrow {
-  grid-column: 1 / -1;
-  margin: 0 0 -10px;
+  margin: 0;
   color: #b8ae9f;
   font-size: 9px;
   letter-spacing: .28em;
@@ -89,30 +96,63 @@
 }
 
 .studio-entry__intro h1 {
-  max-width: 860px;
-  margin: 0;
-  font: 300 clamp(38px, 5.5vw, 80px)/.92 var(--serif);
+  max-width: 18ch;
+  margin: 0 auto;
+  font: 300 clamp(34px, 4vw, 58px)/1.02 var(--serif);
   letter-spacing: -.045em;
+  text-wrap: balance;
 }
 
 .studio-entry__message {
-  justify-self: end;
-  max-width: 470px;
-  margin: 0 0 .4em;
+  max-width: 52ch;
+  margin: 0 auto;
   color: #aaa399;
-  font-size: clamp(13px, 1.2vw, 16px);
-  line-height: 1.55;
+  font-size: clamp(12px, 1vw, 15px);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+
+.studio-entry__status-action {
+  margin-left: 8px;
+  padding: 3px 9px;
+  border: 1px solid rgba(240, 201, 189, .5);
+  border-radius: 999px;
+  color: #f7ded5;
+  background: none;
+  cursor: pointer;
+  font: 500 11px/1.4 var(--sans);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.studio-entry__status-action:hover,
+.studio-entry__status-action:focus-visible {
+  border-color: #f0c9bd;
+  color: #fff;
+}
+
+.studio-entry__status {
+  max-width: 60ch;
+  margin: 0 auto;
+  padding: 8px 14px;
+  border: 1px solid rgba(226, 143, 122, .42);
+  border-radius: 10px;
+  color: #f0c9bd;
+  background: rgba(78, 34, 26, .34);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .studio-entry__products {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(10px, 1.4vw, 22px);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(10px, 1.1vw, 18px);
   min-height: 0;
 }
 
 .studio-entry-card {
   position: relative;
+  display: flex;
   min-height: 260px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, .13);
@@ -130,7 +170,7 @@
   z-index: 4;
   height: 2px;
   opacity: 0;
-  background: var(--entry-gold);
+  background: var(--brand-gleam);
   transition: opacity 280ms var(--ease);
 }
 
@@ -155,16 +195,24 @@
   z-index: 0;
   background-image: var(--entry-image);
   background-size: cover;
-  background-position: var(--entry-position, center);
+  /* Keep the creator's head and working posture visible when a two-column card
+     is wider than the portrait artwork. */
+  background-position: center 24%;
   transform: scale(1.015);
   transition: transform 650ms var(--ease), filter 320ms var(--ease), opacity 320ms var(--ease);
 }
 
 .studio-entry-card__wash {
   z-index: 1;
+  /* Shaped to the text, not spread evenly. The top eighth carries no words, so
+     it stays clear and the photograph reads; the ramp then deepens hard through
+     the band the copy and tier lines sit in. The old even wash was both too
+     heavy at the top, muting the picture, and too light at 30% down, where the
+     brightest frame left the 12px copy under 4.5:1. */
   background:
-    linear-gradient(180deg, rgba(8, 8, 9, .12) 0%, rgba(8, 8, 9, .12) 35%, rgba(8, 8, 9, .88) 100%),
-    linear-gradient(120deg, rgba(8, 8, 9, .52), transparent 58%);
+    linear-gradient(180deg, rgba(8, 8, 9, .06) 0%, rgba(8, 8, 9, .24) 12%, rgba(8, 8, 9, .62) 20%,
+      rgba(8, 8, 9, .76) 26%, rgba(8, 8, 9, .84) 34%, rgba(8, 8, 9, .92) 60%, rgba(8, 8, 9, .96) 100%),
+    linear-gradient(120deg, rgba(8, 8, 9, .30), transparent 58%);
 }
 
 .studio-entry-card:hover .studio-entry-card__media,
@@ -179,42 +227,42 @@
 .studio-entry-card.is-locked:hover .studio-entry-card__media,
 .studio-entry-card.is-suspended:hover .studio-entry-card__media { filter: grayscale(.72) saturate(.52) brightness(.68); }
 
+/* min-height fills a stretched card; height stays auto so content taller than
+   the card makes the card grow rather than overflow behind overflow:hidden. */
 .studio-entry-card__content {
   position: relative;
   z-index: 2;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  justify-content: end;
-  height: 100%;
-  min-height: inherit;
-  padding: clamp(18px, 2vw, 30px);
+  justify-content: flex-end;
+  min-height: 100%;
+  height: auto;
+  padding: clamp(16px, 1.5vw, 24px);
+  padding-top: clamp(52px, 5vw, 68px);
 }
 
 .studio-entry-card__top {
   position: absolute;
-  inset: clamp(16px, 1.8vw, 26px) clamp(18px, 2vw, 30px) auto;
+  inset: clamp(16px, 1.6vw, 22px) clamp(16px, 1.5vw, 24px) auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.studio-entry-card__number {
-  color: rgba(255, 255, 255, .7);
-  font: 400 10px/1 var(--mono);
-  letter-spacing: .16em;
-}
-
 .studio-entry-card__badge {
-  min-height: 27px;
-  padding: 7px 10px;
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 6px 10px;
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: 999px;
   color: #f3efe7;
-  background: rgba(8, 8, 9, .45);
+  background: rgba(8, 8, 9, .55);
   font-size: 9px;
   letter-spacing: .12em;
   text-transform: uppercase;
+  white-space: nowrap;
   backdrop-filter: blur(12px);
 }
 
@@ -224,7 +272,7 @@
 }
 
 .studio-entry-card__kicker {
-  margin: 0 0 8px;
+  margin: 0 0 6px;
   color: #bdb6aa;
   font-size: 9px;
   letter-spacing: .2em;
@@ -234,26 +282,125 @@
 .studio-entry-card h2 {
   margin: 0;
   color: #fffdf9;
-  font: 300 clamp(34px, 3.2vw, 52px)/.95 var(--serif);
+  font: 300 clamp(30px, 2.4vw, 42px)/.98 var(--serif);
   letter-spacing: -.035em;
 }
 
 .studio-entry-card__copy {
-  max-width: 31ch;
-  margin: 9px 0 14px;
+  max-width: 34ch;
+  margin: 8px 0 12px;
   color: #c1bbb1;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
+
+/* --- What the plan actually buys ----------------------------------------- */
+
+.studio-entry-card__tier {
+  max-width: 380px;
+  margin: 0 0 auto;
+  padding-bottom: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+}
+
+.studio-entry-card__tier-line {
+  margin: 0;
+  color: #c1bbb1;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.studio-entry-card__tier-name {
+  margin-right: 6px;
+  color: #e3c47c;
+  font: 500 9px/1 var(--sans);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+/* Pro stays on the card for everyone. Not entitled means quieter, never gone:
+   a customer cannot ask for a capability nobody showed them. */
+.studio-entry-card__pro { margin-top: 7px; }
+
+.studio-entry-card__pro-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  color: #a8a196;
+  background: none;
+  cursor: pointer;
+  font: 400 11px/1.4 var(--sans);
+  text-align: left;
+}
+
+.studio-entry-card__pro.is-active .studio-entry-card__pro-toggle { color: #d8d2c7; }
+
+.studio-entry-card__pro-toggle:hover,
+.studio-entry-card__pro-toggle:focus-visible { color: #f3efe7; }
+
+.studio-entry-card__pro-tag {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid rgba(227, 196, 124, .5);
+  border-radius: 999px;
+  color: #e3c47c;
+  font: 500 9px/1 var(--sans);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.studio-entry-card__pro.is-active .studio-entry-card__pro-tag {
+  border-color: transparent;
+  color: #17130e;
+  background: var(--brand-gleam);
+}
+
+.studio-entry-card__pro-summary { flex: 1; }
+
+.studio-entry-card__pro-toggle::after {
+  content: "+";
+  flex: 0 0 auto;
+  color: #8f8878;
+  font-size: 13px;
+}
+
+.studio-entry-card__pro-toggle[aria-expanded="true"]::after { content: "\2212"; }
+
+.studio-entry-card__pro-detail {
+  margin-top: 6px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .05);
+}
+
+.studio-entry-card__pro-detail p {
+  margin: 0;
+  color: #c1bbb1;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.studio-entry-card__pro-link {
+  display: inline-block;
+  margin-top: 7px;
+  color: #e3c47c;
+  font-size: 11px;
+}
+
+/* --- Starters and action -------------------------------------------------- */
 
 .studio-entry-card__starters {
   width: 100%;
-  max-width: 360px;
-  margin: 0 0 15px;
+  max-width: 380px;
+  margin: 0 0 13px;
 }
 
 .studio-entry-card__starter-label {
-  margin: 0 0 7px;
+  margin: 0 0 6px;
   color: #aaa399;
   font-size: 9px;
   letter-spacing: .15em;
@@ -262,7 +409,7 @@
 
 .studio-entry-card__starter-list {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .studio-entry-card__starter {
@@ -271,8 +418,8 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  min-height: 36px;
-  padding: 8px 11px;
+  min-height: 34px;
+  padding: 7px 10px;
   border: 1px solid rgba(255, 255, 255, .16);
   border-radius: 9px;
   color: #eee9df;
@@ -285,7 +432,7 @@
 }
 
 .studio-entry-card__starter::after {
-  content: "→";
+  content: "\2192";
   color: #e3c47c;
   font-size: 13px;
 }
@@ -297,13 +444,18 @@
   transform: translateX(2px);
 }
 
-.studio-entry-card__starter:disabled {
-  color: rgba(238, 233, 223, .48);
-  cursor: not-allowed;
-  opacity: .7;
+/* Locked media is darkened, which RAISED the contrast of every pale border
+   sitting on it: the starters and upgrade button on a Studio you cannot use
+   were reading brighter than the one you own. Anything unavailable recedes. */
+.studio-entry-card__starter[aria-disabled="true"] {
+  border-color: rgba(255, 255, 255, .07);
+  color: rgba(238, 233, 223, .42);
+  background: rgba(8, 8, 9, .3);
+  cursor: pointer;
+  backdrop-filter: none;
 }
 
-.studio-entry-card__starter:disabled::after { content: ""; }
+.studio-entry-card__starter[aria-disabled="true"]::after { content: "?"; color: #8f8878; }
 
 .studio-entry-card__action {
   align-self: flex-start;
@@ -322,11 +474,45 @@
 .studio-entry-card.is-preview .studio-entry-card__action {
   border-color: transparent;
   color: #17130e;
-  background: var(--entry-gold);
-  box-shadow: inset 0 1px rgba(255, 255, 255, .46), 0 8px 28px rgba(160, 112, 38, .18);
+  background: var(--brand-gleam);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .46), 0 10px 32px rgba(160, 112, 38, .26);
+  font-weight: 500;
 }
 
 .studio-entry-card__action:hover { border-color: #e9d39b; }
+
+.studio-entry-card.is-locked .studio-entry-card__action,
+.studio-entry-card.is-suspended .studio-entry-card__action {
+  border-color: rgba(255, 255, 255, .15);
+  color: #cdc7bc;
+  background: rgba(9, 9, 10, .58);
+}
+
+.studio-entry-card.is-locked .studio-entry-card__action:hover,
+.studio-entry-card.is-locked .studio-entry-card__action:focus-visible,
+.studio-entry-card.is-suspended .studio-entry-card__action:hover,
+.studio-entry-card.is-suspended .studio-entry-card__action:focus-visible {
+  border-color: rgba(238, 212, 155, .55);
+  color: #f3efe7;
+}
+
+.studio-entry-card.is-locked .studio-entry-card__badge,
+.studio-entry-card.is-suspended .studio-entry-card__badge {
+  border-color: rgba(255, 255, 255, .11);
+  color: #b5afa5;
+}
+
+/* The gold action sits inside a gold focus ring, which left the primary
+   control with a 1.5:1 indicator. Dark ring against the button, gold ring
+   against the card, so the indicator holds on either ground. */
+.studio-entry-card.is-included .studio-entry-card__action:focus-visible,
+.studio-entry-card.is-preview .studio-entry-card__action:focus-visible {
+  outline: 2px solid #0a0a0b;
+  outline-offset: -4px;
+  box-shadow: 0 0 0 2px var(--gold), inset 0 1px rgba(255, 255, 255, .46);
+}
+
+/* --- Footer --------------------------------------------------------------- */
 
 .studio-entry__footer {
   color: #89847d;
@@ -342,7 +528,7 @@
   gap: 8px;
 }
 
-.studio-entry__recent > span { margin-right: 3px; }
+.studio-entry__recent-label { margin-right: 3px; }
 
 .studio-entry__recent button {
   max-width: 180px;
@@ -365,70 +551,120 @@
   color: #f4dfad;
 }
 
-.studio-entry__continue {
-  min-height: 36px;
-  padding: 5px 0;
-  border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, .2);
-  color: #bdb6ab;
-  background: transparent;
-  cursor: pointer;
-  font-size: 11px;
+.studio-entry__account {
+  margin-left: auto;
+  color: #a49d92;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-decoration: none;
+  white-space: nowrap;
 }
+
+.studio-entry__account:hover,
+.studio-entry__account:focus-visible {
+  color: #f4dfad;
+  text-decoration: underline;
+}
+
+/* --- Two across before the cards get too narrow to read ------------------- */
+
+@media (max-width: 1180px) and (min-width: 761px) {
+  .studio-entry__products { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .studio-entry-card h2 { font-size: clamp(32px, 3.4vw, 44px); }
+}
+
+/* --- Phones: image above the words, every card fully contained ------------ */
 
 @media (max-width: 760px) {
   .studio-entry {
+    grid-template-rows: auto auto max-content auto;
     gap: 16px;
     padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
   }
-  .studio-entry__intro { display: block; }
-  .studio-entry__eyebrow { margin-bottom: 8px; }
-  .studio-entry__intro h1 { max-width: 10ch; font-size: clamp(38px, 12vw, 58px); }
-  .studio-entry__message { justify-self: start; max-width: 38ch; margin-top: 12px; font-size: 12px; }
+
+  .studio-entry__intro h1 {
+    max-width: 100%;
+    font-size: clamp(32px, 9.5vw, 46px);
+    overflow-wrap: normal;
+  }
+
+  .studio-entry__message {
+    max-width: 36ch;
+    font-size: 12px;
+  }
+
   .studio-entry__products {
-    display: flex;
-    gap: 12px;
-    margin-inline: -16px;
-    padding: 2px 16px 12px;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    width: 100%;
+    min-width: 0;
+    margin-inline: 0;
+    padding: 2px 0 12px;
+    min-block-size: max-content;
+    overflow: visible;
   }
-  .studio-entry__products::-webkit-scrollbar { display: none; }
+
   .studio-entry-card {
-    flex: 0 0 min(84vw, 410px);
-    min-height: 100%;
-    scroll-snap-align: center;
+    display: grid;
+    grid-template-rows: clamp(210px, 34vh, 260px) auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
   }
-  .studio-entry__footer > span { display: none; }
-  .studio-entry__footer { justify-content: end; }
-  .studio-entry__continue,
+
+  /* Give the portrait enough room to read on a phone. The old 140-200px strip
+     cropped the top of every creator and made the cards look broken. */
+  .studio-entry-card__media {
+    position: relative;
+    inset: auto;
+    min-height: 0;
+    background-position: center 16%;
+    transform: none;
+  }
+
+  .studio-entry-card__wash { display: none; }
+
+  .studio-entry-card:hover .studio-entry-card__media,
+  .studio-entry-card:focus-within .studio-entry-card__media { transform: none; }
+
+  .studio-entry-card__content {
+    justify-content: flex-start;
+    min-height: 0;
+    height: auto;
+    padding: 18px;
+    background: #121214;
+  }
+
+  .studio-entry-card__top {
+    position: static;
+    margin-bottom: 12px;
+  }
+
+  .studio-entry-card h2 { font-size: clamp(32px, 10vw, 44px); }
+  .studio-entry-card__copy { max-width: 36ch; }
+  .studio-entry-card__badge { max-width: 100%; }
+
   .studio-entry-card__action,
-  .studio-entry-card__starter { min-height: 44px; }
+  .studio-entry-card__starter { min-height: 46px; }
+
+  .studio-entry__footer { flex-wrap: wrap; justify-content: flex-start; gap: 10px; }
   .studio-entry__recent { overflow-x: auto; }
   .studio-entry__recent button { flex: 0 0 auto; }
 }
 
-@media (max-height: 690px) and (min-width: 761px) {
-  .studio-entry { gap: 12px; padding-block: 18px; }
-  .studio-entry__intro h1 { font-size: clamp(34px, 4.7vw, 62px); }
-  .studio-entry__message { font-size: 12px; }
-  .studio-entry-card__content { padding-block: 18px; }
-  .studio-entry-card__copy { margin-block: 7px 12px; }
-  .studio-entry-card__starter-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .studio-entry-card__starter { min-height: 34px; padding-inline: 8px; }
-  .studio-entry-card__starter::after { display: none; }
-  .studio-entry-card__starters { max-width: none; }
-}
+/* --- Short landscape windows: recover height from the hero ---------------- */
 
-@media (max-height: 560px) {
-  .studio-entry {
-    grid-template-rows: auto auto minmax(280px, 1fr) auto;
-    overflow-y: auto;
-  }
-  .studio-entry__products,
-  .studio-entry-card { min-height: 280px; }
+@media (max-height: 720px) and (min-width: 761px) {
+  .studio-entry { gap: 12px; padding-block: 18px; }
+  .studio-entry__intro h1 { font-size: clamp(28px, 3.2vw, 40px); }
+  .studio-entry__message { font-size: 12px; }
+  .studio-entry__eyebrow { display: none; }
+  .studio-entry-card__content { padding-block: clamp(46px, 4.5vw, 58px) 16px; }
+  .studio-entry-card__copy { margin-block: 6px 10px; }
+  .studio-entry-card__starter { min-height: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,3 @@
-import { PAY_PER_EXPORT } from '/studio/js/pricing.js?v=20260903';
-
 const ready = document.readyState === 'loading'
   ? new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, { once: true }))
   : Promise.resolve();
@@ -11,18 +9,22 @@ if (pricing && !document.querySelector('#materiallogixCheckoutUi')) {
   const style = document.createElement('style');
   style.id = 'materiallogixCheckoutUi';
   style.textContent = `
-    .commerce-toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:20px 0 8px;padding:16px 18px;border:1px solid var(--hair);border-radius:14px;background:rgba(255,255,255,.48)}
+    .commerce-toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:20px 0 8px;padding:16px 18px;background:var(--glass);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:inset 0 1px 0 var(--glass-highlight),var(--glass-shadow);border-radius:14px}
     .commerce-toolbar label{display:grid;gap:6px;font-size:12px;font-weight:700;color:var(--ink-2)}
     .commerce-toolbar select,.commerce-promo input{min-height:44px;border:1px solid var(--hair);border-radius:10px;background:var(--card);color:var(--ink);padding:0 12px;font:inherit}
     .commerce-toolbar p{margin:0;max-width:50ch;color:var(--muted);font-size:12px}
     .checkout-cta{width:100%;margin-top:16px;white-space:normal;text-align:center}
     .single-checkout{display:none}
     #sp-photo:checked~.single-checkout-photo,#sp-video:checked~.single-checkout-video,#sp-voice:checked~.single-checkout-voice{display:flex}
-    .commerce-purchase{display:grid;gap:12px;margin:18px 0 0;padding:18px;border:1px solid var(--hair);border-radius:14px;background:rgba(255,255,255,.48)}
+    #spp-photo:checked~.single-checkout-photo,#spp-video:checked~.single-checkout-video,#spp-voice:checked~.single-checkout-voice{display:flex}
+    .commerce-purchase{display:grid;gap:12px;margin:18px 0 0;padding:18px;background:var(--glass);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--glass-line);box-shadow:inset 0 1px 0 var(--glass-highlight),var(--glass-shadow);border-radius:14px}
     .commerce-promo{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;max-width:420px;font-size:12px;font-weight:700;color:var(--ink-2)}
+    .commerce-promo[hidden]{display:none}
     .commerce-consent{display:flex;align-items:flex-start;gap:10px;color:var(--ink-2);font-size:12px;line-height:1.5}
     .commerce-consent input{width:20px;height:20px;flex:0 0 auto;margin:1px 0 0;accent-color:var(--gold)}
     .commerce-consent a{text-decoration:underline;text-underline-offset:2px}
+    .commerce-plain{margin:0;padding-left:18px;color:var(--ink-2);font-size:12px;line-height:1.55}
+    .commerce-plain li{margin:4px 0}
     #checkoutStatus{min-height:1.5em;margin:0;color:var(--ink-2);font-size:12px;font-weight:600}
     @media(max-width:720px){.commerce-toolbar{align-items:stretch;flex-direction:column}.commerce-toolbar label{width:100%}.commerce-toolbar select{width:100%}}
   `;
@@ -47,17 +49,17 @@ if (pricing && !document.querySelector('#materiallogixCheckoutUi')) {
     return button;
   };
 
-  addButton(card('Free Preview'), { checkoutSku: 'export_one' }, `Buy one clean export — $${PAY_PER_EXPORT.price.toFixed(2)}`);
+  // Free Preview has no purchase of its own — it is free, and MaterialLogix
+  // sells subscriptions only. The one-off "export_one" SKU below was the
+  // retired pay-per-export purchase; it still fulfils an already-paid
+  // customer's replayed webhook (see workers/license-service.ts), but a live
+  // Buy button here would sell a product the business decided to stop
+  // selling.
   addButton(card('Voice Starter'), { checkoutPlan: 'voice_starter' }, 'Choose Voice Starter');
 
-  const single = card('Single Studio');
-  if (single) {
-    const picker = single.querySelector('.picker');
-    const panelPlans = [
-      ['photo', 'single_photo', 'Choose Single Studio — Photo'],
-      ['video', 'single_video', 'Choose Single Studio — Video'],
-      ['voice', 'single_voice', 'Choose Single Studio — Voice']
-    ];
+  const attachProductPicker = (planCard, namePrefix, panelPlans, fallbackLabel) => {
+    if (!planCard) return;
+    const picker = planCard.querySelector('.picker');
     let attached = 0;
     if (picker) {
       for (const [kind, plan, label] of panelPlans) {
@@ -70,26 +72,37 @@ if (pricing && !document.querySelector('#materiallogixCheckoutUi')) {
     }
     if (!attached) {
       const productSelect = document.createElement('select');
-      productSelect.setAttribute('aria-label', 'Single Studio product');
-      productSelect.innerHTML = '<option value="single_photo">Photo</option><option value="single_video">Video</option><option value="single_voice">Voice</option>';
+      productSelect.setAttribute('aria-label', fallbackLabel);
+      productSelect.innerHTML = panelPlans
+        .map(([, plan, label]) => `<option value="${plan}">${label.replace(/^Choose [^—]+ — /, '')}</option>`)
+        .join('');
       productSelect.style.cssText = 'width:100%;min-height:44px;margin-top:16px;border:1px solid var(--hair);border-radius:10px;background:var(--card);color:var(--ink);padding:0 12px;font:inherit';
-      single.append(productSelect);
-      const button = addButton(single, { checkoutPlan: 'single_photo' }, 'Choose Single Studio — Photo');
+      planCard.append(productSelect);
+      const button = addButton(planCard, { checkoutPlan: panelPlans[0][1] }, panelPlans[0][2]);
       productSelect.addEventListener('change', () => {
         button.dataset.checkoutPlan = productSelect.value;
-        button.textContent = `Choose Single Studio — ${productSelect.options[productSelect.selectedIndex].text}`;
+        button.textContent = `Choose ${fallbackLabel} — ${productSelect.options[productSelect.selectedIndex].text}`;
       });
     }
-  }
+  };
+
+  attachProductPicker(card('Single Studio'), 'sp', [
+    ['photo', 'single_photo', 'Choose Single Studio — Photo'],
+    ['video', 'single_video', 'Choose Single Studio — Video'],
+    ['voice', 'single_voice', 'Choose Single Studio — Voice']
+  ], 'Single Studio');
+
+  attachProductPicker(card('Single Studio Pro'), 'spp', [
+    ['photo', 'single_pro_photo', 'Choose Single Studio Pro — Photo'],
+    ['video', 'single_pro_video', 'Choose Single Studio Pro — Video'],
+    ['voice', 'single_pro_voice', 'Choose Single Studio Pro — Voice']
+  ], 'Single Studio Pro');
 
   addButton(card('Full Studio'), { checkoutPlan: 'full' }, 'Choose Full Studio');
+  addButton(card('Pro Studio'), { checkoutPlan: 'full_pro' }, 'Choose Pro Studio');
 
   const plansContainer = pricing.querySelector('.plans');
-  // The page publishes its own Monthly/Quarterly/Yearly control and one price
-  // node per term. Injecting a second term picker gave the customer two
-  // controls that did not agree, so only supply one where the page has none.
-  const pageOwnsTermControl = Boolean(document.querySelector('.term-radio'));
-  if (plansContainer && !pageOwnsTermControl && !document.querySelector('#billingTerm')) {
+  if (plansContainer && !document.querySelector('#billingTerm')) {
     const toolbar = document.createElement('div');
     toolbar.className = 'commerce-toolbar';
     toolbar.innerHTML = `
@@ -100,9 +113,35 @@ if (pricing && !document.querySelector('#materiallogixCheckoutUi')) {
           <option value="yearly">Annual</option>
         </select>
       </label>
-      <p>Choose a term, select the Studio you need, then continue to secure Stripe Checkout. The final total appears before payment.</p>`;
+      <p>Paid Checkout stays closed until billing is live. Start a free preview anytime; the buttons below prepare the plan you want when sales open.</p>`;
     plansContainer.before(toolbar);
   }
+
+  // Keep the visible Monthly/Quarterly/Yearly radios and #billingTerm on one
+  // source of truth so the price a customer sees is the SKU Checkout would use.
+  const billingTerm = document.querySelector('#billingTerm');
+  const termRadios = {
+    monthly: document.querySelector('#term-m'),
+    quarterly: document.querySelector('#term-q'),
+    yearly: document.querySelector('#term-y')
+  };
+  const syncTermFromRadio = () => {
+    if (!billingTerm) return;
+    if (termRadios.quarterly?.checked) billingTerm.value = 'quarterly';
+    else if (termRadios.yearly?.checked) billingTerm.value = 'yearly';
+    else billingTerm.value = 'monthly';
+    billingTerm.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  const syncRadioFromSelect = () => {
+    const value = billingTerm?.value || 'monthly';
+    const radio = termRadios[value];
+    if (radio) radio.checked = true;
+  };
+  for (const radio of Object.values(termRadios)) {
+    radio?.addEventListener('change', syncTermFromRadio);
+  }
+  billingTerm?.addEventListener('change', syncRadioFromSelect);
+  syncTermFromRadio();
 
   let purchase = pricing.querySelector('.commerce-purchase');
   if (!purchase) {
@@ -124,11 +163,26 @@ if (pricing && !document.querySelector('#materiallogixCheckoutUi')) {
     purchase.append(promoRow);
   }
 
-  if (!document.querySelector('#purchaseConsent')) {
-    const consent = document.createElement('label');
-    consent.className = 'commerce-consent';
-    consent.innerHTML = `<input id="purchaseConsent" type="checkbox"><span>I agree to the <a href="/legal/terms.html">Terms</a>, <a href="/legal/refunds.html">Refund Policy</a>, and <a href="/legal/privacy.html">Privacy Policy</a>. Paid plans renew at the selected interval until canceled.</span>`;
-    purchase.append(consent);
+  // Paid Checkout is still closed. Do not mount renew / consent purchase chrome
+  // that makes the page look ready to charge; status alone is honest.
+  const { PUBLIC_CHECKOUT_OPEN } = await import('/studio/js/pricing.js?v=20260914');
+  if (PUBLIC_CHECKOUT_OPEN) {
+    if (!document.querySelector('#purchasePlainSummary')) {
+      const plain = document.createElement('ul');
+      plain.id = 'purchasePlainSummary';
+      plain.className = 'commerce-plain';
+      plain.innerHTML = `
+        <li>Plans renew at the selected interval until you cancel.</li>
+        <li>14-day refunds follow the Refund Policy.</li>
+        <li>Disputes use individual arbitration, with a free 30-day email opt-out.</li>`;
+      purchase.append(plain);
+    }
+    if (!document.querySelector('#purchaseConsent')) {
+      // Show the governing documents in the purchase flow and keep assent
+      // disabled until the required notices have been read.
+      const { installLegalAcceptance } = await import('/legal-acceptance.js?v=20260908');
+      await installLegalAcceptance(purchase);
+    }
   }
 
   if (!document.querySelector('#checkoutStatus')) {
@@ -136,9 +190,11 @@ if (pricing && !document.querySelector('#materiallogixCheckoutUi')) {
     status.id = 'checkoutStatus';
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    status.textContent = 'No payment is taken until you confirm inside Stripe Checkout.';
+    status.textContent = PUBLIC_CHECKOUT_OPEN
+      ? 'Review your plan, accept the Terms, then continue to Stripe Checkout.'
+      : 'Paid Checkout is not open yet. No payment can be taken from this page.';
     purchase.append(status);
   }
 
-  await import('/studio/js/checkout.js?v=20260903');
+  await import('/studio/js/checkout.js?v=20260914');
 }

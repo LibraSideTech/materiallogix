@@ -1,0 +1,27 @@
+/* Video Studio surfaces layered over css/app.css. */
+
+/* A Pro capability stays on screen for everyone. It reads as unavailable and
+   says what it does when a Standard customer clicks it; it is never removed. */
+.pro-only { position:relative; opacity:.62; border-style:dashed; }
+.pro-only:hover, .pro-only:focus-visible { opacity:.9; border-color:var(--gold); }
+.pro-tag { display:inline-flex; flex:0 0 auto; align-items:center; margin-left:7px; padding:2px 5px; border:1px solid var(--gold-dim); border-radius:2px; color:var(--gold); font:500 8.5px/1 var(--sans); letter-spacing:.13em; text-transform:uppercase; vertical-align:middle; white-space:nowrap; }
+
+.video-pro-launch { flex-wrap:wrap; gap:10px 12px; }
+.video-pro-launch > div { flex:1 1 190px; min-width:0; }
+.video-pro-launch .btn { flex:0 0 auto; white-space:nowrap; }
+.video-motion { margin:14px 0 4px; }
+.video-motion-actions { display:flex; flex-wrap:wrap; gap:7px; margin:8px 0 6px; }
+
+.delivery-check { display:grid; gap:1px; margin-top:10px; background:var(--hair); border:1px solid var(--hair); }
+.delivery-check-row { display:grid; grid-template-columns:minmax(96px,1.1fr) minmax(78px,1fr) minmax(92px,1.2fr) 58px; gap:8px; align-items:baseline; padding:8px 10px; background:var(--panel); font-size:11.5px; }
+.delivery-check-row b { color:var(--ink); font:500 12px/1.3 var(--mono); }
+.delivery-check-row strong { color:var(--ok); font:500 10px/1 var(--sans); letter-spacing:.1em; text-transform:uppercase; text-align:right; }
+.delivery-check-row.bad strong { color:var(--bad); }
+
+@media (max-width:560px) {
+  /* Four columns at 375px leave five characters per cell, so the measurement
+     and its target stack under the label instead. */
+  .delivery-check-row { grid-template-columns:1fr auto; }
+  .delivery-check-row .hint { grid-column:1/-1; }
+  .video-motion-actions .btn { flex:1 1 100%; }
+}

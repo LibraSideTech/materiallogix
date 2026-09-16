@@ -164,9 +164,12 @@ export function deactivate() { localStorage.removeItem(STORE); localStorage.remo
 /** Does the active license cover a product? complete covers everything. */
 export function covers(payload, product) {
   if (!payload || String(payload.plan).startsWith('suspended:')) return false;
-  if (payload.plan === 'full') return ['photo', 'video', 'voice'].includes(product);
+  if (payload.plan === 'full' || payload.plan === 'fullPro') return ['photo', 'video', 'voice', 'music'].includes(product);
   if (payload.plan === 'voice_starter') return product === 'voice';
-  if (payload.plan === 'single') return payload.selected_product === product || payload.selectedProduct === product;
-  if (payload.plan === 'payg') return ['photo', 'video', 'voice'].includes(product);
+  // Single and Single Pro both cover exactly the one studio they were bought
+  // for; Pro changes the quality lane, never the breadth of access.
+  if (payload.plan === 'single' || payload.plan === 'singlePro') {
+    return payload.selected_product === product || payload.selectedProduct === product;
+  }
   return false;
 }

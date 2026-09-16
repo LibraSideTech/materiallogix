@@ -15,9 +15,12 @@ export function defaultCrop(srcW, srcH, surface) {
   return { x: 0, y: (1 - h) / 2, w: 1, h };
 }
 
+/** Smallest span either axis may shrink to, as a fraction of the source. */
+const MIN_SPAN = 0.02;
+
 export function clampCrop(crop) {
-  const w = Math.min(1, Math.max(0.02, crop.w));
-  const h = Math.min(1, Math.max(0.02, crop.h));
+  const w = Math.min(1, Math.max(MIN_SPAN, crop.w));
+  const h = Math.min(1, Math.max(MIN_SPAN, crop.h));
   return {
     x: Math.min(1 - w, Math.max(0, crop.x)),
     y: Math.min(1 - h, Math.max(0, crop.y)),
@@ -26,13 +29,31 @@ export function clampCrop(crop) {
   };
 }
 
+/**
+ * Place a w by h window inside the source without changing its shape.
+ *
+ * Both axes are scaled by the same amount. Clamping them independently is what
+ * lets a window drift off the surface ratio, and a window that no longer
+ * matches its surface is drawn - and exported - stretched.
+ */
+function fitWindow(cx, cy, w, h) {
+  const fits = Math.min(1 / w, 1 / h);              // neither axis past the source
+  const visible = Math.max(MIN_SPAN / w, MIN_SPAN / h); // neither axis collapsed
+  // Staying inside the source wins if a very long window cannot satisfy both.
+  const scale = Math.min(fits, Math.max(visible, 1));
+  const nw = w * scale;
+  const nh = h * scale;
+  return {
+    x: Math.min(1 - nw, Math.max(0, cx - nw / 2)),
+    y: Math.min(1 - nh, Math.max(0, cy - nh / 2)),
+    w: nw,
+    h: nh
+  };
+}
+
 /** Zoom about the crop centre. factor > 1 zooms in (smaller crop window). */
 export function zoomCrop(crop, factor) {
-  const cx = crop.x + crop.w / 2;
-  const cy = crop.y + crop.h / 2;
-  const w = crop.w / factor;
-  const h = crop.h / factor;
-  return clampCrop({ x: cx - w / 2, y: cy - h / 2, w, h });
+  return fitWindow(crop.x + crop.w / 2, crop.y + crop.h / 2, crop.w / factor, crop.h / factor);
 }
 
 export function panCrop(crop, dx, dy) {
@@ -68,15 +89,21 @@ export function drawStraightened(ctx, source, sx, sy, sw, sh, dx, dy, dw, dh, ra
 /**
  * True when the crop window no longer matches the surface ratio — which means
  * the export would distort. Used to snap after a manual resize.
+ *
+ * `anchor` is the point that must not move while the ratio is corrected. A
+ * corner-handle drag has to pass the fixed opposite corner here, or the snap
+ * recenters the box and it visibly drifts away from the corner being pulled.
+ * Left undefined, it keeps the original center-anchored behavior, which is
+ * what a non-drag caller (a fresh crop, a video render plan) wants.
  */
-export function snapToRatio(crop, srcW, srcH, surface) {
+export function snapToRatio(crop, srcW, srcH, surface, anchor) {
   const target = surface.w / surface.h;
   const pxW = crop.w * srcW;
   const pxH = crop.h * srcH;
   const current = pxW / pxH;
   if (Math.abs(current - target) < 0.001) return crop;
-  const cx = crop.x + crop.w / 2;
-  const cy = crop.y + crop.h / 2;
+  const ax = anchor ? anchor.x : crop.x + crop.w / 2;
+  const ay = anchor ? anchor.y : crop.y + crop.h / 2;
   let w, h;
   if (current > target) {
     h = crop.h;
@@ -85,7 +112,10 @@ export function snapToRatio(crop, srcW, srcH, surface) {
     w = crop.w;
     h = (w * srcW) / target / srcH;
   }
-  return clampCrop({ x: cx - w / 2, y: cy - h / 2, w, h });
+  if (!anchor) return clampCrop({ x: ax - w / 2, y: ay - h / 2, w, h });
+  const x = anchor.fromRight ? ax - w : ax;
+  const y = anchor.fromBottom ? ay - h : ay;
+  return clampCrop({ x, y, w, h });
 }
 
 /** Destination rect the crop occupies inside a surface for a given fill. */

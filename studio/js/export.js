@@ -1,7 +1,7 @@
 // Campaign package builder: renders approved crops, writes the decision
 // record, and zips the lot.
 
-import { SURFACE_BY_ID, QA_BY_ID, STATUS_BY_ID, PRESET_BY_ID, PROVIDERS } from './model.js';
+import { SURFACE_BY_ID, QA_BY_ID, STATUS_BY_ID, PRESET_BY_ID } from './model.js';
 import { renderCrop, canvasToBytes, loadImage, grabVideoFrame, defaultCrop, yieldToLoop, applyProofWatermark, proofSurface } from './crop.js';
 import { COLOR_PIPELINE, colorExportDecision, decodeColorManagedBlob } from './color-management.js';
 import { objectUrl, getBlob } from './store.js';
@@ -37,6 +37,47 @@ function exportName(project, asset, surface) {
   return `${brand}_${campaign}_${surface.id}_${slug(asset.filename)}_${surface.w}x${surface.h}`;
 }
 
+/**
+ * Finished-photo delivery plan: the edited photograph at its own pixels and
+ * its own shape, held to the licence's long-edge ceiling.
+ *
+ * The ceiling is the enforcement point for the Pro resolution tier. Downscaling
+ * is offered because a web-sized copy is a real request; upscaling is not,
+ * because a file that claims pixels the negative never had is a lie about
+ * resolution, and the automated checks already block it elsewhere.
+ */
+export function planFinishedPhoto({
+  sourceWidth, sourceHeight, crop = { x: 0, y: 0, w: 1, h: 1 }, longEdge = 0, ceiling = 0
+} = {}) {
+  const sw = Math.trunc(Number(sourceWidth));
+  const sh = Math.trunc(Number(sourceHeight));
+  if (!Number.isFinite(sw) || !Number.isFinite(sh) || sw < 1 || sh < 1) {
+    throw new Error('invalid_source_dimensions');
+  }
+  const limit = Math.trunc(Number(ceiling));
+  if (!Number.isFinite(limit) || limit < 1) throw new Error('invalid_export_ceiling');
+  const span = value => Math.min(1, Math.max(0.01, Number(value) || 0));
+  const cropWidth = span(crop.w);
+  const cropHeight = span(crop.h);
+  const nativeWidth = Math.max(1, Math.round(cropWidth * sw));
+  const nativeHeight = Math.max(1, Math.round(cropHeight * sh));
+  const nativeLongEdge = Math.max(nativeWidth, nativeHeight);
+  const requested = Math.trunc(Number(longEdge)) > 0 ? Math.trunc(Number(longEdge)) : nativeLongEdge;
+  const wanted = Math.min(requested, nativeLongEdge);
+  const allowed = Math.min(wanted, limit);
+  const scale = allowed / nativeLongEdge;
+  return Object.freeze({
+    crop: Object.freeze({ x: crop.x, y: crop.y, w: cropWidth, h: cropHeight }),
+    nativeWidth, nativeHeight, nativeLongEdge,
+    width: Math.max(1, Math.round(nativeWidth * scale)),
+    height: Math.max(1, Math.round(nativeHeight * scale)),
+    longEdge: allowed,
+    ceiling: limit,
+    limitedByCeiling: allowed < wanted,
+    megapixels: +((Math.round(nativeWidth * scale) * Math.round(nativeHeight * scale)) / 1e6).toFixed(2)
+  });
+}
+
 // --- documents -------------------------------------------------------------
 
 export function decisionsJson(project, assets) {
@@ -49,10 +90,7 @@ export function decisionsJson(project, assets) {
       name: project.name,
       brief: project.brief,
       surfaces: project.surfaces,
-      qaPreset: project.qaPreset,
-      providers: Object.fromEntries(
-        PROVIDERS.map(p => [p.id, project.providers?.[p.id]?.enabled ? 'enabled (no key stored)' : 'off'])
-      )
+      qaPreset: project.qaPreset
     },
     assets: assets.map(a => ({
       id: a.id,
@@ -203,7 +241,7 @@ export function rejectedRecord(assets) {
     L.push(`## ${a.filename}`);
     L.push(`- Status: ${STATUS_BY_ID[a.status]?.label || a.status}`);
     if (failed.length) L.push(`- Failed checks: ${failed.join(', ')}`);
-    if (a.kind === 'video' && a.video.looksAI) L.push('- Flagged: reads as AI');
+    if (a.kind === 'video' && a.video.looksSynthetic) L.push('- Flagged: reads as synthetic');
     if (a.kind === 'video' && a.video.recast) L.push('- Requested: recast / replace talent');
     if (a.rejectionFeedback?.reasons?.length) L.push(`- Rejection reasons: ${a.rejectionFeedback.reasons.join(', ')}`);
     if (a.rejectionFeedback?.note) L.push(`- Rejection detail: ${a.rejectionFeedback.note}`);
@@ -282,7 +320,7 @@ export function videoNotes(project, assets) {
   if (project.brandOverlay?.assetId) {
     const logo = assets.find(a => a.id === project.brandOverlay.assetId);
     L.push('## Brand overlay', '',
-      `Apply supplied artwork \`${logo?.filename || project.brandOverlay.assetId}\` as-is at ${project.brandOverlay.position || 'bottom-right'}, ${project.brandOverlay.widthPct || 18}% frame width, opacity ${project.brandOverlay.opacity ?? 1}.`,
+      `Apply supplied artwork \`${logo?.filename || project.brandOverlay.assetId}\` as-is at ${project.brandOverlay.position || 'bottom-right'}, ${project.brandOverlay.widthPct || 18}% frame width, ${project.brandOverlay.marginPct ?? 4}% margin, opacity ${project.brandOverlay.opacity ?? 1}.`,
       'See `BRAND_OVERLAY.json` for machine-readable render settings.', '');
   }
   if (!vids.length) L.push('_No approved video._');
@@ -320,7 +358,18 @@ export async function buildPackage(project, assets, onProgress = () => {}, extra
   const blockedColor = pairs.map(pair => ({ asset: pair.asset, decision: colorExportDecision(pair.asset.auto?.color || {}) }))
     .find(entry => !entry.decision.allowed);
   if (blockedColor) throw new Error(`color_export_blocked:${blockedColor.asset.filename}:${blockedColor.decision.reason}`);
-  const proof = !!opts.proof;
+  // The lane is what a licence entitles this export to; `opts.proof` is the
+  // user asking for a watermarked copy on purpose. Either forces a proof.
+  //
+  // Reading the lane here is what makes docs' tier table behaviour rather than
+  // documentation: LANES was dead code, imported by nothing, so every promise
+  // about watermarks and resolution was unenforced (see docs/TIER_DELIVERY_GAP.md).
+  // Behaviour is unchanged today, because an unlicensed user cannot reach this
+  // path at all — but when paid exports arrive for the free tier, they land as
+  // proofs automatically instead of needing a second gate somewhere else.
+  const lane = opts.lane || null;
+  const laneIsProofOnly = typeof lane?.imageExport === 'string' && lane.imageExport.startsWith('proof');
+  const proof = !!opts.proof || laneIsProofOnly;
   const root = `${slug(project.name)}_${proof ? 'PROOF' : 'package'}_${new Date().toISOString().slice(0, 10)}`;
   const add = (name, data) => entries.push({ name: `${root}/${name}`, data });
 
@@ -365,7 +414,7 @@ export async function buildPackage(project, assets, onProgress = () => {}, extra
     const { source, w, h } = await sourceFor(logoAsset);
     const width = canvas.width * Math.max(0.05, Math.min(0.6, Number(config.widthPct || 18) / 100));
     const height = width * (h / w);
-    const margin = canvas.width * Math.max(0, Math.min(0.15, Number(config.marginPct || 4) / 100));
+    const margin = canvas.width * Math.max(0, Math.min(0.15, Number(config.marginPct ?? 4) / 100));
     const positions = {
       'top-left':[margin,margin], 'top-right':[canvas.width-width-margin,margin],
       'bottom-left':[margin,canvas.height-height-margin], 'bottom-right':[canvas.width-width-margin,canvas.height-height-margin],

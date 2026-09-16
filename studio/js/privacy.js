@@ -1,9 +1,11 @@
 import { apiUrl } from './api-root.js';
+import { withdrawRecordingConsent } from './recording-consent.js';
 
 const API = apiUrl('/api/privacy/preferences');
 const DIAGNOSTIC_API = apiUrl('/api/diagnostics/event');
 const PRIVACY_EXPORT_API = apiUrl('/api/privacy/export');
 const PRIVACY_REQUEST_API = apiUrl('/api/privacy/request');
+const VOICE_CONSENT_WITHDRAW_API = apiUrl('/api/consent/biometric/withdraw');
 const APP_VERSION = '0.1.0';
 
 const PROFILE_FIELDS = [
@@ -193,7 +195,8 @@ function installPrivacyDialog(initial) {
       make('footer', {},
         ...(initial.configured ? [
           make('button', { className: 'btn', type: 'button', id: 'privacyExport', textContent: 'Download my data' }),
-          make('button', { className: 'btn', type: 'button', id: 'privacyDelete', textContent: 'Request deletion' })
+          make('button', { className: 'btn', type: 'button', id: 'privacyDelete', textContent: 'Request deletion' }),
+          make('button', { className: 'btn', type: 'button', id: 'privacyVoiceWithdraw', textContent: 'Withdraw voice consent' })
         ] : []),
         make('button', { className: 'btn', type: 'button', id: 'privacyRequiredOnly', textContent: 'Use required data only' }),
         make('span', { className: 'spacer' }),
@@ -267,8 +270,26 @@ function installPrivacyDialog(initial) {
   };
   const deletionButton = dialog.querySelector('#privacyDelete');
   if (deletionButton) deletionButton.onclick = async () => {
-    const confirmed = window.confirm('Request deletion of your MaterialLogix account? Optional diagnostics and profile data will be removed now. Billing, licensing, fraud-prevention, and security records may be retained when legally required.');
+    // Deleting an account is irreversible, so it takes a deliberate act rather
+    // than one click on a default-focused dialog button.
+    const confirmed = window.confirm([
+      'Delete your MaterialLogix account?',
+      '',
+      'This cannot be undone.',
+      '',
+      'Removed now: your optional diagnostics, your research profile, and any personal voice profile.',
+      'Kept: billing, licensing, fraud-prevention and security records, for as long as the law requires us to hold them.',
+      'Unaffected: everything you have already exported to your own computer.',
+      '',
+      'A paid term already charged is not refunded by deleting the account. To stop a renewal instead, use Manage plan and billing.'
+    ].join('\n'));
     if (!confirmed) return;
+    const typed = window.prompt('To confirm, type DELETE in capital letters.');
+    if (typed === null) return;
+    if (typed.trim() !== 'DELETE') {
+      status.textContent = 'Account deletion cancelled — the confirmation did not match.';
+      return;
+    }
     status.textContent = 'Submitting your deletion request…';
     deletionButton.disabled = true;
     try {
@@ -277,6 +298,25 @@ function installPrivacyDialog(initial) {
     } catch {
       status.textContent = 'We could not submit the deletion request. Try again.';
       deletionButton.disabled = false;
+    }
+  };
+  const voiceWithdrawButton = dialog.querySelector('#privacyVoiceWithdraw');
+  if (voiceWithdrawButton) voiceWithdrawButton.onclick = async () => {
+    const confirmed = window.confirm('Withdraw consent for personal voice profiles? Profiles stop being used and are destroyed. The record of the consent you gave is kept, because it is the proof of what you agreed to.');
+    if (!confirmed) return;
+    status.textContent = 'Withdrawing voice consent…';
+    voiceWithdrawButton.disabled = true;
+    try {
+      const result = await privacyAccountRequest(VOICE_CONSENT_WITHDRAW_API, 'POST');
+      // The account holds the record; this device holds the microphone, so the
+      // block has to be written here too or recording carries on regardless.
+      if (result?.withdrawn) withdrawRecordingConsent();
+      status.textContent = result?.withdrawn
+        ? 'Voice consent withdrawn. Recording is now off on this computer, and any local voice profile should be deleted to remove it here too.'
+        : 'No active voice consent was on file for this account.';
+    } catch {
+      status.textContent = 'We could not withdraw voice consent. Try again.';
+      voiceWithdrawButton.disabled = false;
     }
   };
   return dialog;

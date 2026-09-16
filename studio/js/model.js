@@ -83,7 +83,7 @@ export const ASSET_STATUSES = [
   { id: 'needs-retouch', label: 'Retouch required', hint: 'Retain the source and complete the listed refinements.' },
   { id: 'needs-new-generation', label: 'New result required', hint: 'Create or capture a materially different replacement.' },
   { id: 'reference-only', label: 'Reference only', hint: 'Approved as production input, not for final delivery.' },
-  { id: 'rejected', label: 'Rejected', hint: 'Retained in project history to prevent accidental reuse.' }
+  { id: 'rejected', label: 'Rejected', hint: 'Deletes the file immediately. Use New result required to keep it while you redo the work instead.' }
 ];
 
 export const STATUS_BY_ID = Object.fromEntries(ASSET_STATUSES.map(s => [s.id, s]));
@@ -99,13 +99,6 @@ export const REJECTION_REASONS = [
   { id: 'violence-hate', label: 'Violence, hate, harassment, or disturbing content' },
   { id: 'rights-consent', label: 'Rights, consent, likeness, or provenance concern' },
   { id: 'other', label: 'Other' }
-];
-
-export const PLACEMENT_DECISIONS = [
-  { id: 'pending', label: 'Pending' },
-  { id: 'approved', label: 'Approved' },
-  { id: 'revise', label: 'Revise' },
-  { id: 'denied', label: 'Denied' }
 ];
 
 export const ASSET_ROLES = [
@@ -183,17 +176,6 @@ export const SURFACE_PRESETS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Generation providers. Placeholders only: nothing is called in this build.
-
-export const PROVIDERS = [
-  { id: 'image-renderer', label: 'Image renderer', kind: 'Images', env: 'IMAGE_RENDERER_KEY' },
-  { id: 'image-refiner', label: 'Image refiner', kind: 'Images', env: 'IMAGE_REFINER_KEY' },
-  { id: 'motion-renderer', label: 'Motion renderer', kind: 'Video', env: 'MOTION_RENDERER_KEY' },
-  { id: 'motion-refiner', label: 'Motion refiner', kind: 'Video', env: 'MOTION_REFINER_KEY' },
-  { id: 'copy-review', label: 'Copy review', kind: 'Brief and QA text', env: 'COPY_REVIEW_KEY' }
-];
-
-// ---------------------------------------------------------------------------
 
 export function newProject(name) {
   const now = new Date().toISOString();
@@ -208,13 +190,15 @@ export function newProject(name) {
     },
     surfaces: ['web-hero-desktop', 'web-hero-mobile', 'ig-feed-portrait', 'tiktok-feed', 'meta-feed'],
     qaPreset: 'human',
-    brandOverlay: { assetId: '', position: 'bottom-right', widthPct: 18, marginPct: 4, opacity: 1 },
-    providers: {}
+    brandOverlay: { assetId: '', position: 'bottom-right', widthPct: 18, marginPct: 4, opacity: 1 }
   };
 }
 
 export function newAsset(projectId, file) {
-  const kind = (file.type || '').startsWith('video') ? 'video' : 'image';
+  // Audio was not a kind the project knew about, so a sound file recorded
+  // itself as an image and no Studio could hand one to another.
+  const type = file.type || '';
+  const kind = type.startsWith('video') ? 'video' : type.startsWith('audio') ? 'audio' : 'image';
   return {
     id: crypto.randomUUID(),
     projectId,
@@ -233,14 +217,14 @@ export function newAsset(projectId, file) {
     provenance: '',
     qa: {},
     fixes: [],
-    rejectionFeedback: { reasons: [], note: '', shareForImprovement: false, recordedAt: '' },
+    rejectionFeedback: { reasons: [], note: '', recordedAt: '' },
     placements: {},
     edit: {
       mode: 'guided',
       adjustments: { exposure: 0, contrast: 0, highlights: 0, shadows: 0, temperature: 0, tint: 0, saturation: 0, vibrance: 0, denoise: 0, blur: 0, sharpen: 0, grain: 0, vignette: 0 },
       pixelGrid: { enabled: false, columns: 12, sensitivity: 55 }
     },
-    video: { trimStart: '', trimEnd: '', hook: '', believability: 0, looksAI: false, recast: false, cropNote: '', posterTime: null, comments: [] },
+    video: { trimStart: '', trimEnd: '', hook: '', believability: 0, looksSynthetic: false, recast: false, cropNote: '', posterTime: null, comments: [] },
     width: 0,
     height: 0,
     duration: 0

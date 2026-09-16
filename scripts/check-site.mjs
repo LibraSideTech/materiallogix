@@ -17,7 +17,7 @@ const failures = [];
 const fail = (message) => failures.push(message);
 const read = (relative) => readFileSync(join(root, relative), "utf8");
 
-const { PRODUCTS, TERMS, price, PAY_PER_EXPORT } = await import(pathToFileURL(join(root, "studio/js/pricing.js")).href);
+const { PRODUCTS, TERMS, price } = await import(pathToFileURL(join(root, "studio/js/pricing.js")).href);
 const { PRICING } = await import(pathToFileURL(join(root, "studio/js/pricing-catalog.js")).href);
 
 // --- 1. The two shipped catalogues must agree with each other ---------------
@@ -27,7 +27,11 @@ const catalogTotals = {
   single_photo: Object.fromEntries(Object.entries(PRICING.single.products.photo).map(([term, entry]) => [term, entry.totalCents])),
   single_video: Object.fromEntries(Object.entries(PRICING.single.products.video).map(([term, entry]) => [term, entry.totalCents])),
   single_voice: Object.fromEntries(Object.entries(PRICING.single.products.voice).map(([term, entry]) => [term, entry.totalCents])),
-  full: Object.fromEntries(TERMS.map((term) => [term.id, PRICING.full[term.id]?.totalCents]).filter(([, cents]) => cents !== undefined))
+  single_pro_photo: Object.fromEntries(Object.entries(PRICING.singlePro.products.photo).map(([term, entry]) => [term, entry.totalCents])),
+  single_pro_video: Object.fromEntries(Object.entries(PRICING.singlePro.products.video).map(([term, entry]) => [term, entry.totalCents])),
+  single_pro_voice: Object.fromEntries(Object.entries(PRICING.singlePro.products.voice).map(([term, entry]) => [term, entry.totalCents])),
+  full: Object.fromEntries(TERMS.map((term) => [term.id, PRICING.full[term.id]?.totalCents]).filter(([, cents]) => cents !== undefined)),
+  full_pro: Object.fromEntries(TERMS.map((term) => [term.id, PRICING.fullPro[term.id]?.totalCents]).filter(([, cents]) => cents !== undefined))
 };
 
 for (const product of PRODUCTS) {
@@ -48,10 +52,6 @@ for (const product of PRODUCTS) {
       fail(`${product.id} ${term.id}: pricing.js says $${dollars}, pricing-catalog.js says ${cents} cents.`);
     }
   }
-}
-
-if (Math.round(PAY_PER_EXPORT.price * 100) !== PRICING.export.totalCents) {
-  fail(`Pay-per-export: pricing.js says $${PAY_PER_EXPORT.price}, pricing-catalog.js says ${PRICING.export.totalCents} cents.`);
 }
 
 // price() must refuse a term the product is not sold on, or a truthy record
@@ -79,7 +79,11 @@ const CARD_FOR_PRODUCT = {
   single_photo: "Single Studio",
   single_video: "Single Studio",
   single_voice: "Single Studio",
-  full: "Full Studio"
+  single_pro_photo: "Single Studio Pro",
+  single_pro_video: "Single Studio Pro",
+  single_pro_voice: "Single Studio Pro",
+  full: "Full Studio",
+  full_pro: "Pro Studio"
 };
 
 const cards = new Map();
@@ -126,10 +130,11 @@ for (const [name, body] of cards) {
   }
 }
 
-const publishedExport = [...indexHtml.matchAll(/(?:Exports?|exports) from \$([0-9]+\.[0-9]{2})/g)].map((match) => Number(match[1]));
-if (!publishedExport.length) fail("index.html no longer publishes a pay-per-export price.");
-for (const amount of publishedExport) {
-  if (amount !== PAY_PER_EXPORT.price) fail(`index.html publishes exports from $${amount} but the catalogue charges $${PAY_PER_EXPORT.price}.`);
+// Pay-per-export was retired: Free Preview replaced it, and index.html no
+// longer publishes a per-export price. Confirm that retirement stays true
+// rather than silently accepting whatever copy returns.
+if (/(?:Exports?|exports) from \$[0-9]+\.[0-9]{2}/.test(indexHtml)) {
+  fail("index.html publishes a pay-per-export price again; pricing.js no longer defines PAY_PER_EXPORT to reconcile it against.");
 }
 
 // --- 3. The service worker's shell must resolve to files that exist ---------
@@ -141,7 +146,11 @@ if (!shellBlock) {
 } else {
   for (const entry of shellBlock.matchAll(/'([^']+)'/g)) {
     const specifier = entry[1];
-    const resolved = new NodeURL(specifier, "https://materiallogix.com/studio/sw.js").pathname;
+    // sw.js's own scopeUrl() rewrites 'site/media/…' to '../media/…' when
+    // hosted under /studio/ (see its comment) - this hosted deploy is always
+    // that case, so mirror the same rewrite before resolving.
+    const hosted = specifier.startsWith("site/media/") ? `../media/${specifier.slice("site/media/".length)}` : specifier;
+    const resolved = new NodeURL(hosted, "https://materiallogix.com/studio/sw.js").pathname;
     const target = join(root, resolved.endsWith("/") ? `${resolved}index.html` : resolved);
     if (!existsSync(target)) fail(`studio/sw.js precaches ${specifier}, which resolves to ${resolved} and does not exist.`);
   }
@@ -151,7 +160,9 @@ if (!shellBlock) {
 
 const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: root }).toString("utf8").split("\0").filter(Boolean);
 const htmlFiles = tracked.filter((path) => path.endsWith(".html"));
-const ATTRIBUTE = /(?:href|src|action|poster)\s*=\s*"([^"]+)"/g;
+// A leading \s is required so this cannot match inside a longer attribute
+// name that happens to end the same way, e.g. data-track-action="mute".
+const ATTRIBUTE = /\s(?:href|src|action|poster)\s*=\s*"([^"]+)"/g;
 for (const file of htmlFiles) {
   const html = read(file);
   const base = dirname(file);

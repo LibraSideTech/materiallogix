@@ -22,8 +22,6 @@ export function snapshotProject(project, label) {
   if (stack.length > UNDO_LIMIT) stack.shift();
 }
 
-export const canUndo = () => stack.length > 0;
-export const peekLabel = () => stack[stack.length - 1]?.label || null;
 export const popUndo = () => stack.pop() || null;
 export const clearUndo = () => { stack.length = 0; };
 

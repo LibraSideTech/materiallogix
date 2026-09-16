@@ -85,6 +85,24 @@ async function billingRequest(path, body, idempotencyKey) {
   return result;
 }
 
+/**
+ * Spend an entitlement. Called only after the file has been delivered, so a
+ * failed export costs nothing. operationId is the export's evidence hash, so a
+ * retried delivery of the same artifact spends once.
+ */
+export async function consumeEntitlement({ entitlement, quantity = 1, operationId = crypto.randomUUID() }) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { ok: false, reason: 'offline' };
+  }
+  const licenseKey = activeLicenseKey();
+  if (!licenseKey) return { ok: false, reason: 'license_required' };
+  try {
+    return await billingRequest('entitlements/consume', { licenseKey, entitlement, quantity }, `consume:${operationId}`);
+  } catch (error) {
+    return { ok: false, reason: error instanceof Error ? error.message : 'consume_failed' };
+  }
+}
+
 export async function authorizeOutbound({ product, artifactKind, quantity, operationId = crypto.randomUUID() }) {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { ok: false, reason: 'online_authorization_required' };
@@ -176,7 +194,7 @@ export function flushPendingUsageReleases() {
   return releaseFlushPromise;
 }
 
-export async function beginAddOnCheckout(sku = 'export_one') {
+export async function beginAddOnCheckout(sku = 'export_photo') {
   const licenseKey = activeLicenseKey();
   if (!licenseKey) throw new Error('license_required');
   const result = await billingRequest('checkout/session', { sku, licenseKey }, crypto.randomUUID());

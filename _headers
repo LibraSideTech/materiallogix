@@ -1,2 +1,34 @@
+# Response headers for the public site.
+#
+# NOT CURRENTLY APPLIED. materiallogix.com is served by GitHub Pages (the live
+# response carries x-github-request-id and x-served-by: cache-iad, with
+# Cloudflare only in front as CDN). GitHub Pages ignores this file and serves it
+# as a static asset instead, so every header below is inert today and
+# /_headers is publicly readable. It becomes live if the site moves to
+# Cloudflare Pages; until then the same policy has to come from a Transform Rule
+# or a Worker in front. Tracked by the cloudflare_access_and_edge release gate.
+
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-site
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), midi=()
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com; upgrade-insecure-requests
+
+# The Studio application is a different shape from the marketing and legal
+# pages: it registers a service worker, builds media through blob: URLs and
+# Workers, loads engine assets from a CDN, and talks to the local engine bridge
+# on 127.0.0.1. An enforcing policy here would break it, so the policy is
+# report-only until its reports come back clean, and the microphone is allowed
+# because Voice records with it.
+/studio/*
+  ! Content-Security-Policy
+  ! Permissions-Policy
+  Permissions-Policy: camera=(), geolocation=(), payment=(), usb=(), serial=(), midi=()
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; worker-src 'self' blob:; connect-src 'self' https://materiallogix.com https://cloudflareinsights.com https://storage.googleapis.com https://cdn.jsdelivr.net http://127.0.0.1:8188 http://127.0.0.1:8189
+
 /studio/sw.js
   Cache-Control: no-cache

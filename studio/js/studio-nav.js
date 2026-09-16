@@ -4,6 +4,22 @@
 import { apiUrl } from './api-root.js';
 import { APP_VERSION, MINIMUM_COMPATIBLE, versionBehind } from './app-version.js';
 
+function addAdminLink() {
+  if (location.pathname.toLowerCase().endsWith('/admin.html') || document.querySelector('#mlAdminLink')) return;
+  const link = Object.assign(document.createElement('a'), {
+    id: 'mlAdminLink', href: 'admin.html', textContent: 'Admin',
+    className: 'btn sm', style: 'text-decoration:none'
+  });
+  // Prefer the existing "More" dropdown pattern where a page has one;
+  // studio-nav.js runs on every page and page layouts aren't identical
+  // (only index.html/voice.html currently have .topbar-more-menu), so fall
+  // back to the topbar itself rather than doing nothing.
+  const moreMenu = document.querySelector('.topbar-more-menu');
+  const topbar = document.querySelector('.topbar, header.topbar');
+  if (moreMenu) moreMenu.prepend(link);
+  else if (topbar) topbar.append(link);
+}
+
 async function enforceAccessBoundary() {
   const params = new URLSearchParams(location.search);
   const local = ['localhost', '127.0.0.1', '::1'].includes(location.hostname);
@@ -24,6 +40,10 @@ async function enforceAccessBoundary() {
     if (response.ok) {
       const session = await response.json();
       authenticated = session?.authenticated === true;
+      // Convenience only: showing this link changes nothing about who can
+      // actually use /admin.html, since every admin API call independently
+      // re-checks assertAdmin() against ADMIN_EMAIL_HASHES server-side.
+      if (session?.isAdmin === true) addAdminLink();
     }
   } catch { /* Fail closed. */ }
   if (authenticated) {
@@ -82,16 +102,26 @@ async function checkForUpdates() {
 }
 checkForUpdates();
 
-const select = document.querySelector('#studioServiceSelect');
-if (select) {
+// index.html hosts both Photo and Video, so the URL alone cannot say which
+// Studio the chrome is wrapping; the entrance records the choice on the way in.
+function activeStudioName() {
   const here = location.pathname.toLowerCase();
-  select.value = here.endsWith('/voice.html') || here.endsWith('/voice') ? 'voice' : 'review';
-  select.addEventListener('change', () => {
-    const query = location.search || '';
-    const hash = location.hash || '';
-    const target = select.value === 'voice' ? `voice.html${query}${hash}` : `index.html${query}${hash}`;
-    location.href = target;
-  });
+  if (here.endsWith('/voice.html') || here.endsWith('/voice')) return 'Voice';
+  if (here.endsWith('/music.html') || here.endsWith('/music')) return 'Music';
+  try {
+    const startProduct = sessionStorage.getItem('mlx:start-product');
+    if (startProduct === 'video') return 'Video';
+    if (startProduct === 'photo') return 'Photo';
+  } catch { /* unavailable */ }
+  return 'Studio';
 }
+
+// The topbar used to read "Studio" and "Review" on every page, so Video Studio
+// introduced itself as Review and no page said which Studio you were in.
+const studioName = activeStudioName();
+const brandSuffix = document.querySelector('.topbar .brand .brand-studio');
+if (brandSuffix) brandSuffix.textContent = `${studioName} Studio`;
+const breadcrumbHere = document.querySelector('.topbar .breadcrumbs b');
+if (breadcrumbHere) breadcrumbHere.textContent = studioName;
 
 await import('./privacy.js');

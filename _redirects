@@ -1,7 +1,7 @@
-# The marketing homepage is the canonical indexable page: sitemap.xml lists
-# https://materiallogix.com/ and robots.txt disallows /studio/. The two rules
-# that redirected / and /index.html into /studio/ predate that and would send
-# the canonical page, its pricing and its checkout into a disallowed path.
+# Short aliases into the Studio application. The root and /index.html are NOT
+# redirected: they serve the public marketing page, which is the entry point for
+# everyone who has not bought yet. Rules sending them to /studio/ predated that
+# page and would have carried every visitor straight past it.
 /app        /studio/            301
 /app/*      /studio/:splat      301
 /voice      /studio/voice.html  302

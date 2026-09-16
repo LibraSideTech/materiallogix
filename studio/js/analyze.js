@@ -8,6 +8,12 @@
 
 import { SURFACE_BY_ID } from './model.js';
 import { inspectColorMetadata } from './color-management.js';
+import {
+  PERSONAL_GEOMETRY_PURPOSES,
+  SKIN_DETAIL_CONTINUITY_ALGORITHM_ID,
+  SKIN_DETAIL_CONTINUITY_ALGORITHM_SHA256,
+  personalGeometryConsentState
+} from './personal-geometry-consent.js';
 
 const SAMPLE_W = 256;   // analysis resolution: comparable scores across assets
 const GRID = 32;        // energy map resolution
@@ -567,9 +573,9 @@ export function paletteMatch(assetPalette, brandHexes) {
 export const brandHexesFrom = text => (text || '').match(/#[0-9a-fA-F]{6}\b/g) || [];
 
 // --- skin-detail continuity hint -------------------------------------------
-// Not AI detection. A cheap signal that skin-tone regions carry far less
+// Not synthetic-origin detection. A cheap signal that skin-tone regions carry far less
 // high-frequency detail than the rest of the frame, which is the single most
-// common tell reviewers describe as "looks AI".
+// common tell reviewers describe as "looks synthetic".
 
 function skinSmoothness({ data, w, h }, gray, lap) {
   const d = data.data;
@@ -601,6 +607,35 @@ function skinSmoothness({ data, w, h }, gray, lap) {
   };
 }
 
+/**
+ * Skin-detail review is a separate, consented person-analysis operation.
+ * Generic Photo/Video checks never call this gate and therefore never classify
+ * skin-colour pixels.
+ */
+export function assertSkinDetailConsent({
+  consentReceipt,
+  packId,
+  now = Date.now()
+} = {}) {
+  const state = personalGeometryConsentState(consentReceipt, { now });
+  if (!state.allowed) {
+    throw new TypeError(`Skin-detail consent blocked: ${state.blockers.join(', ')}`);
+  }
+  if (!packId || consentReceipt.pack_id !== packId) {
+    throw new TypeError('The consent receipt does not authorize this skin-detail review.');
+  }
+  if (consentReceipt.specific_purpose !== PERSONAL_GEOMETRY_PURPOSES.skinDetailReview
+      || !consentReceipt.core_categories?.includes('skin_detail')) {
+    throw new TypeError('The consent receipt does not authorize skin-detail analysis.');
+  }
+  if (!(consentReceipt.algorithm_ids_and_digests || []).some(item =>
+    item.algorithm_id === SKIN_DETAIL_CONTINUITY_ALGORITHM_ID
+      && item.sha256 === SKIN_DETAIL_CONTINUITY_ALGORITHM_SHA256)) {
+    throw new TypeError('The consent receipt does not authorize the exact skin-detail algorithm.');
+  }
+  return true;
+}
+
 // --- provenance ------------------------------------------------------------
 // Reads what the file already declares. Free, and the only honest source of
 // truth about origin — everything else is inference.
@@ -608,7 +643,7 @@ function skinSmoothness({ data, w, h }, gray, lap) {
 const MARKERS = [
   ['c2pa', /c2pa|jumbf|urn:uuid:.*c2pa/i],
   ['contentCredentials', /contentcredentials|Content Credentials/i],
-  ['aiDigitalSource', /trainedAlgorithmicMedia|compositeWithTrainedAlgorithmicMedia|algorithmicMedia/i],
+  ['syntheticDigitalSource', /trainedAlgorithmicMedia|compositeWithTrainedAlgorithmicMedia|algorithmicMedia/i],
   ['xmp', /<x:xmpmeta|adobe:ns:meta/i]
 ];
 
@@ -621,13 +656,28 @@ export async function readProvenance(blob) {
     const soft = /(?:Software|CreatorTool)[\x00-\x20"'>:=]{0,8}([\x20-\x7e]{3,40})/.exec(text);
     return { ...found, tool: soft ? soft[1].replace(/[<"'].*$/, '').trim() : null };
   } catch {
-    return { c2pa: false, contentCredentials: false, aiDigitalSource: false, xmp: false, tool: null };
+    return { c2pa: false, contentCredentials: false, syntheticDigitalSource: false, xmp: false, tool: null };
   }
 }
 
 // --- the entry point -------------------------------------------------------
 
-export async function analyzeAsset(source, w, h, blob, colorTransform = null) {
+export async function analyzeAsset(source, w, h, blob, colorTransform = null, {
+  skinDetailAuthorized = false,
+  skinDetailConsentReceipt = null,
+  skinDetailPackId = null,
+  now = Date.now()
+} = {}) {
+  if (!skinDetailAuthorized && (skinDetailConsentReceipt !== null || skinDetailPackId !== null)) {
+    throw new TypeError('Skin-detail analysis requires an explicit one-call authorization.');
+  }
+  if (skinDetailAuthorized) {
+    assertSkinDetailConsent({
+      consentReceipt: skinDetailConsentReceipt,
+      packId: skinDetailPackId,
+      now
+    });
+  }
   const s = sample(source, w, h);
   const gray = toGray(s);
   const lap = laplacian(gray, s.w, s.h);
@@ -645,7 +695,7 @@ export async function analyzeAsset(source, w, h, blob, colorTransform = null) {
     cameraNoise: estimateCameraNoise(s),
     energy: energyGrid(gray, s.w, s.h),
     palette: palette(s),
-    skin: skinSmoothness(s, gray, lap),
+    skin: skinDetailAuthorized ? skinSmoothness(s, gray, lap) : null,
     provenance: blob ? await readProvenance(blob) : null,
     color: blob ? await inspectColorMetadata(blob, colorTransform) : null
   };
@@ -658,7 +708,11 @@ const issue = (level, code, message, fix) => ({ level, code, message, fix });
 export function assetIssues(asset, allAssets, project) {
   const out = [];
   const a = asset.auto;
-  if (!a) return [issue('info', 'not-analyzed', 'Automated checks have not run on this asset yet.', 'Run checks')];
+  // A half-populated `auto` is treated as not analysed rather than trusted.
+  // Every check below reads nested fields (a.exposure.blown and friends), so an
+  // analysis that was interrupted part-way used to throw here and take the whole
+  // render down with it, instead of the asset simply showing as unchecked.
+  if (!a || !a.exposure) return [issue('info', 'not-analyzed', 'Automated checks have not run on this asset yet.', 'Run checks')];
 
   if (a.sharpness < 40) {
     out.push(issue('warn', 'soft', `Low detail (sharpness index ${a.sharpness}). Reads soft at full size.`, 'Regenerate at higher resolution or pick a sharper take.'));
@@ -671,7 +725,8 @@ export function assetIssues(asset, allAssets, project) {
   }
   if (a.cameraNoise?.class === 'visible' || a.cameraNoise?.class === 'heavy') {
     const label = a.cameraNoise.class === 'heavy' ? 'Heavy camera noise' : 'Visible camera noise';
-    out.push(issue('warn', 'camera-noise', `${label} may soften fine detail.`, 'Try Noise cleanup, then review skin, hair, and fabric at full size.'));
+    out.push(issue('warn', 'camera-noise', `${label} may soften fine detail.`,
+      `Try Noise cleanup around ${a.cameraNoise.suggestedReduction}, then review skin, hair, and fabric at full size.`));
   }
   if (a.color?.cmyk || a.color?.profile === 'cmyk') {
     out.push(issue('block', 'cmyk-conversion-required',
@@ -762,8 +817,8 @@ export function assetIssues(asset, allAssets, project) {
   if (hasApproved && !asset.altText) {
     out.push(issue('block', 'alt', 'Approved with no alt text.', 'Write alt text before export.'));
   }
-  if (a.provenance?.aiDigitalSource) {
-    out.push(issue('info', 'ai-declared', 'File declares AI-generated provenance metadata. Some placements require disclosure.'));
+  if (a.provenance?.syntheticDigitalSource) {
+    out.push(issue('info', 'synthetic-declared', 'File declares synthetic-source provenance metadata. Some placements require disclosure.'));
   }
   return out;
 }

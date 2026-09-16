@@ -15,19 +15,6 @@ const BT2020_PRIMARIES = Object.freeze([0.708, 0.292, 0.17, 0.797, 0.131, 0.046,
 const HDR_MAX_PIXELS = 16_777_216;
 const HDR_MAX_DIMENSION = 8192;
 
-export const COLOR_PROFILE_ACCEPTANCE = Object.freeze({
-  srgb: 'accepted',
-  'untagged-srgb-fallback': 'accepted',
-  'display-p3': 'accepted-browser-conversion',
-  'bt2020-linear': 'accepted-radiance-tone-map',
-  // Adobe's official profile cannot be bundled with application software under
-  // the end-user license. Keep delivery blocked until the owner accepts a
-  // separate bundling agreement and a real encoded fixture passes acceptance.
-  'adobe-rgb': 'blocked-bundling-license-and-fixture',
-  cmyk: 'blocked-no-accepted-conversion',
-  'embedded-icc-unclassified': 'blocked-unclassified-profile'
-});
-
 export const srgbToLinear = value => {
   const c = Math.max(0, Math.min(1, Number(value) || 0));
   return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
@@ -81,6 +68,9 @@ export function colorExportDecision(color = {}) {
       ? { allowed: true, reason: 'display_p3_converted_to_srgb' }
       : { allowed: false, reason: 'display_p3_conversion_unverified' };
   }
+  // Adobe's official profile cannot be bundled with application software under
+  // the end-user license, so delivery stays blocked until the owner accepts a
+  // separate bundling agreement and a real encoded fixture passes acceptance.
   if (profile === 'adobe-rgb') return { allowed: false, reason: 'adobe_rgb_bundling_license_and_fixture_required' };
   if (profile === 'cmyk') return { allowed: false, reason: 'cmyk_conversion_unaccepted' };
   if (profile === 'embedded-icc-unclassified') return { allowed: false, reason: 'embedded_profile_unclassified' };
