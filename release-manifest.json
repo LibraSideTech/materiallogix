@@ -2,8 +2,8 @@
   "schema": "materiallogix.static-release.v1",
   "version": "0.2.0",
   "minimum": "0.1.0",
-  "sourceRevision": "5b308dbc6cc83d7032db73b85cea8fcb4d3a75e9",
-  "sourceDate": "2026-09-16T14:55:09.000Z",
+  "sourceRevision": "504b51a0e42b862466409b09858902c3c153b790",
+  "sourceDate": "2026-09-16T15:35:44.000Z",
   "sourceDirty": false,
   "validation": {
     "linksChecked": 232,
@@ -349,8 +349,8 @@
     },
     {
       "path": "studio/css/app.css",
-      "bytes": 84044,
-      "sha256": "4fb3079aadab89770ff3750393d508c02f8de5f6aba902df29f4d73495508404"
+      "bytes": 84079,
+      "sha256": "91bfb90783301810692a19c21acb66166864d7349cfa0c9518a9c99596a5efa6"
     },
     {
       "path": "studio/css/glass-surfaces.css",
@@ -835,7 +835,7 @@
     {
       "path": "studio/version.json",
       "bytes": 156,
-      "sha256": "23abefd0fc71fd7ac4b43df71c26f229f31225cc4cd6927f0c572eac6d593aef"
+      "sha256": "79d76ae391698558ff3637c9c5b0b3f650bf9641a572680a4f157166b1307ed2"
     },
     {
       "path": "studio/voice.html",
