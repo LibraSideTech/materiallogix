@@ -160,7 +160,9 @@ if (!shellBlock) {
 
 const tracked = execFileSync("git", ["ls-files", "-z"], { cwd: root }).toString("utf8").split("\0").filter(Boolean);
 const htmlFiles = tracked.filter((path) => path.endsWith(".html"));
-const ATTRIBUTE = /(?:href|src|action|poster)\s*=\s*"([^"]+)"/g;
+// A leading \s is required so this cannot match inside a longer attribute
+// name that happens to end the same way, e.g. data-track-action="mute".
+const ATTRIBUTE = /\s(?:href|src|action|poster)\s*=\s*"([^"]+)"/g;
 for (const file of htmlFiles) {
   const html = read(file);
   const base = dirname(file);
