@@ -1,0 +1,259 @@
+/* Guided Interview — the same calm editorial page as the rest of Foundry: paper, ink, gold rules,
+   serif for what the interviewer says, sans for controls. Touch-first: 44px targets, 16px+ inputs,
+   one column on a phone. Layered on styles.css; nothing here restyles another page. */
+
+.page-interview main { padding-bottom: 96px; }
+
+.iv-hero { padding-bottom: 8px; }
+.iv-hero h1 em { display: block; }
+
+.iv-card {
+  margin-top: 28px;
+  padding: 32px clamp(18px, 4vw, 44px);
+  border: 1px solid var(--hair);
+  border-radius: 18px;
+  background: rgba(255, 252, 245, 0.55);
+}
+.iv-card h2 {
+  margin: 8px 0 12px;
+  font: 300 clamp(28px, 3.4vw, 40px)/1.08 var(--serif);
+  letter-spacing: -0.02em;
+}
+.iv-card p { margin: 0 0 14px; color: var(--ink-2); }
+.iv-privacy {
+  margin: 18px 0;
+  padding: 14px 18px;
+  border-left: 2px solid var(--gold);
+  background: rgba(232, 212, 168, 0.18);
+  color: var(--ink) !important;
+  font: 400 18px/1.5 var(--serif);
+}
+.iv-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 22px; }
+.iv-actions .btn { min-height: 48px; }
+.iv-meta { color: var(--muted); font-size: 14px; }
+
+/* Layout: chapter rail + the conversation. */
+.iv-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 40px;
+  margin-top: 28px;
+  align-items: start;
+}
+.iv-rail {
+  position: sticky;
+  top: 96px;
+  padding: 20px 0;
+  border-top: 1px solid var(--hair);
+}
+.iv-rail details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.iv-rail ol { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 2px; }
+.iv-chapter-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  font-size: 14px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.iv-chapter-btn:hover { background: rgba(20, 19, 17, 0.04); }
+.iv-chapter-btn[aria-current="step"] { background: rgba(20, 19, 17, 0.07); color: var(--ink); font-weight: 500; }
+.iv-chapter-btn .iv-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.iv-chapter-btn.done .iv-count { color: var(--gold-ink); }
+.iv-chapter-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.iv-progress { margin: 0 0 6px; }
+.iv-progress-track {
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(20, 19, 17, 0.08);
+  overflow: hidden;
+}
+.iv-progress-bar { height: 100%; width: 0; background: var(--gold); transition: width 0.4s var(--ease); }
+.iv-progress-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: var(--muted); }
+
+.iv-stage { min-width: 0; }
+.iv-chapter-title {
+  margin: 18px 0 6px;
+  font: 300 clamp(26px, 3vw, 36px)/1.1 var(--serif);
+  letter-spacing: -0.02em;
+}
+.iv-chapter-intro { margin: 0 0 18px; color: var(--ink-2); font: 400 19px/1.5 var(--serif); }
+
+/* What the interviewer says: always on screen as text (captions), whether or not voice is on. */
+.iv-say {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin: 12px 0 6px;
+}
+.iv-bridge { margin: 0 0 8px; color: var(--ink-2); font: italic 400 19px/1.5 var(--serif); }
+.iv-question {
+  margin: 0;
+  font: 400 clamp(24px, 2.8vw, 32px)/1.3 var(--serif);
+  color: var(--ink);
+}
+.iv-question:focus { outline: none; }
+.iv-question:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.iv-replay {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(20, 19, 17, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 14px;
+}
+.iv-replay[aria-pressed="true"] { border-color: var(--gold); color: var(--gold-ink); }
+.iv-replay:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.iv-help { margin: 6px 0 18px; color: var(--muted); font-size: 15px; }
+
+.iv-answer { display: grid; gap: 12px; margin-top: 6px; }
+.iv-answer .field textarea { min-height: 110px; font-size: 20px; }
+.iv-answer .field input { font-size: 18px; }
+.iv-money { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.iv-money .iv-prefix, .iv-money .iv-suffix { padding-bottom: 18px; color: var(--muted); font-size: 16px; }
+
+.iv-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--hair);
+}
+.iv-controls .spacer { flex: 1 1 auto; }
+.iv-controls .btn { min-height: 48px; padding: 0 22px; }
+.iv-status { margin: 12px 0 0; min-height: 1.4em; color: var(--muted); font-size: 14px; }
+
+.iv-followup {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-left: 2px solid var(--gold-soft);
+  background: rgba(255, 252, 245, 0.6);
+}
+.iv-followup p { margin: 0 0 10px; font: 400 21px/1.4 var(--serif); }
+
+.iv-extract {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+}
+.iv-extract h3 { margin: 0 0 6px; font: 500 15px/1.4 var(--sans); }
+.iv-extract .field { margin-top: 10px; }
+
+/* Repeating rows (equipment list). */
+.iv-items { display: grid; gap: 14px; }
+.iv-item {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: end;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hair);
+}
+.iv-item .field { gap: 6px; }
+.iv-quoted { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.iv-quoted input { width: 20px; height: 20px; accent-color: var(--ink); }
+.iv-remove {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(20, 19, 17, 0.16);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Review. */
+.iv-review-chapter { margin-top: 28px; }
+.iv-review-chapter h3 { margin: 0 0 8px; font: 300 26px/1.2 var(--serif); }
+.iv-review-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--hair); }
+.iv-review-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.iv-review-q { margin: 0; font-size: 14px; color: var(--muted); }
+.iv-review-a { margin: 4px 0 0; font: 400 18px/1.45 var(--serif); color: var(--ink); overflow-wrap: anywhere; }
+.iv-review-a.open { color: var(--gold-ink); font: italic 400 16px/1.4 var(--serif); }
+.iv-edit { min-height: 44px; min-width: 64px; }
+.iv-todo { margin: 12px 0 0; padding-left: 20px; }
+.iv-todo li { margin: 6px 0; }
+
+/* Settings. */
+.iv-settings { margin-top: 24px; }
+.iv-settings fieldset { border: 0; padding: 0; margin: 0 0 18px; }
+.iv-settings legend { font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.iv-toggle { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; padding: 6px 0; cursor: pointer; }
+.iv-toggle input { width: 22px; height: 22px; margin-top: 3px; accent-color: var(--ink); flex: none; }
+
+.iv-speaking .iv-replay { border-color: var(--gold); }
+@media (prefers-reduced-motion: no-preference) {
+  .iv-speaking .iv-replay { animation: iv-pulse 1.6s ease-in-out infinite; }
+}
+@keyframes iv-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(154, 111, 42, 0.0); }
+  50% { box-shadow: 0 0 0 6px rgba(154, 111, 42, 0.18); }
+}
+
+@media (max-width: 900px) {
+  .iv-shell { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .iv-rail { position: static; padding: 8px 0; }
+  .iv-rail details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+}
+@media (max-width: 560px) {
+  .iv-item { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .iv-controls .btn { flex: 1 1 calc(50% - 10px); padding: 0 12px; }
+  .iv-controls .spacer { display: none; }
+  .iv-say { grid-template-columns: minmax(0, 1fr); }
+  .iv-replay { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .iv-progress-bar { transition: none; }
+}
+
+/* The way in, on Documents and Instant Build (interview-entry.js). */
+.interview-entry {
+  margin: 8px 0 28px;
+  padding: 22px clamp(16px, 3vw, 28px);
+  border: 1px solid var(--hair);
+  border-left: 2px solid var(--gold);
+  border-radius: 14px;
+  background: rgba(255, 252, 245, 0.55);
+}
+.interview-entry .interview-entry-title { margin: 6px 0 6px; font: 300 clamp(24px, 2.6vw, 32px)/1.1 var(--serif); letter-spacing: -0.02em; }
+.interview-entry .hint { margin: 0 0 14px; max-width: 62ch; font-size: 15px; }
+.interview-entry .btn { min-height: 48px; }
+.interview-entry-applied { margin: 0 0 14px; color: var(--gold-ink); font: 400 17px/1.4 var(--serif); }
+.interview-entry-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-top: 6px;
+}
+.interview-entry-option {
+  padding: 16px;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.4);
+}
+.interview-entry-option-title { margin: 0 0 6px; font: 400 19px/1.3 var(--serif); color: var(--ink); }
+.interview-entry-option .hint { margin: 0 0 14px; }
+@media (max-width: 640px) {
+  .interview-entry-options { grid-template-columns: 1fr; }
+}

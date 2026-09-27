@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Egress lockdown: see the CSP notes in _headers. This page loads nothing from off this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; manifest-src 'self'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Programs you may qualify for · Foundry · MaterialLogix</title>
+  <meta name="theme-color" content="#f4f0e8" />
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="icon" href="./favicon.png" type="image/png" />
+</head>
+<body class="page-programs">
+  <div class="atmosphere quiet" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="./index.html" aria-label="MaterialLogix Foundry">
+        <span class="brand-word"><span class="brand-material">Material</span><span class="brand-logix">Logix</span></span>
+        <span class="brand-suffix">Foundry</span>
+      </a>
+      <div class="navlinks">
+        <a href="./index.html">Instant Build</a>
+        <a href="./documents.html">Documents</a>
+        <a href="./help.html">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Programs you may qualify for: matched on this device from the optional interview chapter and
+       the plan's ZIP code (programs-page.js). Nothing is sent; links open the programs' own sites. -->
+  <main class="wrap paths-main programs-main" data-render="pending">
+    <header class="hero compact-hero">
+      <p class="eyebrow">Foundry · Programs you may qualify for</p>
+      <h1><span class="line">Programs, certifications and free help.</span> <em>Matched on this device.</em></h1>
+      <p class="lede" id="progIntro">Checking this device for your plan…</p>
+      <p class="hint">Your answers stay on this device and are never sent anywhere. They never appear in your lender documents unless you choose to list a certification you already hold. Verify eligibility with each program; this is not a determination.</p>
+    </header>
+
+    <section class="surface paths-section" id="progAsk" aria-labelledby="progAskTitle" hidden>
+      <h2 id="progAskTitle">See more programs</h2>
+      <p id="progAskText">A few optional questions, about two minutes, find programs for women-owned, veteran-owned, minority-owned and other businesses. Every question has Prefer not to say.</p>
+      <a class="btn primary paths-choose" href="./interview.html">Answer the optional questions</a>
+    </section>
+
+    <section class="surface paths-section" id="progRural" aria-labelledby="progRuralTitle" hidden>
+      <h2 id="progRuralTitle">Rural status</h2>
+      <p id="progRuralText"></p>
+    </section>
+
+    <section class="paths-section" id="progMatches" aria-labelledby="progMatchesTitle" hidden>
+      <h2 id="progMatchesTitle">What you may qualify for</h2>
+      <div id="progGroups"></div>
+    </section>
+
+    <section class="surface paths-section" id="progCerts" aria-labelledby="progCertsTitle" hidden>
+      <h2 id="progCertsTitle">Certifications you already hold</h2>
+      <label class="prog-check"><input type="checkbox" id="progCertsInPlan" /> <span>List them in my Business Plan as a competitive advantage (only the certification names, beside your competitors)</span></label>
+      <p class="hint" id="progCertsList"></p>
+    </section>
+
+    <section class="surface paths-section" id="progNotes" aria-labelledby="progNotesTitle" hidden>
+      <h2 id="progNotesTitle">Good to know</h2>
+      <ul id="progNotesList" class="paths-list"></ul>
+    </section>
+
+    <div class="prog-actions" id="progActions" hidden>
+      <button type="button" class="btn primary paths-choose" id="progApplyBtn">Update my documents</button>
+      <p class="hint">Adds the programs you picked to your To-Do List and the Programs section of Founder's Notes.</p>
+    </div>
+
+    <p class="file-status" id="progStatus" role="status" aria-live="polite"></p>
+    <p class="foot"><a href="./documents.html">Back to your documents</a></p>
+  </main>
+
+  <script src="./foundry-engines.js"></script>
+  <script src="./plan-store.js"></script>
+  <script src="./dialog.js"></script>
+  <script src="./interview/question-bank.js"></script>
+  <script src="./interview/interview-engine.js"></script>
+  <script src="./interview/answer-mapping.js"></script>
+  <script src="./eligibility/eligibility.js"></script>
+  <script src="./eligibility/local-help.js"></script>
+  <script src="./eligibility/programs-compute.js"></script>
+  <script src="./programs-page.js"></script>
+</body>
+</html>

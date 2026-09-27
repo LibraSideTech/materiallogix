@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Egress lockdown: see the CSP notes in _headers. This page loads nothing from off this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; manifest-src 'self'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Documents · Foundry · MaterialLogix</title>
+  <meta name="theme-color" content="#f4f0e8" />
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./interview/interview.css" />
+  <link rel="icon" href="./favicon.png" type="image/png" />
+</head>
+<body class="page-documents">
+  <div class="atmosphere quiet" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="./index.html" aria-label="MaterialLogix Foundry">
+        <span class="brand-word"><span class="brand-material">Material</span><span class="brand-logix">Logix</span></span>
+        <span class="brand-suffix">Foundry</span>
+      </a>
+      <div class="navlinks">
+        <a href="./index.html">Instant Build</a>
+        <a href="./documents.html" aria-current="page">Documents</a>
+        <a href="./help.html">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap" data-render="pending">
+    <header class="hero compact-hero doc-hero">
+      <div class="doc-hero-title">
+        <p class="eyebrow">Foundry · Documents</p>
+        <h1>
+          <span class="line">Your documents.</span>
+          <em>Notes are optional.</em>
+        </h1>
+        <p class="lede" id="documentsIntro">
+          Instant built this pack from your answers. Use Adjust notes only if something needs clarifying.
+        </p>
+        <p class="plan-saved-line" data-plan-status role="status">Checking this device for your plan…</p>
+      </div>
+
+      <!-- The right half of this band used to be empty. It carries the one thing a founder cannot
+           otherwise see: that a pack of finished-looking documents is a fraction of what a lender
+           expects, and the button that closes the gap. -->
+      <aside class="doc-hero-status" id="planStatusCard" aria-label="Plan readiness" hidden>
+        <p class="eyebrow">Plan readiness</p>
+        <div class="plan-progress">
+          <div class="plan-progress-figure"><span id="planProgressPercent">—</span></div>
+          <div class="plan-progress-detail">
+            <div class="plan-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Plan completeness">
+              <div class="plan-progress-bar" id="planProgressBar"></div>
+            </div>
+            <p class="hint" id="planProgressLine"></p>
+          </div>
+        </div>
+        <button type="button" class="btn primary" id="planBtn">Complete your plan</button>
+        <p class="hint" id="planPackLine"></p>
+      </aside>
+    </header>
+
+    <!-- Guided Interview: the way in after Instant Build, and what changed after it (interview-entry.js). -->
+    <section class="interview-entry" id="interviewEntry" aria-label="Guided Interview" hidden></section>
+
+    <!-- Plan check: shown when the finance model says the plan does not work as structured, or when
+         it was rebuilt on a track (documents-page.js, renderPathsBanner). -->
+    <section class="surface paths-banner" id="pathsBanner" aria-label="Plan check" hidden>
+      <div>
+        <p class="eyebrow">Plan check</p>
+        <p id="pathsBannerText" role="status"></p>
+      </div>
+      <a class="btn primary" id="pathsBannerLink" href="./paths.html">See paths that could work</a>
+    </section>
+
+    <!-- Programs you may qualify for (programs.html): special programs, certifications and free
+         help, matched on this device. -->
+    <section class="surface paths-banner programs-banner" id="programsBanner" aria-label="Programs you may qualify for">
+      <div>
+        <p class="eyebrow">Programs and free help</p>
+        <p>Special programs, certifications and free help you may qualify for, matched on this device.</p>
+      </div>
+      <a class="btn ghost" id="programsBannerLink" href="./programs.html">See programs you may qualify for</a>
+    </section>
+
+    <section class="atelier file-shell">
+      <aside class="file-rail" aria-label="Document library">
+        <p class="rail-label">From Instant Build</p>
+        <ul id="docLibrary" class="file-rail-list"></ul>
+        <p class="rail-note">
+          Edit here. Export for Word or Google Docs. Archive keeps an offline copy.
+        </p>
+      </aside>
+
+      <section class="file-stage surface" aria-label="Document workspace">
+        <div class="file-toolbar">
+          <div>
+            <h2 id="activeDocTitle">Business Plan</h2>
+            <p class="file-purpose" id="activeDocPurpose"></p>
+          </div>
+          <!-- Two groups, not six peers. Six equal buttons wrapped to a second row with nothing
+               to say why the break fell where it did; working on the document and taking it
+               somewhere are different jobs, and the break now falls between them. -->
+          <div class="file-actions">
+            <span class="file-action-group" role="group" aria-label="Work on this document">
+              <button type="button" class="btn ghost" id="adjustNotesBtn">Adjust notes</button>
+              <button type="button" class="btn ghost" id="askBtn">Ask about this plan</button>
+              <button type="button" class="btn ghost" id="saveDocBtn">Save</button>
+            </span>
+            <span class="file-action-group" role="group" aria-label="Take this document out">
+              <button type="button" class="btn ghost" id="exportEditableBtn">Export editable</button>
+              <button type="button" class="btn ghost" id="exportDocxBtn">Word (.docx)</button>
+              <button type="button" class="btn ghost" id="exportPdfBtn">Save as PDF</button>
+              <button type="button" class="btn primary" id="exportArchiveBtn">Archive</button>
+            </span>
+          </div>
+        </div>
+        <div class="doc-edit-notice" id="docEditNotice" role="status" hidden>
+          <p>This document was rebuilt from newer answers after you edited it. Your edited version is shown.</p>
+          <button type="button" class="btn ghost" id="docUseRebuiltBtn">Show the rebuilt version</button>
+        </div>
+        <article class="file-paper" id="docPaper" contenteditable="true" spellcheck="true"></article>
+        <p class="file-status" id="docSaveStatus"></p>
+      </section>
+    </section>
+
+<!-- The plan is kept on this device (plan-store.js) so closing the tab no longer loses it.
+         A plan file moves it to another device; nothing is sent anywhere. -->
+    <section class="surface plan-storage" id="planStorage" aria-labelledby="planStorageTitle">
+      <div class="plan-storage-copy">
+        <p class="eyebrow">On this device</p>
+        <h2 id="planStorageTitle">Your plan</h2>
+        <p class="plan-storage-status" data-plan-status role="status" aria-live="polite">Checking this device for your plan…</p>
+        <p class="hint">Saved in this browser only, never uploaded, and removed automatically after 30 days of no use. To work on another device, save a plan file and open it there.</p>
+        <label class="keep-toggle" for="sessionOnlyToggle">
+          <input type="checkbox" id="sessionOnlyToggle" />
+          <span><strong>Don’t keep this on this device.</strong> Keep the plan in this tab only; it is removed from this device now and gone when you close the tab.</span>
+        </label>
+        <p class="file-status" id="planStorageNote" aria-live="polite"></p>
+      </div>
+      <div class="plan-storage-actions">
+        <span class="file-action-group" role="group" aria-label="Move this plan between devices">
+          <button type="button" class="btn ghost" id="exportPlanBtn">Save plan file</button>
+          <button type="button" class="btn ghost" id="importPlanBtn">Open plan file</button>
+        </span>
+        <span class="file-action-group" role="group" aria-label="Replace or remove this plan">
+          <button type="button" class="btn ghost" id="newPlanBtn">Start a new plan</button>
+          <button type="button" class="btn ghost danger" id="deletePlanBtn">Delete this plan from this device</button>
+        </span>
+        <input id="importPlanInput" type="file" accept=".json,application/json" hidden />
+      </div>
+    </section>
+
+    <div id="planPanel" class="ask-panel plan-panel" hidden>
+      <div class="ask-panel-head">
+        <strong>Complete your plan</strong>
+        <span class="ask-panel-head-actions">
+          <button type="button" class="btn ghost" id="planCloseBtn">Close</button>
+        </span>
+      </div>
+      <p class="hint">
+        Measured against what a bank or an SBA lender expects a complete plan to contain. Every
+        question is optional — anything you leave blank stays listed as missing rather than being
+        filled in for you.
+      </p>
+      <details class="revenue-buildup-panel plan-revenue" id="planRevenuePanel">
+        <summary>
+          <span class="eyebrow">Financial Projections · price × volume</span>
+          <span class="rb-panel-title" id="planRevenueTitle">Revenue build-up</span>
+        </summary>
+        <p class="hint">
+          What you sell, at what price, to how many customers a month, and what each unit costs you.
+          Saving it rebuilds every projection from it; removing it goes back to revenue implied by costs.
+        </p>
+        <div id="planRevenueEditor"></div>
+        <div class="plan-panel-actions">
+          <button type="button" class="btn primary" id="planRevenueSaveBtn">Use this build-up</button>
+          <button type="button" class="btn ghost danger" id="planRevenueRemoveBtn">Remove build-up</button>
+        </div>
+        <p class="file-status" id="planRevenueStatus" aria-live="polite"></p>
+      </details>
+      <div id="planQuestionList" class="plan-question-list"></div>
+      <div class="plan-panel-actions">
+        <button type="button" class="btn primary" id="planSaveBtn">Add to my documents</button>
+        <button type="button" class="btn ghost" id="planSkipBtn">Ask me different ones</button>
+      </div>
+      <p class="file-status" id="planStatus" aria-live="polite"></p>
+    </div>
+
+    <div id="askPanel" class="ask-panel" hidden>
+      <div class="ask-panel-head">
+        <strong>Ask about this plan</strong>
+        <span class="ask-panel-head-actions">
+          <button type="button" class="btn ghost" id="askSettingsBtn">Settings</button>
+          <button type="button" class="btn ghost" id="askCloseBtn">Close</button>
+        </span>
+      </div>
+      <p class="hint">
+        Answers come only from your own generated figures, using a model that runs on this device.
+        Nothing you type here, or in the rest of Foundry, is sent anywhere else.
+      </p>
+      <div id="askSettingsForm" class="ask-settings" hidden>
+        <div class="field">
+          <label for="askBaseUrl">Local model server URL</label>
+          <input id="askBaseUrl" placeholder="http://127.0.0.1:11434" />
+        </div>
+        <div class="field">
+          <label for="askModel">Model name</label>
+          <input id="askModel" placeholder="qwen2.5:3b" />
+          <span class="hint">Default assumes Ollama running locally with <code>ollama pull qwen2.5:3b</code> already done.</span>
+        </div>
+        <button type="button" class="btn ghost" id="askSaveSettingsBtn">Save settings</button>
+      </div>
+      <div id="askLog" class="ask-log" aria-live="polite"></div>
+      <form id="askForm" class="ask-form">
+        <input id="askInput" placeholder="e.g. what is my funding gap?" autocomplete="off" />
+        <button type="submit" class="btn primary">Ask</button>
+      </form>
+    </div>
+
+    <p class="foot">
+      Jurisdiction notices are on <strong>Read This First</strong> (page 1).
+      <a href="./index.html">Back to Instant Build</a>
+    </p>
+
+    <div id="desktopUpgrade" class="desktop-upgrade" hidden>
+      <strong>You are using Foundry in a browser.</strong>
+      <span id="desktopUpgradeNotes"></span>
+    </div>
+  </main>
+
+  <script src="./foundry-engines.js"></script>
+  <script src="./plan-store.js"></script>
+  <script src="./dialog.js"></script>
+  <script src="./web-pdf.js"></script>
+  <script src="./documents-page.js"></script>
+  <script src="./revenue-buildup.js"></script>
+  <script src="./plan-questions.js"></script>
+  <script src="./ask-widget.js"></script>
+  <script src="./plan-storage-ui.js"></script>
+  <script src="./interview/interview-entry.js"></script>
+</body>
+</html>

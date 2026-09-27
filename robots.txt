@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /studio/
 Disallow: /api/
+Disallow: /foundry/
 
 Sitemap: https://materiallogix.com/sitemap.xml

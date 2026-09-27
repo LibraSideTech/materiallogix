@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Egress lockdown: see the CSP notes in _headers. This page loads nothing from off this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; manifest-src 'self'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Foundry · MaterialLogix</title>
+  <meta name="theme-color" content="#f4f0e8" />
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./interview/interview.css" />
+  <link rel="icon" href="./favicon.png" type="image/png" />
+</head>
+<body class="page-instant page-business" data-plan-open-goes="./documents.html#business_plan">
+  <div class="atmosphere quiet" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="./index.html" aria-label="MaterialLogix Foundry">
+        <span class="brand-word"><span class="brand-material">Material</span><span class="brand-logix">Logix</span></span>
+        <span class="brand-suffix">Foundry</span>
+      </a>
+      <div class="navlinks">
+        <a href="./index.html" aria-current="page">Instant Build</a>
+        <a href="./documents.html">Documents</a>
+        <a href="./help.html">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <main data-render="pending">
+    <header class="hero wrap">
+      <p class="eyebrow">Foundry · Instant Build</p>
+      <h1>
+        <span class="brand-signal">MaterialLogix</span>
+        <span class="line">Start with what you know.</span>
+        <em>Keep it plain.</em>
+      </h1>
+      <p class="lede">
+        Nine short answers build your document pack.
+        Clarify later with <strong>Adjust notes</strong> if you need to.
+      </p>
+    </header>
+
+    <!-- A plan saved on this device, or one brought from another device as a plan file. -->
+    <section class="wrap plan-resume" id="planResume" aria-label="Your saved plan">
+      <p class="plan-saved-line" data-plan-status role="status">Checking this device for your plan…</p>
+      <div class="file-action-group">
+        <a class="btn primary" href="./documents.html#business_plan" data-plan-when="saved" hidden>Open your plan</a>
+        <button type="button" class="btn ghost" id="importPlanBtn">Open plan file</button>
+      </div>
+      <p class="file-status" id="planStorageNote" aria-live="polite"></p>
+      <input id="importPlanInput" type="file" accept=".json,application/json" hidden />
+      <div class="interview-entry" id="interviewEntry" hidden></div>
+    </section>
+
+    <section class="wrap atelier">
+      <div class="upload-strip">
+        <div class="upload-copy">
+          <p class="eyebrow">Optional · coming next</p>
+          <h2>Bring what you already have</h2>
+          <p>
+            Plans, decks, formation papers, financials, brand books, contracts, notes.
+            File parse is not wired yet. Instant still runs from the nine answers below. Originals stay on your device.
+          </p>
+          <p class="upload-note" id="uploadSummary" hidden></p>
+        </div>
+        <div class="chips">
+          <button type="button" class="chip" id="uploadBtn">Choose files</button>
+          <button type="button" class="chip quiet" id="skipUpload" aria-pressed="true">Skip for now</button>
+        </div>
+        <!-- Declared types let a phone offer the right sources: Files/Drive for documents, and the
+             photo library or camera for a photographed license or receipt. No `capture`, which
+             would force the camera and hide the file picker. -->
+        <input id="fileInput" type="file" multiple hidden
+          accept=".pdf,.doc,.docx,.rtf,.txt,.md,.odt,.pages,.csv,.xls,.xlsx,.ods,.numbers,.ppt,.pptx,.odp,.key,image/*,application/pdf,text/plain,text/csv" />
+      </div>
+
+      <form id="instantForm">
+        <div class="surface">
+          <div class="surface-head">
+            <div>
+              <p class="eyebrow">Nine questions</p>
+              <h2>Instant intake</h2>
+            </div>
+            <p class="surface-aside">Answer what you can. Unknown is fine where allowed.</p>
+          </div>
+
+          <div class="intake">
+            <div class="field">
+              <label for="business">1 · What are you building or operating?</label>
+              <textarea id="business" required minlength="8" placeholder="Describe the business in plain language."></textarea>
+            </div>
+
+            <div class="field">
+              <label id="stageLabel">2 · Stage</label>
+              <div class="chips" role="group" aria-labelledby="stageLabel">
+                <button type="button" class="chip" data-group="stage" data-value="idea" aria-pressed="true">Idea</button>
+                <button type="button" class="chip" data-group="stage" data-value="pre_launch">Pre-launch</button>
+                <button type="button" class="chip" data-group="stage" data-value="launched">Launched</button>
+                <button type="button" class="chip" data-group="stage" data-value="existing">Existing</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="location">3 · Formation / operating location</label>
+              <input id="location" required autocomplete="address-level2" aria-describedby="locationPreview" placeholder="ZIP, city and state, or not decided" />
+              <p class="location-preview" id="locationPreview" aria-live="polite"></p>
+            </div>
+
+            <div class="field">
+              <label for="customer">4 · Customer</label>
+              <input id="customer" required minlength="3" placeholder="Who is this for?" />
+            </div>
+
+            <div class="field">
+              <label for="revenue">5 · Revenue model, if known</label>
+              <input id="revenue" required placeholder="Subscription, services, product sales, or unknown" />
+            </div>
+
+            <div class="field">
+              <label for="capital">6 · Personal capital willing/able to invest</label>
+              <input id="capital" required placeholder="Amount, $0, unknown, or prefer not to say" />
+              <span class="hint">Founder capital available now, not estimated launch cost.</span>
+            </div>
+
+            <div class="field">
+              <label for="outside">7 · Outside-money intent</label>
+              <input id="outside" required placeholder="None, unsure, or yes (amount/type if known)" />
+            </div>
+
+            <div class="field">
+              <label id="brandLabel">8 · Brand</label>
+              <div class="chips" role="group" aria-labelledby="brandLabel">
+                <button type="button" class="chip" data-group="brand" data-value="new" aria-pressed="true">New</button>
+                <button type="button" class="chip" data-group="brand" data-value="import">Import</button>
+                <button type="button" class="chip" data-group="brand" data-value="defer">Defer</button>
+              </div>
+            </div>
+
+            <!-- Question 9. Preselected, so it never blocks a build; skipped means three months after
+                 the plan date. Hidden for a launched or existing business, which is already open. -->
+            <div class="field" id="openingField">
+              <label id="openingLabel">9 · When do you want to open?</label>
+              <div class="chips" role="group" aria-labelledby="openingLabel" aria-describedby="openingHint">
+                <button type="button" class="chip" data-group="opening" data-value="about_3_months" aria-pressed="true">In about 3 months</button>
+                <button type="button" class="chip" data-group="opening" data-value="asap">As soon as possible</button>
+                <button type="button" class="chip" data-group="opening" data-value="date">Pick a date</button>
+              </div>
+              <div class="field opening-date" id="openingDateWrap" hidden>
+                <label for="openingDate">Opening date</label>
+                <input id="openingDate" type="date" />
+              </div>
+              <span class="hint" id="openingHint">Your timeline uses real calendar dates from this. Not sure? Leave it at about 3 months.</span>
+            </div>
+
+            <div id="existingDeepen" class="deepen">
+              <div class="field" style="margin-top:8px;">
+                <label for="legalName">Legal or public name</label>
+                <input id="legalName" autocomplete="organization" />
+              </div>
+              <div class="field">
+                <label for="formed">Already formed?</label>
+                <select id="formed">
+                  <option value="unknown">Unknown</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <div id="formationExtras" style="display:none;">
+                <div class="field">
+                  <label for="entityType">Entity type</label>
+                  <input id="entityType" placeholder="LLC, corporation, …" />
+                </div>
+                <div class="field">
+                  <label for="formationJurisdiction">Formation jurisdiction</label>
+                  <input id="formationJurisdiction" placeholder="State / country" />
+                </div>
+              </div>
+              <div class="field" style="margin-top:8px;">
+                <label for="updateGoal">What's the goal for this update? (optional)</label>
+                <select id="updateGoal">
+                  <option value="">Not specified</option>
+                  <option value="grow">Growing</option>
+                  <option value="stabilize">Staying steady</option>
+                  <option value="shrink">Shrinking / right-sizing</option>
+                  <option value="survive">Trying to survive a difficult stretch</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="currentRevenue">Current monthly revenue</label>
+                <input id="currentRevenue" inputmode="decimal" placeholder="$9,000" />
+                <span class="hint">Add your real current numbers to build this plan from where the business actually is, instead of a from-scratch cost model. All optional.</span>
+              </div>
+              <div class="field">
+                <label for="currentCosts">Current monthly operating costs (not counting inventory / cost of goods)</label>
+                <input id="currentCosts" inputmode="decimal" placeholder="$11,000" />
+              </div>
+              <div class="field">
+                <label for="cashOnHand">Cash on hand</label>
+                <input id="cashOnHand" inputmode="decimal" placeholder="$4,000" />
+              </div>
+              <div class="field">
+                <label for="targetRevenue">Target monthly revenue, if you have one in mind</label>
+                <input id="targetRevenue" inputmode="decimal" placeholder="Leave blank if unsure" />
+              </div>
+              <div class="field">
+                <label for="targetCosts">Target monthly operating costs, if you have one in mind</label>
+                <input id="targetCosts" inputmode="decimal" placeholder="Leave blank if unsure" />
+              </div>
+            </div>
+          </div>
+
+          <div class="surface deepen-panel" id="microInterview">
+            <div class="surface-head">
+              <div>
+                <p class="eyebrow">Optional detail</p>
+                <h2>Add detail for your documents</h2>
+              </div>
+              <p class="surface-aside">
+                The core four documents always build. Free-money paths and extras only appear if you opt in.
+              </p>
+            </div>
+
+            <div class="intake">
+              <div class="field">
+                <label id="fundingLabel">Interested in free-money paths? (optional)</label>
+                <div class="chips" data-multi="funding" role="group" aria-labelledby="fundingLabel">
+                  <button type="button" class="chip" data-multi="funding" data-value="grants" aria-pressed="false">Grants</button>
+                  <button type="button" class="chip" data-multi="funding" data-value="loans" aria-pressed="false">Loans</button>
+                  <button type="button" class="chip" data-multi="funding" data-value="incubators" aria-pressed="false">Incubators</button>
+                  <button type="button" class="chip" data-multi="funding" data-value="equity" aria-pressed="false">Equity</button>
+                  <button type="button" class="chip quiet" data-multi="funding" data-value="skip_for_now" aria-pressed="false">Skip for now</button>
+                </div>
+                <span class="hint">Grant, loan, and incubator paths only appear if you pick them.</span>
+              </div>
+
+              <div class="field">
+                <label id="docsLabel">Extra documents (optional)</label>
+                <div class="chips" data-multi="docs" role="group" aria-labelledby="docsLabel">
+                  <button type="button" class="chip" data-multi="docs" data-value="pitch_one_pager" aria-pressed="false">Pitch one-pager</button>
+                  <button type="button" class="chip" data-multi="docs" data-value="grant_readiness" aria-pressed="false">Grant readiness</button>
+                  <button type="button" class="chip" data-multi="docs" data-value="incubator_notes" aria-pressed="false">Incubator notes</button>
+                  <button type="button" class="chip" data-multi="docs" data-value="lender_checklist" aria-pressed="false">Lender checklist</button>
+                  <button type="button" class="chip" data-multi="docs" data-value="operations_playbook" aria-pressed="false">Operations playbook</button>
+                  <button type="button" class="chip" data-multi="docs" data-value="competitive_snapshot" aria-pressed="false">Competitive snapshot</button>
+                </div>
+                <span class="hint">Core set: Business Plan, Financial Statements, Local Licenses, To-Do List, Operating Plan.</span>
+              </div>
+
+              <div class="field-grid">
+                <div class="field">
+                  <label for="mustHaveSpend">Must-have spend</label>
+                  <input id="mustHaveSpend" placeholder="Licenses, minimum tools, required space…" />
+                </div>
+                <div class="field">
+                  <label for="canDeferSpend">Can defer</label>
+                  <input id="canDeferSpend" placeholder="Trademark, polish, non-critical tech…" />
+                </div>
+                <div class="field">
+                  <label for="burnComfort">Monthly burn comfort (USD)</label>
+                  <input id="burnComfort" inputmode="decimal" placeholder="e.g. 3000" />
+                </div>
+                <div class="field">
+                  <label for="firstRevenue">First revenue timing</label>
+                  <select id="firstRevenue">
+                    <option value="">Prefer not to say</option>
+                    <option value="already">Already earning</option>
+                    <option value="under_30_days">Under 30 days</option>
+                    <option value="1_3_months">1–3 months</option>
+                    <option value="3_6_months">3–6 months</option>
+                    <option value="6_plus_months">6+ months</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="spaceType">Space type</label>
+                  <select id="spaceType">
+                    <option value="">Prefer not to say</option>
+                    <option value="home">Home</option>
+                    <option value="turnkey">Turnkey</option>
+                    <option value="light_buildout">Light buildout</option>
+                    <option value="full_buildout">Full buildout</option>
+                    <option value="online_only">Online only</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="teamNow">Team now</label>
+                  <select id="teamNow">
+                    <option value="">Prefer not to say</option>
+                    <option value="solo">Solo</option>
+                    <option value="1_2">1–2</option>
+                    <option value="3_5">3–5</option>
+                    <option value="6_plus">6+</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="weeklyHours">Weekly hours</label>
+                  <select id="weeklyHours">
+                    <option value="">Prefer not to say</option>
+                    <option value="under_10">Under 10</option>
+                    <option value="10_20">10–20</option>
+                    <option value="20_40">20–40</option>
+                    <option value="40_plus">40+</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="firstCustomerPath">First-customer path</label>
+                  <input id="firstCustomerPath" placeholder="Referrals, walk-ins, outreach list…" />
+                </div>
+                <div class="field">
+                  <label for="ninetyDayGoal">90-day goal</label>
+                  <input id="ninetyDayGoal" placeholder="One measurable outcome" />
+                </div>
+                <div class="field">
+                  <label for="edgeOneLiner">Edge in one line</label>
+                  <input id="edgeOneLiner" placeholder="Why you, why now" />
+                </div>
+                <div class="field">
+                  <label for="biggestRisk">Biggest risk you see</label>
+                  <input id="biggestRisk" placeholder="License timing, cash, demand…" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <details class="surface deepen-panel revenue-buildup-panel" id="revenueBuildupPanel">
+            <summary>
+              <span class="eyebrow">Optional · lenders ask for this first</span>
+              <span class="rb-panel-title">Revenue build-up: what you sell, at what price, to how many</span>
+            </summary>
+            <p class="hint">
+              List each product or tier with its price, how it is billed, the customers or units you expect a
+              month, and what each unit costs you. When you add this, it drives every projection; leave it
+              empty and the plan sizes revenue from your costs, labeled as not a sales forecast.
+            </p>
+            <div id="revenueBuildupEditor"></div>
+          </details>
+
+          <label class="keep-toggle" for="keepOffDevice">
+            <input type="checkbox" id="keepOffDevice" />
+            <span><strong>Don’t keep this plan on this device.</strong> For a shared or public computer: the plan stays in this tab only and is gone when you close it. Save a plan file from Documents to keep a copy.</span>
+          </label>
+
+          <p class="form-error" id="instantFormError" role="alert" hidden></p>
+          <div class="actions">
+            <button class="btn primary" type="submit">Build documents</button>
+            <a class="btn ghost" href="./documents.html">Open Documents</a>
+          </div>
+        </div>
+      </form>
+    </section>
+
+        <p class="wrap foot">
+      Full jurisdiction notices print as page 1 of your Documents pack (<strong>Read This First</strong>).
+    </p>
+  </main>
+
+  <script src="./foundry-engines.js"></script>
+  <script src="./plan-store.js"></script>
+  <script src="./dialog.js"></script>
+  <script src="./revenue-buildup.js"></script>
+  <script src="./app.js"></script>
+  <script src="./plan-storage-ui.js"></script>
+  <script src="./interview/interview-entry.js"></script>
+</body>
+</html>
