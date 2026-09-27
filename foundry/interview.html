@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Egress lockdown: see the CSP notes in _headers. This page loads nothing from off this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; manifest-src 'self'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guided Interview · Foundry · MaterialLogix</title>
+  <meta name="theme-color" content="#f4f0e8" />
+  <!-- Bundled assets only: no web fonts or anything else from the network on this page. -->
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./interview/interview.css" />
+  <link rel="icon" href="./favicon.png" type="image/png" />
+</head>
+<body class="page-interview page-business">
+  <div class="atmosphere quiet" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="./index.html" aria-label="MaterialLogix Foundry">
+        <span class="brand-word"><span class="brand-material">Material</span><span class="brand-logix">Logix</span></span>
+        <span class="brand-suffix">Foundry</span>
+      </a>
+      <div class="navlinks">
+        <a href="./index.html">Instant Build</a>
+        <a href="./documents.html">Documents</a>
+        <a href="./help.html">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero compact-hero iv-hero">
+      <p class="eyebrow">Foundry · Guided Interview</p>
+      <h1>
+        <span class="line">Make your plan stronger.</span>
+        <em>Go at your own pace.</em>
+      </h1>
+      <p class="lede">A guided conversation of about 60 to 90 minutes. Stop whenever you like; your answers wait on this device.</p>
+      <p class="plan-saved-line" data-plan-status role="status">Checking this device for your plan…</p>
+    </header>
+
+    <!-- No plan yet: the interview builds on the one Instant Build makes. -->
+    <section class="iv-card" id="ivNoPlan" hidden aria-labelledby="ivNoPlanTitle">
+      <p class="eyebrow">First, a plan</p>
+      <h2 id="ivNoPlanTitle">Start with Instant Build</h2>
+      <p>The Guided Interview strengthens a plan you already have. Answer the nine Instant Build questions first; it takes about five minutes.</p>
+      <div class="iv-actions"><a class="btn primary" href="./index.html">Open Instant Build</a></div>
+    </section>
+
+    <!-- Welcome, and the privacy promise, before the first question. -->
+    <section class="iv-card" id="ivIntro" hidden aria-labelledby="ivIntroTitle">
+      <p class="eyebrow" id="ivIntroEyebrow">Before we start</p>
+      <h2 id="ivIntroTitle">A conversation about your business</h2>
+      <p id="ivWelcome"></p>
+      <p class="iv-privacy" data-privacy-promise></p>
+      <p id="ivHowItWorks"></p>
+      <p class="iv-meta" id="ivIntroMeta"></p>
+      <label class="iv-toggle" for="ivVoiceIntro">
+        <input type="checkbox" id="ivVoiceIntro" />
+        <span><strong>Read the questions aloud.</strong> In the MaterialLogix house voice. The words are always on screen too.</span>
+      </label>
+      <div class="iv-actions">
+        <button type="button" class="btn primary" id="ivStartBtn">Start the interview</button>
+        <button type="button" class="btn ghost" id="ivReviewFromIntro" hidden>Review answers</button>
+        <button type="button" class="btn ghost" id="ivSettingsFromIntro">Settings</button>
+      </div>
+    </section>
+
+    <section id="ivMain" hidden>
+      <div class="iv-shell">
+        <nav class="iv-rail" aria-label="Interview chapters">
+          <details id="ivRailDetails" open>
+            <summary class="eyebrow">Chapters</summary>
+            <ol id="ivChapters"></ol>
+          </details>
+        </nav>
+
+        <section class="iv-stage" aria-labelledby="ivQuestion">
+          <div class="iv-progress">
+            <div class="iv-progress-track" role="progressbar" aria-label="Interview progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="ivProgressTrack">
+              <div class="iv-progress-bar" id="ivProgressBar"></div>
+            </div>
+            <div class="iv-progress-line">
+              <span id="ivProgressCount"></span>
+              <span id="ivTimeLeft"></span>
+            </div>
+          </div>
+
+          <p class="eyebrow" id="ivChapterEyebrow"></p>
+          <h2 class="iv-chapter-title" id="ivChapterTitle"></h2>
+          <p class="iv-chapter-intro" id="ivChapterIntro" hidden></p>
+
+          <p class="iv-bridge" id="ivBridge" hidden></p>
+          <div class="iv-say" id="ivSay">
+            <h3 class="iv-question" id="ivQuestion" tabindex="-1" aria-live="polite"></h3>
+            <button type="button" class="iv-replay" id="ivReplay" aria-label="Play the question aloud">Play</button>
+          </div>
+          <p class="iv-help" id="ivHelp"></p>
+
+          <div class="iv-answer" id="ivAnswer"></div>
+
+          <div class="iv-followup" id="ivFollowup" hidden>
+            <p id="ivFollowupText" aria-live="polite"></p>
+            <div class="field">
+              <label for="ivFollowupInput">Your answer (optional)</label>
+              <textarea id="ivFollowupInput" rows="2"></textarea>
+            </div>
+          </div>
+
+          <div class="iv-extract" id="ivExtract" hidden>
+            <h3 id="ivExtractTitle"></h3>
+            <div id="ivExtractFields"></div>
+          </div>
+
+          <div class="iv-controls" id="ivControls">
+            <button type="button" class="btn ghost" id="ivBackBtn">Back</button>
+            <button type="button" class="btn ghost" id="ivUnknownBtn">I don’t know yet</button>
+            <button type="button" class="btn ghost" id="ivSkipBtn">Skip</button>
+            <span class="spacer"></span>
+            <button type="button" class="btn primary" id="ivNextBtn">Continue</button>
+          </div>
+          <div class="iv-controls">
+            <button type="button" class="btn ghost" id="ivPauseBtn">Pause</button>
+            <button type="button" class="btn ghost" id="ivReviewBtn">Review answers</button>
+            <button type="button" class="btn ghost" id="ivSettingsBtn">Settings</button>
+          </div>
+          <p class="iv-status" id="ivStatus" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+    </section>
+
+    <section class="iv-card" id="ivPaused" hidden aria-labelledby="ivPausedTitle">
+      <p class="eyebrow">Paused</p>
+      <h2 id="ivPausedTitle">Your answers are saved</h2>
+      <p id="ivPausedText"></p>
+      <div class="iv-actions">
+        <button type="button" class="btn primary" id="ivResumeBtn">Resume</button>
+        <a class="btn ghost" href="./documents.html#business_plan">Back to Documents</a>
+      </div>
+    </section>
+
+    <section class="iv-card" id="ivReview" hidden aria-labelledby="ivReviewTitle">
+      <p class="eyebrow">Review</p>
+      <h2 id="ivReviewTitle" tabindex="-1">Your answers</h2>
+      <p id="ivReviewLine"></p>
+      <div class="iv-actions">
+        <button type="button" class="btn primary" id="ivApplyBtn">Rebuild my documents</button>
+        <button type="button" class="btn ghost" id="ivBackToInterview">Back to the interview</button>
+        <a class="btn ghost" id="ivProgramsLink" href="./programs.html">Programs you may qualify for</a>
+      </div>
+      <p class="iv-status" id="ivApplyStatus" role="status" aria-live="polite"></p>
+      <div id="ivTodoBox" hidden>
+        <h3 class="iv-chapter-title">On your To-Do list</h3>
+        <ul class="iv-todo" id="ivTodoList"></ul>
+      </div>
+      <div id="ivReviewList"></div>
+    </section>
+
+    <section class="iv-card iv-settings" id="ivSettings" hidden aria-labelledby="ivSettingsTitle">
+      <p class="eyebrow">Settings</p>
+      <h2 id="ivSettingsTitle" tabindex="-1">Interview settings</h2>
+      <p class="iv-privacy" data-privacy-promise></p>
+      <fieldset>
+        <legend>Voice</legend>
+        <label class="iv-toggle" for="ivVoiceToggle">
+          <input type="checkbox" id="ivVoiceToggle" />
+          <span><strong>Read the questions aloud</strong> in the MaterialLogix house voice. The audio is part of Foundry and plays from this device.</span>
+        </label>
+        <p class="hint" id="ivMicNote"></p>
+      </fieldset>
+      <fieldset>
+        <legend>Conversational follow-ups</legend>
+        <label class="iv-toggle" for="ivHelperToggle">
+          <input type="checkbox" id="ivHelperToggle" />
+          <span><strong>Let the interviewer respond to your answers.</strong> A short acknowledgment, a follow-up phrased around what you said, and values it picks out for you to confirm. It runs on this device only, using the local model set up for Ask about this plan; without one, the interview works exactly the same.</span>
+        </label>
+        <p class="hint" id="ivHelperNote"></p>
+      </fieldset>
+      <fieldset>
+        <legend>Your business type</legend>
+        <div class="field">
+          <label for="ivIndustry">Questions are tailored to</label>
+          <select id="ivIndustry"></select>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Your answers</legend>
+        <p class="hint">Interview answers are removed automatically after 30 days of no use, follow “Don’t keep this on this device” on the Documents page, and are deleted with your plan.</p>
+        <button type="button" class="btn ghost" id="ivDeleteBtn">Delete my interview answers</button>
+      </fieldset>
+      <div class="iv-actions"><button type="button" class="btn primary" id="ivSettingsDone">Done</button></div>
+    </section>
+
+    <audio id="ivAudio" preload="none"></audio>
+  </main>
+
+  <script src="./foundry-engines.js"></script>
+  <script src="./plan-store.js"></script>
+  <script src="./dialog.js"></script>
+  <script src="./revenue-buildup.js"></script>
+  <script src="./privacy-copy.js"></script>
+  <script src="./interview/question-bank.js"></script>
+  <script src="./interview/voice-manifest.js"></script>
+  <script src="./interview/interview-engine.js"></script>
+  <script src="./interview/answer-mapping.js"></script>
+  <script src="./interview/interview-assist.js"></script>
+  <script src="./interview/voice-player.js"></script>
+  <script src="./interview/speech-input.js"></script>
+  <script src="./eligibility/eligibility.js"></script>
+  <script src="./eligibility/local-help.js"></script>
+  <script src="./eligibility/programs-compute.js"></script>
+  <script src="./interview/interview-ui.js"></script>
+  <script src="./plan-storage-ui.js"></script>
+</body>
+</html>

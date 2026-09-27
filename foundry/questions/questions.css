@@ -1,0 +1,177 @@
+/* "Answer the questions yourself" — a Word-form-like page over the same question bank as the
+   Guided Interview: chapters as collapsible sections, every question visible and answerable in any
+   order, autosave. Layered on styles.css and interview/interview.css (chips, fields, .iv-card,
+   .btn); nothing here restyles another page. Touch-first: 44px targets, 16px+ inputs, one column
+   on a phone. */
+
+.page-questions main { padding-bottom: 96px; }
+.qf-hero { padding-bottom: 8px; }
+.qf-hero h1 em { display: block; }
+.qf-mode-switch { margin: 10px 0 0; font-size: 15px; }
+
+/* Sticky progress header: stays visible while scrolling through chapters, but collapses to a thin
+   bar on small screens so it never covers the field the founder is typing into. */
+.qf-progress {
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  margin-top: 18px;
+  padding: 10px clamp(14px, 3vw, 22px);
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: rgba(244, 240, 232, 0.92);
+  backdrop-filter: blur(14px) saturate(1.1);
+}
+.qf-progress-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.qf-progress-track {
+  flex: 1 1 160px;
+  min-width: 100px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(20, 19, 17, 0.1);
+  overflow: hidden;
+}
+.qf-progress-bar { height: 100%; background: var(--gold-ink, #9a6f2a); border-radius: 999px; transition: width 0.3s ease; }
+.qf-progress-count { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.qf-saved-status { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+.qf-saved-status[data-saving="true"] { color: var(--ink-2); }
+
+/* Table of contents: jump links to each chapter, with a per-chapter fraction. */
+.qf-toc { margin-top: 22px; }
+.qf-toc summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; }
+.qf-toc ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.qf-toc a {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.qf-toc a:hover, .qf-toc a:focus-visible { background: rgba(154, 111, 42, 0.1); }
+.qf-toc .qf-count { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.qf-toc a[data-done="true"] .qf-count { color: var(--gold-ink, #9a6f2a); }
+
+/* Chapters, as native <details> — collapsible, keyboard-operable, no script needed to toggle. */
+.qf-chapter {
+  margin-top: 18px;
+  border: 1px solid var(--hair);
+  border-radius: 16px;
+  background: rgba(255, 252, 245, 0.5);
+  scroll-margin-top: 150px; /* keeps the sticky header clear when a jump link lands here */
+}
+.qf-chapter > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 56px;
+  padding: 16px clamp(16px, 3vw, 28px);
+  cursor: pointer;
+  list-style: none;
+}
+.qf-chapter > summary::-webkit-details-marker { display: none; }
+.qf-chapter > summary .qf-chapter-title { font: 300 clamp(20px, 2.4vw, 26px)/1.1 var(--serif); letter-spacing: -0.01em; }
+.qf-chapter > summary .qf-chapter-badge { flex: 0 0 auto; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.qf-chapter > summary .qf-chapter-badge[data-done="true"] { color: var(--gold-ink, #9a6f2a); }
+.qf-chapter-body { padding: 0 clamp(16px, 3vw, 28px) 24px; }
+.qf-chapter-intro { margin: 0 0 18px; color: var(--ink-2); max-width: 68ch; }
+.qf-chapter-notice {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-left: 2px solid var(--gold);
+  background: rgba(232, 212, 168, 0.18);
+  font-size: 14px;
+  max-width: 68ch;
+}
+
+/* One question. */
+.qf-question {
+  padding: 18px 0;
+  border-top: 1px solid var(--hair);
+}
+.qf-question:first-child { border-top: 0; padding-top: 0; }
+.qf-question-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.qf-question-text { margin: 0; font: 400 17px/1.4 var(--serif); }
+.qf-question-help { margin: 6px 0 12px; font-size: 14px; color: var(--muted); max-width: 62ch; }
+.qf-play {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 14px;
+}
+.qf-play:hover { border-color: var(--ink); }
+
+.qf-answer { margin-top: 6px; }
+.qf-answer input,
+.qf-answer textarea,
+.qf-answer select { font-size: 16px; } /* never below 16px: iOS zooms the page on focus otherwise */
+.qf-answer input, .qf-answer select, .qf-answer button { min-height: 44px; }
+.qf-money { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.qf-suffix, .qf-prefix { color: var(--muted); font-size: 14px; padding-bottom: 16px; }
+
+.qf-row-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.qf-row-actions .btn { min-height: 44px; padding: 0 16px; font-size: 13px; }
+.qf-status-line { margin: 8px 0 0; font-size: 13px; }
+.qf-status-line.answered { color: var(--gold-ink, #9a6f2a); }
+.qf-status-line.open { color: var(--ink-2); }
+
+/* Repeatable rows: revenue build-up and the equipment list. */
+.qf-items { display: grid; gap: 12px; }
+.qf-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px auto auto;
+  gap: 12px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--hair);
+  border-radius: 12px;
+}
+.qf-item-row .qf-quoted { display: flex; align-items: center; gap: 8px; font-size: 13px; min-height: 44px; }
+.qf-item-row .qf-quoted input { width: 20px; height: 20px; min-height: 0; }
+.qf-item-remove {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.qf-item-remove:hover { background: rgba(20, 19, 17, 0.06); }
+
+.qf-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 32px;
+  padding: 18px clamp(16px, 3vw, 28px);
+  border-top: 1px solid var(--hair);
+  background: rgba(244, 240, 232, 0.95);
+  backdrop-filter: blur(14px);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+}
+.qf-footer .btn { min-height: 48px; }
+.qf-footer-status { margin: 0; font-size: 14px; color: var(--muted); flex: 1 1 220px; }
+
+@media (max-width: 900px) {
+  .qf-progress { top: 60px; }
+  .qf-item-row { grid-template-columns: 1fr; }
+  .qf-toc ol { grid-template-columns: 1fr; }
+}
+
+/* prefers-reduced-motion: no smooth-scroll surprises when a jump link is used. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

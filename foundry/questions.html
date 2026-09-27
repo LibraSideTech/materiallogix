@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Egress lockdown: see the CSP notes in _headers. This page loads nothing from off this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; manifest-src 'self'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Answer the questions yourself · Foundry · MaterialLogix</title>
+  <meta name="theme-color" content="#f4f0e8" />
+  <!-- Bundled assets only: no web fonts or anything else from the network on this page. -->
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./interview/interview.css" />
+  <link rel="stylesheet" href="./questions/questions.css" />
+  <link rel="icon" href="./favicon.png" type="image/png" />
+</head>
+<body class="page-questions page-business">
+  <div class="atmosphere quiet" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="./index.html" aria-label="MaterialLogix Foundry">
+        <span class="brand-word"><span class="brand-material">Material</span><span class="brand-logix">Logix</span></span>
+        <span class="brand-suffix">Foundry</span>
+      </a>
+      <div class="navlinks">
+        <a href="./index.html">Instant Build</a>
+        <a href="./documents.html">Documents</a>
+        <a href="./help.html">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero compact-hero qf-hero">
+      <p class="eyebrow">Foundry · Answer the questions yourself</p>
+      <h1>
+        <span class="line">Fill it in at your own pace.</span>
+        <em>Every question, in one place.</em>
+      </h1>
+      <p class="lede">The same questions as the Guided Interview, laid out as a form: read them in any order, answer what you know, and come back for the rest. Typing saves automatically.</p>
+      <p class="qf-mode-switch"><a href="./interview.html">Prefer a guided conversation? Start the Guided Interview instead</a> — about 60&ndash;90 minutes, voice optional.</p>
+      <p class="plan-saved-line" data-plan-status role="status">Checking this device for your plan…</p>
+    </header>
+
+    <!-- No plan yet: the form strengthens a plan Instant Build already made. -->
+    <section class="iv-card" id="qfNoPlan" hidden aria-labelledby="qfNoPlanTitle">
+      <p class="eyebrow">First, a plan</p>
+      <h2 id="qfNoPlanTitle">Start with Instant Build</h2>
+      <p>This form strengthens a plan you already have. Answer the nine Instant Build questions first; it takes about five minutes.</p>
+      <div class="iv-actions"><a class="btn primary" href="./index.html">Open Instant Build</a></div>
+    </section>
+
+    <section id="qfMain" hidden>
+      <p class="iv-privacy" data-privacy-promise></p>
+
+      <div class="qf-progress">
+        <div class="qf-progress-row">
+          <div class="qf-progress-track" role="progressbar" aria-label="Form progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="qfProgressTrack">
+            <div class="qf-progress-bar" id="qfProgressBar"></div>
+          </div>
+          <span class="qf-progress-count" id="qfProgressCount"></span>
+        </div>
+        <p class="qf-saved-status" id="qfSavedStatus" role="status" aria-live="polite"></p>
+      </div>
+
+      <details class="qf-toc" id="qfToc">
+        <summary>Jump to a chapter</summary>
+        <ol id="qfTocList"></ol>
+      </details>
+
+      <div class="field" style="max-width: 360px; margin-top: 18px;">
+        <label for="qfIndustry">Questions are tailored to</label>
+        <select id="qfIndustry"></select>
+      </div>
+
+      <div id="qfChapters"></div>
+
+      <div class="qf-footer">
+        <button type="button" class="btn primary" id="qfRebuildBtn">Rebuild my documents</button>
+        <button type="button" class="btn ghost" id="qfDeleteBtn">Delete my answers from this device</button>
+        <p class="qf-footer-status" id="qfFooterStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <audio id="qfAudio" preload="none"></audio>
+  </main>
+
+  <script src="./foundry-engines.js"></script>
+  <script src="./plan-store.js"></script>
+  <script src="./dialog.js"></script>
+  <script src="./revenue-buildup.js"></script>
+  <script src="./privacy-copy.js"></script>
+  <script src="./interview/question-bank.js"></script>
+  <script src="./interview/voice-manifest.js"></script>
+  <script src="./interview/interview-engine.js"></script>
+  <script src="./interview/answer-mapping.js"></script>
+  <script src="./interview/voice-player.js"></script>
+  <script src="./questions/questions-ui.js"></script>
+  <script src="./plan-storage-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Egress lockdown: see the CSP notes in _headers. This page loads nothing from off this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; manifest-src 'self'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Review · Foundry · MaterialLogix</title>
+  <meta name="theme-color" content="#f4f0e8" />
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="icon" href="./favicon.png" type="image/png" />
+</head>
+<body class="page-review page-business">
+  <div class="atmosphere quiet" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="./index.html" aria-label="MaterialLogix Foundry">
+        <span class="brand-word"><span class="brand-material">Material</span><span class="brand-logix">Logix</span></span>
+        <span class="brand-suffix">Foundry</span>
+      </a>
+      <div class="navlinks">
+        <a href="./index.html">Instant Build</a>
+        <a href="./documents.html">Documents</a>
+        <a href="./help.html">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <header class="hero compact-hero">
+      <p class="eyebrow">Foundry · Assumption review</p>
+      <h1>
+        <span class="brand-signal">MaterialLogix</span>
+        <span class="line">Optional check.</span>
+        <em>Only if you want to clarify.</em>
+      </h1>
+      <p class="lede" id="reviewIntro">
+        Instant already built your documents. Use this only if a figure looks off.
+      </p>
+    </header>
+
+    <section class="atelier surface review-panel" aria-label="Assumption review">
+      <div class="surface-head">
+        <div>
+          <p class="eyebrow">Optional · clarify</p>
+          <h2 id="reviewTitle">Review items</h2>
+        </div>
+        <p class="surface-aside" id="reviewAside">Assumed items stay labeled until you confirm or replace them with quotes.</p>
+      </div>
+
+      <ul class="review-list" id="reviewList"></ul>
+
+      <div class="field review-notes">
+        <label for="reviewNotes">Notes for yourself (optional)</label>
+        <textarea id="reviewNotes" rows="3" placeholder="Anything to fix later: rent quotes, county, capital, etc."></textarea>
+      </div>
+
+      <div class="actions">
+        <p class="form-error" id="reviewError" role="alert" hidden></p>
+        <button type="button" class="btn primary" id="confirmReviewBtn">Save and open Documents</button>
+        <a class="btn ghost" href="./documents.html#business_plan">Skip to Documents</a>
+        <a class="btn ghost" href="./index.html">Back to Instant</a>
+      </div>
+      <p class="review-status" id="reviewStatus"></p>
+    </section>
+
+    <p class="foot">
+      Confirmation records that you reviewed this screen. Full jurisdiction notices still print as page 1 of Documents
+      (<strong>Read This First</strong>).
+    </p>
+  </main>
+
+  <script src="./foundry-engines.js"></script>
+  <script src="./plan-store.js"></script>
+  <script src="./dialog.js"></script>
+  <script src="./review-page.js"></script>
+</body>
+</html>

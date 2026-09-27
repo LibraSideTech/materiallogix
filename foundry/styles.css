@@ -1,0 +1,1852 @@
+/* Foundry · MaterialLogix — atelier / Studio luxury
+   Full-bleed atmosphere, brand-first hero, hairline fields, immersive chamber. */
+
+:root {
+  --paper: #f3efe6;
+  --paper-deep: #e8e0d2;
+  --ink: #141311;
+  --ink-2: #4a463f;
+  /* Measured against the lightest and darkest stops of the atmosphere (#f7f3eb .. #e9e1d3): the
+     previous #7a7368 was 3.6-4.2:1 behind the 10px field labels and 12px hints, under the 4.5:1
+     small text needs. This is the same warm grey, one step darker, at 4.5:1 on the darkest stop. */
+  --muted: #6b645a;
+  --gold: #9a6f2a;
+  /* The brand gold stays for rules, large italics and accents. Small tracked caps (eyebrows,
+     rail labels, tags) were 3.5-3.9:1 in it; this is the same hue deep enough to read. */
+  --gold-ink: #86601f;
+  --gold-soft: #c4a05a;
+  --champagne: #e8d4a8;
+  --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(0.22, 0.72, 0.28, 1);
+  --hair: rgba(120, 100, 70, 0.22);
+}
+
+* { box-sizing: border-box; }
+html {
+  scroll-behavior: smooth;
+  /* Anything scrolled to (an anchor, a focused field, a panel) lands below the sticky nav rather
+     than under it. Tracks the nav height set per breakpoint below. */
+  scroll-padding-top: 96px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: var(--ink);
+  font: 400 15px/1.6 var(--sans);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  position: relative;
+  overflow-x: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button, input, textarea, select { font: inherit; color: inherit; }
+/* A founder's business name is whatever they typed, and an unbroken one (a URL, a run-together
+   brand) used to push a heading or the intro line past the screen edge. On a phone that does not
+   scroll sideways — the browser zooms the whole page out to fit it, so every screen after the
+   build rendered at ~70% on a 360px phone. Break long words in text blocks; tables keep normal
+   wrapping so figures never split mid-number. */
+h1, h2, h3, p, li, label, strong, em, .lede, .file-rail-item, .review-value, .review-note, .ask-msg {
+  overflow-wrap: anywhere;
+}
+td, th { overflow-wrap: normal; }
+.wrap { width: min(1040px, calc(100% - 56px)); margin: auto; }
+
+/* Atmosphere — layered light, not flat paper */
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(55% 42% at 12% 0%, rgba(201, 162, 88, 0.22), transparent 62%),
+    radial-gradient(42% 38% at 88% 8%, rgba(155, 111, 42, 0.12), transparent 58%),
+    radial-gradient(50% 45% at 70% 100%, rgba(232, 212, 168, 0.35), transparent 70%),
+    linear-gradient(165deg, #f7f3eb 0%, #f1ebe0 38%, #e9e1d3 100%);
+}
+.atmosphere.dark {
+  background:
+    radial-gradient(60% 45% at 15% 0%, rgba(196, 160, 90, 0.18), transparent 55%),
+    radial-gradient(45% 40% at 90% 20%, rgba(120, 85, 40, 0.14), transparent 50%),
+    linear-gradient(180deg, #1a1815 0%, #121110 45%, #0e0d0c 100%);
+}
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.35;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+.page-council .grain {
+  opacity: 0.18;
+  mix-blend-mode: soft-light;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes softIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sheen {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 26px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease), background 0.25s var(--ease), border-color 0.25s var(--ease), color 0.25s var(--ease);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn.primary {
+  background: var(--ink);
+  color: #f5efe4;
+}
+.btn.primary:hover { background: #000; }
+.btn.ghost {
+  background: transparent;
+  border-color: rgba(20, 19, 17, 0.18);
+  color: var(--ink);
+}
+.btn.ghost:hover { border-color: var(--ink); }
+.btn.light {
+  background: linear-gradient(120deg, #f4efe4, #e8d4a8 40%, #f4efe4 80%);
+  background-size: 200% 100%;
+  color: var(--ink);
+  animation: sheen 8s ease-in-out infinite;
+}
+.btn.light:hover { filter: brightness(1.05); }
+
+/* Nav */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(24px) saturate(1.15);
+  background: rgba(243, 239, 230, 0.55);
+  border-bottom: 1px solid rgba(154, 111, 42, 0.1);
+  animation: softIn 0.8s var(--ease) both;
+}
+.topnav.dark {
+  background: rgba(18, 17, 16, 0.72);
+  border-bottom-color: rgba(212, 173, 104, 0.12);
+  color: #f3efe6;
+}
+.topnav .wrap {
+  height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.brand { display: inline-flex; align-items: center; gap: 0; min-height: 44px; }
+.brand-word {
+  font: 400 26px/1 var(--serif);
+  letter-spacing: -0.02em;
+}
+.brand-material { color: inherit; }
+.brand-logix {
+  color: transparent;
+  background: linear-gradient(110deg, #6e4a1c, #b88836 20%, #edd9a4 40%, #c49a4e 55%, #f0e0b0 68%, #a8752e 85%, #d4b26a);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: sheen 10s ease-in-out infinite;
+}
+.brand-suffix {
+  margin-left: 12px;
+  color: var(--muted);
+  font: 500 9px/1 var(--sans);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  align-self: center;
+}
+.topnav.dark .brand-suffix { color: #9a9286; }
+.navlinks {
+  margin-left: auto;
+  display: flex;
+  gap: 32px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+.topnav.dark .navlinks { color: #c9c2b6; }
+.navlinks a {
+  position: relative;
+  /* 44px tall and at least 44px wide, so the nav can be hit with a thumb. The text used to be
+     the whole target: 23px tall, 11px type, on every screen. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  transition: color 0.2s var(--ease);
+}
+.navlinks a:hover { color: var(--gold); }
+.navlinks [aria-current="page"] { color: var(--gold-ink); }
+.navlinks [aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+}
+
+/* Hero — brand first, one composition */
+.hero,
+.council-hero {
+  padding: 88px 0 48px;
+  animation: rise 1s var(--ease) both;
+}
+.brand-signal {
+  display: block;
+  margin-bottom: 18px;
+  font: 300 clamp(42px, 5.5vw, 64px)/0.95 var(--serif);
+  letter-spacing: -0.03em;
+  color: transparent;
+  background: linear-gradient(115deg, #6e4a1c, #c49a4e 35%, #f0e0b0 50%, #a8752e 75%, #d4b26a);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: sheen 12s ease-in-out infinite;
+}
+.hero h1,
+.council-hero h1 {
+  margin: 14px 0 0;
+  max-width: 11ch;
+  font: 300 clamp(48px, 7vw, 86px)/0.94 var(--serif);
+  letter-spacing: -0.04em;
+  font-weight: 300;
+}
+.hero h1 .line,
+.council-hero h1 .line {
+  display: block;
+}
+.hero h1 em,
+.council-hero h1 em {
+  display: block;
+  margin-top: 0.08em;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--gold);
+}
+.lede {
+  margin: 28px 0 0;
+  max-width: 34rem;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.7;
+  color: var(--ink-2);
+  letter-spacing: 0.01em;
+}
+.page-council .lede { color: #b8b0a4; }
+.page-council .eyebrow { color: var(--gold-soft); }
+.page-council {
+  color: #f3efe6;
+  background: #121110;
+}
+.page-council .brand-material { color: #f3efe6; }
+
+.atelier { animation: rise 1.05s 0.06s var(--ease) both; }
+
+/* Upload — open atelier strip */
+.upload-strip {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+  padding: 36px 0 40px;
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+}
+.upload-strip h2 {
+  margin: 12px 0 14px;
+  font: 300 clamp(32px, 3.5vw, 44px)/1.05 var(--serif);
+  letter-spacing: -0.025em;
+}
+.upload-copy p:not(.eyebrow):not(.upload-note) {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.65;
+}
+.upload-note {
+  margin-top: 16px !important;
+  color: var(--muted) !important;
+  font-size: 13px !important;
+}
+
+/* Surface — hairline only */
+.surface {
+  padding: 56px 0 0;
+}
+.surface-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+  margin-bottom: 48px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--hair);
+}
+.surface-head h2 {
+  margin: 12px 0 0;
+  font: 300 clamp(36px, 4vw, 52px)/1.02 var(--serif);
+  letter-spacing: -0.03em;
+}
+.surface-aside {
+  margin: 0;
+  max-width: 28ch;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.intake {
+  display: grid;
+  gap: 40px;
+}
+.field {
+  display: grid;
+  gap: 12px;
+}
+.field label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid rgba(20, 19, 17, 0.22);
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 16px 0 18px;
+  outline: none !important;
+  font-weight: 300;
+  font-size: 17px;
+  letter-spacing: 0.01em;
+  transition: border-color 0.25s var(--ease);
+}
+.field input::placeholder,
+.field textarea::placeholder {
+  /* The placeholders carry the allowed answers ("Amount, $0, unknown, or prefer not to say"), so
+     they have to be readable: the old 45% ink was 2.2:1. */
+  color: var(--muted);
+  font-weight: 300;
+}
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-bottom-color: rgba(20, 19, 17, 0.4);
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  border-bottom-color: var(--gold);
+  background-color: transparent !important;
+  /* The outline is suppressed for the hairline look, so the focused field needs more than a 1px
+     colour change to be findable from a keyboard: the rule thickens to 2px in gold. */
+  box-shadow: 0 1px 0 0 var(--gold) !important;
+}
+/* appearance:none took the native arrow away, leaving every dropdown looking like a text field a
+   founder could type into. A hairline chevron in the same ink puts the affordance back. */
+.field select {
+  padding-right: 28px;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%234a463f' stroke-width='1.3'/%3E%3C/svg%3E") no-repeat right 4px center / 12px 8px !important;
+  cursor: pointer;
+}
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus,
+.field textarea:-webkit-autofill,
+.field textarea:-webkit-autofill:hover,
+.field textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  -webkit-box-shadow: 0 0 0 1000px transparent inset;
+  transition: background-color 99999s ease-in-out 0s;
+  caret-color: var(--ink);
+}
+.field textarea {
+  min-height: 120px;
+  /* Grows with the answer (app.js sizes it where field-sizing is unsupported), so a long answer is
+     read on the page rather than inside a 119px box that has to be scrolled with a fingertip. */
+  field-sizing: content;
+  resize: vertical;
+  line-height: 1.6;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 300;
+}
+.hint {
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--muted);
+}
+/* What Instant Build read from the location answer. Inline and non-blocking; red only when the
+   answer cannot be placed at all. */
+.location-preview {
+  margin: -4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.location-preview:empty { display: none; }
+.location-preview[data-kind='error'] { color: #8a3a24; }
+.location-preview[data-kind='warn'] { color: #7a5a1c; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.chip {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid rgba(20, 19, 17, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 252, 245, 0.35);
+  backdrop-filter: blur(12px);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.22s var(--ease);
+}
+.chip:hover {
+  border-color: rgba(20, 19, 17, 0.28);
+  transform: translateY(-1px);
+}
+.chip:focus-visible,
+.btn:focus-visible,
+.navlinks a:focus-visible,
+.brand:focus-visible,
+.file-rail-item:focus-visible,
+.review-check:focus-within {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: transparent;
+  color: #f5efe4;
+}
+.chip.quiet[aria-pressed="true"] {
+  background: transparent;
+  border-color: rgba(20, 19, 17, 0.35);
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 48px 0 64px;
+}
+
+.deepen {
+  display: none;
+  padding: 12px 0 0;
+  border-top: 1px dashed rgba(154, 111, 42, 0.28);
+}
+
+.foot {
+  margin: 0 auto 72px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 300;
+  max-width: 62ch;
+  line-height: 1.65;
+}
+.dark-foot {
+  color: #8a8378;
+  margin-top: 40px;
+}
+
+/* Dark workspace */
+.chamber-bleed {
+  margin-top: 20px;
+  padding: 8px 0 56px;
+  animation: rise 1.05s 0.08s var(--ease) both;
+}
+.chamber {
+  position: relative;
+  padding: 8px 0 0;
+}
+.chamber-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+.chamber-head h2 {
+  margin: 12px 0 0;
+  font: 300 clamp(34px, 4vw, 48px)/1.04 var(--serif);
+  letter-spacing: -0.03em;
+  color: #f5efe4;
+}
+.chamber-intro {
+  margin: 0 0 28px;
+  color: #a8a095;
+  max-width: 52ch;
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 1.65;
+}
+
+.seat-rail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid rgba(232, 212, 168, 0.12);
+}
+.seat-rail li {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1.2fr) minmax(0, 0.9fr);
+  gap: 28px;
+  align-items: start;
+  padding: 28px 0;
+  border-bottom: 1px solid rgba(232, 212, 168, 0.1);
+  transition: background 0.35s var(--ease), padding-left 0.35s var(--ease);
+}
+.seat-rail li:hover {
+  background: linear-gradient(90deg, rgba(232, 212, 168, 0.04), transparent 70%);
+  padding-left: 8px;
+}
+.seat-authority {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  padding-top: 10px;
+}
+.seat-rail h3 {
+  margin: 0 0 10px;
+  font: 400 32px/1.05 var(--serif);
+  letter-spacing: -0.025em;
+  color: #f7f1e6;
+}
+.seat-rail p {
+  margin: 0;
+  color: #b5aea2;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.6;
+  max-width: 42ch;
+}
+.seat-territory {
+  color: #8a8378;
+  font-size: 12px;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  line-height: 1.65;
+  padding-top: 8px;
+}
+.seat-territory strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--gold-soft);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.chamber-note {
+  margin: 32px 0 0;
+  padding-top: 24px;
+  border-top: 1px solid rgba(232, 212, 168, 0.12);
+  color: #a8a095;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.65;
+  max-width: 64ch;
+}
+.chamber .btn.light { margin-top: 36px; }
+
+@media (max-width: 880px) {
+  .wrap { width: min(1040px, calc(100% - 36px)); }
+  .hero, .council-hero { padding-top: 56px; }
+  .hero h1, .council-hero h1 { max-width: 14ch; }
+  .upload-strip,
+  .surface-head { flex-direction: column; align-items: flex-start; }
+  .seat-rail li {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 22px 0;
+  }
+  .seat-authority { padding-top: 0; }
+  .field textarea { font-size: 19px; }
+}
+
+@media (max-width: 480px) {
+  .topnav .wrap {
+    height: 68px;
+    gap: 10px;
+  }
+  .brand-word { font-size: 20px; }
+  .brand-suffix {
+    margin-left: 6px;
+    font-size: 7px;
+    letter-spacing: 0.16em;
+  }
+  .navlinks {
+    gap: 14px;
+    font-size: 11px;
+    letter-spacing: 0;
+  }
+}
+
+/* Engine output panels */
+.output-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 8px auto 28px;
+}
+.output-grid .wide { grid-column: 1 / -1; }
+.panel {
+  padding: 22px 22px 20px;
+  border: 1px solid rgba(232, 212, 168, 0.14);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(28,26,24,0.72), rgba(14,13,14,0.55));
+  backdrop-filter: blur(18px);
+}
+.panel h3, .panel h2 {
+  margin: 8px 0 10px;
+  font: 300 28px/1.1 var(--serif);
+  letter-spacing: -0.02em;
+  color: #f5efe4;
+}
+.panel p { margin: 0; color: #b8b0a4; font-weight: 300; line-height: 1.55; }
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0 10px;
+}
+.metric-row dt {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #d4ad68;
+}
+.metric-row dd {
+  margin: 6px 0 0;
+  font: 300 22px/1 var(--serif);
+  color: #f5efe4;
+}
+.fine { font-size: 12px; color: #8a8378 !important; }
+.quiet-list { margin: 12px 0 0; padding-left: 18px; color: #c7c1b7; }
+.fact-rail { list-style: none; margin: 14px 0 0; padding: 0; }
+.fact-rail li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr) auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(232,212,168,0.1);
+  font-size: 13px;
+}
+.fact-rail code { color: #d4ad68; font-size: 11px; }
+.fact-rail span { color: #c7c1b7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fact-rail em { color: #8a8378; font-style: normal; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+.review-block { margin: 10px auto 48px; }
+.review-summary {
+  margin: 8px 0 18px;
+  color: #c7c1b7;
+  font-weight: 300;
+}
+.review-summary[data-ready="true"] { color: #d4ad68; }
+.review-summary[data-ready="false"] { color: #e0b08a; }
+.findings { display: grid; gap: 12px; margin-bottom: 18px; }
+.finding {
+  padding: 14px 0;
+  border-top: 1px solid rgba(232,212,168,0.1);
+}
+.finding header {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.finding strong { color: #f5efe4; font: 400 20px/1.1 var(--serif); }
+.finding em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #d4ad68;
+}
+.finding.stance-block em, .finding.stance-revise em { color: #e0b08a; }
+.blocked { margin-top: 8px; padding-top: 12px; border-top: 1px solid rgba(232,212,168,0.12); }
+@media (max-width: 880px) {
+  .output-grid { grid-template-columns: 1fr; }
+  .fact-rail li { grid-template-columns: 1fr; gap: 4px; }
+  .metric-row { grid-template-columns: 1fr; }
+}
+
+/* === Shared atelier file shell (Documents) === */
+.page-documents .atmosphere { opacity: 1; }
+/* The documents page is where the work happens, not a landing page. Its header used to run a
+   432px-tall hero whose headline filled 504px of 1040 — 52% of the band was empty, the brand
+   wordmark repeated in 64px type directly beneath the nav that already says it, and the first
+   document sat at y=517, below the fold. It is a band now: title left, plan readiness right. */
+.page-documents .hero.compact-hero {
+  padding: 40px 0 24px;
+}
+.doc-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 40px;
+  align-items: end;
+}
+.page-documents .hero.compact-hero h1 {
+  max-width: 16ch;
+  margin-top: 10px;
+  font-size: clamp(34px, 4.4vw, 54px);
+}
+.page-documents .lede {
+  max-width: 38rem;
+  margin-top: 16px;
+}
+.doc-hero-status {
+  padding: 18px 20px;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: #fff;
+}
+.doc-hero-status .eyebrow { margin: 0 0 10px; }
+.doc-hero-status .plan-progress { margin: 0 0 14px; }
+.doc-hero-status .btn { width: 100%; }
+.doc-hero-status .hint { margin: 10px 0 0; }
+@media (max-width: 900px) {
+  .doc-hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    align-items: stretch;
+  }
+  .doc-hero-status { max-width: 420px; }
+}
+
+.file-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 28px 36px;
+  padding: 8px 0 64px;
+  animation: rise 0.9s 0.06s var(--ease) both;
+}
+.file-rail {
+  min-width: 0;
+}
+.rail-label {
+  margin: 0 0 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+}
+.file-rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.file-rail-heading {
+  margin: 14px 0 6px;
+  padding: 0 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.file-rail-note {
+  margin: 10px 0 0;
+  padding: 0 2px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.file-rail-item {
+  width: 100%;
+  text-align: left;
+  padding: 12px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.file-rail-item:hover {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: var(--hair);
+}
+.file-rail-item.is-active {
+  background: rgba(255, 252, 246, 0.78);
+  border-color: rgba(154, 111, 42, 0.28);
+  box-shadow: 0 10px 30px rgba(80, 55, 20, 0.06);
+}
+.file-rail-item strong {
+  display: block;
+  font: 500 15px/1.25 var(--serif);
+  letter-spacing: -0.01em;
+}
+.file-rail-item .tier-tag {
+  margin-left: 6px;
+  font: 500 9px/1 var(--sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gold-ink);
+  font-style: normal;
+}
+.file-rail-item span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.rail-note {
+  margin: 16px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.file-stage {
+  min-width: 0;
+  padding: 22px 24px 18px;
+}
+.file-stage.surface {
+  margin: 0;
+}
+.file-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.file-toolbar h2 {
+  margin: 0;
+  font: 400 28px/1.1 var(--serif);
+  letter-spacing: -0.02em;
+}
+.file-purpose {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+/* Each group stays together and breaks as a unit, so a wrap separates the two jobs rather than
+   splitting one of them across rows. The wider gap between groups is the only separator needed. */
+.file-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.file-paper {
+  min-height: 70vh;
+  padding: 36px 40px;
+  border: 1px solid rgba(154, 111, 42, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 252, 246, 0.88);
+  box-shadow: 0 18px 50px rgba(70, 50, 20, 0.07);
+  outline: none;
+  font: 400 15px/1.65 var(--serif);
+}
+.file-paper:focus {
+  border-color: rgba(154, 111, 42, 0.35);
+}
+.file-paper h2 {
+  margin: 1.6em 0 0.55em;
+  font: 500 20px/1.25 var(--serif);
+  letter-spacing: -0.015em;
+  border-bottom: 1px solid var(--hair);
+  padding-bottom: 6px;
+}
+.file-paper h2:first-child { margin-top: 0; }
+.file-paper p, .file-paper li { margin: 0 0 0.7em; }
+.file-paper ul, .file-paper ol { padding-left: 1.2em; }
+/* The generated documents carry financial tables and SVG charts. Unstyled, the tables ran at their
+   natural width — twelve monthly columns is wider than any phone — and were cut off by the page
+   with no way to reach the rest. They read like the exported file now, and scroll sideways inside
+   their own box on a narrow screen; the page itself never does. */
+.file-paper { overflow-wrap: anywhere; }
+.file-paper table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0 20px;
+  font: 400 13px/1.4 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+.file-paper th {
+  text-align: left;
+  font-weight: 600;
+  padding: 6px 12px 8px 0;
+  border-bottom: 1.5px solid var(--ink);
+}
+.file-paper td {
+  padding: 7px 12px 7px 0;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: top;
+}
+.file-paper td.num, .file-paper th.num { text-align: right; white-space: nowrap; }
+/* Figures never break; their headings may. "Year 1 operating income" held on one line made the
+   seven-column sensitivity table wider than the paper on a 1366px or 1440px screen. */
+.file-paper th.num { white-space: normal; }
+.file-paper tr.subtotal td,
+.file-paper tr.grand-total td { font-weight: 600; border-top: 1px solid var(--ink); }
+.file-paper svg,
+.file-paper img { display: block; max-width: 100%; height: auto; }
+/* The legend swatches are empty spans coloured inline; without a size they drew nothing, leaving
+   "Revenue  Net income" under the chart with no key to which line is which. */
+.file-paper .chart-legend { margin: 4px 0 0; font: 400 12px/1.5 var(--sans); color: var(--muted); }
+.file-paper .chart-legend .swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+/* The monthly statements are twelve-plus columns: wider than the paper even on a desktop, so they
+   scroll inside their own box at every width. (Narrower tables do the same below 900px.) */
+.file-paper table.fin-table-wide,
+.file-paper table:has(tr > :nth-child(6)) {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+/* A touch screen of any width zooms on focusing sub-16px editable text, tablets included. */
+@media (pointer: coarse) {
+  .file-paper { font-size: 16px; }
+}
+.file-status {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.page-documents .foot {
+  padding-bottom: 48px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.page-documents .foot a,
+.page-council .council-foot a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Dark shell */
+.page-council .council-shell {
+  padding: 0 0 72px;
+  animation: rise 0.9s var(--ease) both;
+}
+.page-council .council-hero {
+  padding: 88px 0 40px;
+}
+.page-council .council-hero h1 {
+  margin: 12px 0 0;
+  max-width: 12ch;
+  font: 300 clamp(44px, 6.5vw, 78px)/0.94 var(--serif);
+  letter-spacing: -0.04em;
+}
+.page-council .council-hero h1 .line { display: block; }
+.page-council .council-hero h1 em {
+  display: block;
+  margin-top: 0.08em;
+  font-style: italic;
+  color: var(--gold-soft);
+}
+.page-council .brand-signal {
+  display: block;
+  margin-bottom: 14px;
+  font: 300 clamp(34px, 4vw, 48px)/0.95 var(--serif);
+}
+.page-council .section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.page-council .section-head h2,
+.page-council .panel h2 {
+  margin: 8px 0 0;
+  font: 400 28px/1.15 var(--serif);
+  letter-spacing: -0.02em;
+}
+.page-council .section-note,
+.page-council .chamber-note,
+.page-council .review-summary {
+  color: #a8a094;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.page-council .doc-library-section { margin-top: 48px; }
+.page-council .doc-card-grid {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.page-council .doc-card {
+  display: block;
+  padding: 16px 16px 14px;
+  border: 1px solid rgba(212, 173, 104, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #f3efe6;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.page-council .doc-card:hover {
+  border-color: rgba(212, 173, 104, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+}
+.page-council .doc-card strong {
+  display: block;
+  font: 500 17px/1.25 var(--serif);
+}
+.page-council .doc-card span {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9a9286;
+}
+.page-council .doc-card em {
+  display: inline-block;
+  margin-top: 8px;
+  font: 500 9px/1 var(--sans);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  font-style: normal;
+}
+.page-council .review-block {
+  margin-top: 40px;
+  display: grid;
+  gap: 16px;
+}
+.page-council .panel.soft {
+  padding: 22px 22px 18px;
+  border: 1px solid rgba(212, 173, 104, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.page-council .more-detail summary {
+  cursor: pointer;
+  font: 500 14px/1.3 var(--serif);
+  color: #e8e0d2;
+}
+.page-council .council-foot {
+  margin-top: 40px;
+  color: #8a8378;
+  font-size: 12px;
+}
+.page-council .btn.light {
+  background: linear-gradient(120deg, #f4efe4, #e8d4a8 40%, #f4efe4 80%);
+  background-size: 200% 100%;
+  color: #141311;
+  border: 0;
+}
+
+/* Assumption review */
+.page-review .compact-hero {
+  padding-top: 48px;
+  padding-bottom: 12px;
+}
+.page-review .compact-hero h1 {
+  font: 300 48px/1.05 var(--serif);
+  letter-spacing: -0.02em;
+  margin: 10px 0 14px;
+}
+.page-review .compact-hero em {
+  display: block;
+  font-style: italic;
+  color: var(--gold);
+  font-weight: 400;
+  margin-top: 6px;
+}
+.review-panel {
+  margin: 28px 0 48px;
+  padding: 28px 30px 24px;
+}
+.review-list {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.review-item {
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.45);
+}
+.review-item.needs-attention {
+  border-color: rgba(154, 111, 42, 0.35);
+  background: rgba(232, 212, 168, 0.22);
+}
+.review-check {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+.review-check input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--ink);
+}
+.review-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.review-category,
+.review-origin {
+  font: 600 10px/1 var(--sans);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.review-origin {
+  color: var(--gold-ink);
+}
+.review-label {
+  display: block;
+  font: 500 18px/1.25 var(--serif);
+  margin-bottom: 2px;
+}
+.review-value {
+  display: block;
+  color: var(--ink);
+  font-size: 14px;
+}
+.review-note {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.review-notes {
+  margin-bottom: 18px;
+}
+.review-status {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.review-empty {
+  padding: 18px;
+  color: var(--muted);
+  border: 1px dashed var(--hair);
+  border-radius: 12px;
+}
+
+@media (max-width: 900px) {
+  .file-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.desktop-upgrade {
+  margin: 18px 0 0;
+  padding: 12px 16px;
+  border: 1px dashed var(--hair);
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.ask-panel {
+  margin-top: 24px;
+  padding: 18px 20px;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: #fff;
+}
+.ask-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.ask-panel-head-actions { display: flex; gap: 8px; }
+.ask-settings {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--hair);
+  border-radius: 10px;
+}
+.ask-log {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  margin: 14px 0;
+}
+.ask-msg {
+  padding: 10px 14px;
+  border-radius: 10px;
+  max-width: 80%;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+.ask-msg.user {
+  align-self: flex-end;
+  background: var(--ink);
+  color: #fff;
+}
+.ask-msg.assistant {
+  align-self: flex-start;
+  background: #f2efe9;
+  color: var(--ink);
+}
+.ask-msg.pending { opacity: 0.6; }
+.ask-form {
+  display: flex;
+  gap: 10px;
+}
+.ask-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid var(--hair);
+  border-radius: 999px;
+  font: inherit;
+  /* 16px or iOS Safari zooms the page on focus and leaves it zoomed. */
+  font-size: 16px;
+  background: #fff;
+}
+
+/* "Complete your plan" — the questions a lender-ready plan needs that the instant intake
+   deliberately does not ask up front. Shares the ask-panel shell; what differs is that this one
+   shows where the plan stands before it asks anything. */
+.plan-progress {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 10px 0 14px;
+}
+.plan-progress-figure {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 38px;
+  line-height: 1;
+  color: var(--ink);
+  min-width: 68px;
+}
+.plan-progress-detail { flex: 1; }
+.plan-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #ece7dd;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.plan-progress-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  transition: width 320ms ease;
+}
+.plan-question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin: 16px 0;
+}
+.plan-question { gap: 4px; }
+.plan-question-meta {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+/* The site's .field label is a tracked uppercase caption, which is right for "ZIP CODE" and
+   wrong for a sentence. These are questions and have to read as questions, so the tracking,
+   capitalisation and small size are all reset rather than partly overridden — setting only the
+   font-family left them rendering as wide-tracked serif capitals, which is harder to read than
+   the caption style it replaced. */
+.plan-question label {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+/* An answer here is a sentence or two, so the box starts at two lines and grows. The inherited
+   .field textarea rule gives it a min-height meant for a longer free-text field, which made three
+   questions fill a screen on their own. */
+.plan-question textarea {
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 8px 12px;
+  border: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+  border-radius: 10px;
+  background: #fff !important;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  field-sizing: content;
+  min-height: 3.6em;
+  resize: vertical;
+}
+.plan-panel-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .plan-progress { gap: 12px; }
+  .plan-progress-figure { font-size: 30px; min-width: 64px; }
+}
+
+/* === Touch, small screens and motion ===
+   Measured with tools/run-touch-qa.mjs across 360-1440px, portrait and landscape, with touch
+   emulation. Everything below exists because a specific screen failed there. */
+
+/* A tapped button or chip on a touch screen keeps :hover until the next tap elsewhere, so the
+   lift meant for a pointer left it floating 1px up after every selection. */
+@media (hover: none) {
+  .btn:hover,
+  .chip:hover { transform: none; }
+  .chip:hover { border-color: rgba(20, 19, 17, 0.1); }
+  .chip[aria-pressed="true"]:hover { border-color: transparent; }
+  .file-rail-item:hover { background: transparent; border-color: transparent; }
+  .file-rail-item.is-active:hover {
+    background: rgba(255, 252, 246, 0.78);
+    border-color: rgba(154, 111, 42, 0.28);
+  }
+  .field input:hover,
+  .field textarea:hover,
+  .field select:hover { border-bottom-color: rgba(20, 19, 17, 0.22); }
+}
+
+/* Up to a small laptop the paper beside the rail is ~620px or less, which a four-column loan table
+   can exceed. Row groups cannot scroll on their own, so the table becomes the scroll box. */
+@media (max-width: 1100px) {
+  .file-paper table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media (max-width: 900px) {
+  /* The rail stacks above the document on a narrow screen; opening a document scrolls to it
+     (documents-page.js), and this keeps it clear of the nav when it arrives. */
+  .file-stage { padding: 18px 0 12px; scroll-margin-top: 80px; }
+  .file-paper { font-size: 16px; }
+}
+
+@media (max-width: 640px) {
+  html { scroll-padding-top: 80px; }
+  .file-paper {
+    min-height: 50vh;
+    padding: 24px 18px;
+  }
+  .file-toolbar h2 { font-size: 26px; }
+  /* Six pills, each wrapping onto its own row, pushed the document 330px down a 740px screen.
+     Two columns keep the same two groups and put the paper on the first screen. */
+  .file-actions,
+  .file-action-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .file-actions { grid-template-columns: 1fr; gap: 8px; }
+  .file-action-group .btn {
+    min-height: 48px;
+    padding: 0 12px;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+  .doc-hero-status { max-width: none; }
+  .review-panel { padding: 20px 0 16px; }
+  .ask-panel { padding: 16px 14px; }
+  .ask-panel-head { flex-wrap: wrap; }
+  .ask-msg { max-width: 92%; }
+  .actions .btn { flex: 1 1 100%; }
+}
+
+@media (max-width: 480px) {
+  html { scroll-padding-top: 76px; }
+  .navlinks { gap: 0; }
+  /* Three links and the wordmark in 324px: each link keeps a 44px target and stays on one line
+     ("Instant Build" was breaking in two at 360px once Help joined the nav). */
+  .navlinks a { padding: 0 5px; white-space: nowrap; }
+}
+@media (max-width: 380px) {
+  .brand-word { font-size: 19px; }
+  .brand-suffix { margin-left: 5px; letter-spacing: 0.12em; }
+  .navlinks a { padding: 0 4px; font-size: 10.5px; }
+}
+
+/* Landscape phones: an 85px sticky nav was a quarter of a 360px-tall screen, and with the on-screen
+   keyboard up it left almost nothing of the field being typed into. The nav scrolls away there. */
+@media (max-height: 500px) and (orientation: landscape) {
+  .topnav { position: relative; }
+  .topnav .wrap { height: 60px; }
+  html { scroll-padding-top: 12px; }
+  .file-stage { scroll-margin-top: 12px; }
+  .hero { padding-top: 32px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .brand-logix,
+  .brand-signal,
+  .btn.light { animation: none; }
+}
+
+/* === Help === Same editorial shell as the other pages: hairline sections, serif heads, pills. */
+.page-help .help-hero { padding-bottom: 8px; }
+.page-help .help-hero h1 { max-width: 14ch; font-size: clamp(40px, 5.6vw, 68px); }
+.page-help .lede a,
+.help-body a,
+.help-faq a,
+.help-contact .hint a,
+.page-help .foot a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--gold-soft);
+  text-underline-offset: 3px;
+}
+.help-toc { margin-top: 28px; }
+.help-toc .chip {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink);
+}
+.help-section { padding-top: 48px; scroll-margin-top: 96px; }
+.help-section .surface-head { margin-bottom: 28px; }
+.help-body { max-width: 64ch; }
+.help-body h3 {
+  margin: 28px 0 10px;
+  font: 400 26px/1.15 var(--serif);
+  letter-spacing: -0.02em;
+}
+.help-body h3:first-child { margin-top: 0; }
+.help-body p,
+.help-list li,
+.help-steps li,
+.help-faq p {
+  color: var(--ink-2);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.65;
+}
+.help-body p { margin: 0 0 14px; }
+.help-steps,
+.help-list { margin: 0 0 18px; padding-left: 1.3em; }
+.help-steps li,
+.help-list li { margin: 0 0 10px; padding-left: 4px; }
+.help-steps strong,
+.help-list strong,
+.help-body p strong { color: var(--ink); font-weight: 600; }
+.help-callout {
+  padding: 16px 18px;
+  border: 1px solid rgba(154, 111, 42, 0.28);
+  border-radius: 14px;
+  background: rgba(232, 212, 168, 0.22);
+}
+.help-faq {
+  max-width: 72ch;
+  border-top: 1px solid var(--hair);
+}
+.help-faq details { border-bottom: 1px solid var(--hair); }
+/* A full-width row at least 56px tall is the tap target, not the text. */
+.help-faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 12px 0;
+  cursor: pointer;
+  list-style: none;
+  font: 400 21px/1.3 var(--serif);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.help-faq summary::-webkit-details-marker { display: none; }
+.help-faq summary::after {
+  content: "+";
+  flex: none;
+  font: 300 24px/1 var(--sans);
+  color: var(--gold-ink);
+}
+.help-faq details[open] summary::after { content: "–"; }
+.help-faq summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.help-faq p { margin: 0 0 18px; max-width: 62ch; }
+.help-contact {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding-bottom: 24px;
+}
+.help-contact-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 22px 22px 18px;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: #fff;
+}
+.help-contact-card p { margin: 0; color: var(--ink-2); line-height: 1.55; }
+.help-contact-card .eyebrow { color: var(--gold-ink); }
+.help-contact-card .btn { justify-self: start; }
+.page-help .foot { margin-top: 32px; }
+@media (max-width: 640px) {
+  .help-contact { grid-template-columns: 1fr; }
+  .help-contact-card .btn { justify-self: stretch; }
+  .help-faq summary { font-size: 19px; }
+  .help-section { scroll-margin-top: 80px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .help-section { scroll-margin-top: 12px; }
+}
+
+/* Your plan, kept on this device (plan-store.js / plan-storage-ui.js). */
+.plan-saved-line {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.plan-saved-line::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  vertical-align: middle;
+}
+.plan-saved-line[data-state='saved']::before { background: #4f7a4a; }
+.plan-saved-line[data-state='session_only']::before { background: var(--gold); }
+.plan-saved-line[data-state='quota']::before,
+.plan-saved-line[data-state='unavailable']::before,
+.plan-saved-line[data-state='newer_schema']::before { background: #a4492f; }
+.plan-storage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px 40px;
+  margin-top: 40px;
+  padding: 28px 0 0;
+  margin-bottom: 28px;
+  border-top: 1px solid var(--hair);
+}
+.plan-storage-copy { flex: 1 1 320px; min-width: 0; }
+.plan-storage-copy h2 {
+  margin: 10px 0 0;
+  font: 300 clamp(28px, 3vw, 38px)/1.05 var(--serif);
+  letter-spacing: -0.02em;
+}
+.plan-storage-status { margin: 12px 0 6px; font-size: 14px; color: var(--ink); }
+.plan-storage-actions { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.plan-resume {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  margin-top: 8px;
+}
+.plan-resume .plan-saved-line { margin: 0; flex: 1 1 260px; }
+.plan-resume .file-status { flex-basis: 100%; margin: 0; }
+/* Revenue build-up (revenue-buildup.js): repeating product cards. Inputs are 16px so iOS does not
+   zoom on focus, every control is at least 44px tall, and the rows stack to one column on a
+   phone. Kept outside .field, whose hairline styles assume one big input per label. */
+.revenue-buildup-panel { margin-top: 28px; }
+.revenue-buildup-panel > summary {
+  display: grid;
+  gap: 4px;
+  min-height: 44px;
+  padding: 8px 0;
+  cursor: pointer;
+  list-style-position: outside;
+}
+.rb-panel-title { font: 400 clamp(22px, 2.4vw, 28px)/1.2 var(--serif); color: var(--ink); }
+.plan-revenue { margin: 8px 0 20px; padding: 4px 0 12px; border-bottom: 1px solid var(--hair); }
+.revenue-buildup { display: grid; gap: 16px; margin-top: 12px; }
+.rb-tiers { display: grid; gap: 16px; }
+.rb-tier {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 16px;
+  min-width: 0;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: rgba(255, 252, 246, 0.7);
+}
+.rb-tier legend { padding: 0 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold-ink); }
+.rb-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.rb-row[hidden], .rb-field[hidden] { display: none; }
+.rb-field { display: grid; gap: 6px; min-width: 0; }
+.rb-field label { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.rb-field input,
+.rb-field select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(20, 19, 17, 0.22);
+  border-radius: 10px;
+  background: #fff;
+  font: 400 16px/1.3 var(--sans);
+  color: var(--ink);
+}
+.rb-field input:focus,
+.rb-field select:focus { outline: 2px solid var(--gold); outline-offset: 1px; border-color: var(--gold); }
+.rb-volume-label { margin: 4px 0 -4px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.rb-line { margin: 0; font-size: 14px; }
+.rb-remove, .rb-add { justify-self: start; min-height: 44px; }
+.rb-market { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.rb-summary { margin: 0; font-size: 15px; color: var(--ink); }
+.rb-summary:empty { display: none; }
+@media (max-width: 520px) {
+  .rb-row, .rb-market { grid-template-columns: 1fr; }
+  .rb-tier { padding: 14px 12px; }
+  .rb-remove, .rb-add { width: 100%; justify-self: stretch; }
+}
+
+/* "Don't keep this on this device": a whole-row tap target (44px+) with a native checkbox, at 16px
+   so iOS does not zoom on focus. Kept outside .field, whose hairline input styles would hide it. */
+.keep-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  margin: 14px 0 0;
+  padding: 10px 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.keep-toggle input {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.keep-toggle strong { color: var(--ink); font-weight: 600; }
+.btn.ghost.danger { color: #8a3a24; border-color: rgba(138, 58, 36, 0.35); }
+.btn.ghost.danger:hover { border-color: #8a3a24; }
+/* Long labels ("Delete this plan from this device") wrap inside the pill on a phone rather than
+   pushing it off the edge. */
+.plan-storage .btn,
+.plan-resume .btn { white-space: normal; text-align: center; line-height: 1.3; padding-block: 8px; }
+@media (max-width: 520px) {
+  .plan-storage-actions .file-action-group,
+  .plan-storage-actions .btn { width: 100%; }
+}
+
+/* In-page confirmation (dialog.js) — replaces window.confirm()/alert() in customer flows. */
+.foundry-dialog {
+  padding: 0;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  width: min(440px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  box-shadow: 0 24px 60px rgba(20, 19, 17, 0.28);
+}
+.foundry-dialog::backdrop { background: rgba(20, 19, 17, 0.45); }
+.foundry-dialog-body { padding: 22px 22px 18px; }
+.foundry-dialog-message { margin: 0 0 18px; font-size: 16px; line-height: 1.5; }
+.foundry-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+/* The acknowledgment checkbox: the whole row is the target, at least 48px tall for touch. */
+.foundry-dialog-check { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0 0 16px; font-size: 16px; line-height: 1.4; cursor: pointer; }
+.foundry-dialog-check input { width: 24px; height: 24px; flex: 0 0 auto; margin: 0; }
+.foundry-dialog-actions .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.foundry-dialog-actions .btn { min-height: 48px; padding: 0 20px; }
+.btn.primary.danger { background: #8a3a24; }
+.btn.primary.danger:hover { background: #6f2d1b; }
+@media (max-width: 420px) {
+  .foundry-dialog-actions { flex-direction: column-reverse; }
+  .foundry-dialog-actions .btn { width: 100%; }
+}
+
+/* Inline form problem (replaces alert() on Instant Build and Review). */
+.form-error {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-left: 3px solid #8a3a24;
+  background: rgba(138, 58, 36, 0.07);
+  color: #6f2d1b;
+  font-size: 14px;
+  white-space: pre-line;
+}
+.form-error[hidden] { display: none; }
+
+.form-error.form-note {
+  border-left-color: var(--gold);
+  background: rgba(154, 111, 42, 0.08);
+  color: var(--ink-2);
+}
+
+/* The hidden attribute always hides. `.btn { display: inline-flex }` outranked the browser's own
+   [hidden] rule, so "Open your plan" showed on Instant Build with no plan saved — including right
+   after a "Don't keep this on this device" tab was closed. */
+[hidden]:not([hidden="until-found"]) { display: none !important; }
+
+/* No grey/blue tap rectangle behind rounded chips and buttons on touch screens; the pressed
+   state is drawn by the control itself. */
+.chip, .btn, button, a { -webkit-tap-highlight-color: transparent; }
+
+/* Plan check (Documents) and Paths that could work (paths.html). One column on a phone, full-width
+   44px buttons on touch, no hover-only affordance. */
+.paths-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 24px 0 0;
+  padding: 20px 24px;
+  border: 1px solid var(--gold-soft);
+  background: rgba(232, 212, 168, 0.25);
+}
+.paths-banner p { margin: 4px 0 0; max-width: 68ch; }
+.paths-main .paths-section { padding-top: 32px; }
+.paths-main h2 { font-family: var(--serif); font-weight: 500; }
+.paths-list { margin: 8px 0 0; padding-left: 20px; }
+.paths-list li { margin: 6px 0; line-height: 1.5; }
+.paths-cards { display: grid; gap: 20px; margin-top: 16px; }
+.paths-card { padding: 20px 24px; border: 1px solid var(--hair); background: rgba(255, 255, 255, 0.35); }
+.paths-card.works { border-color: var(--gold-soft); }
+.paths-card h3 { margin: 4px 0 8px; font-family: var(--serif); font-size: 1.35rem; font-weight: 500; }
+.paths-figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 20px; margin: 16px 0; }
+.paths-figures div { min-width: 0; }
+.paths-figures dt { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+.paths-figures dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; font-weight: 600; overflow-wrap: anywhere; }
+.paths-choose { min-height: 44px; margin-top: 8px; }
+.paths-table-wrap { overflow-x: auto; }
+.paths-url { overflow-wrap: anywhere; color: var(--muted); }
+@media (max-width: 720px) {
+  .paths-banner { flex-direction: column; align-items: stretch; padding: 16px; }
+  .paths-banner .btn, .paths-choose, #pathsRestoreBtn { width: 100%; justify-content: center; }
+  .paths-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .paths-card { padding: 16px; }
+}
+
+/* Programs you may qualify for (programs.html). Touch-first: full-width 44px controls on a phone. */
+.programs-banner { margin-top: 16px; }
+.prog-group { margin-top: 24px; }
+.prog-group-title { font-family: var(--serif); font-weight: 500; font-size: 1.2rem; margin: 0 0 4px; }
+.prog-card p { line-height: 1.5; overflow-wrap: anywhere; }
+.prog-rules summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.prog-check { display: flex; gap: 12px; align-items: flex-start; min-height: 44px; line-height: 1.5; }
+.prog-check input { width: 24px; height: 24px; flex: none; margin-top: 2px; }
+.prog-actions { margin-top: 24px; }
+@media (max-width: 720px) {
+  .prog-todo, #progApplyBtn, .programs-banner .btn { width: 100%; justify-content: center; }
+}
+
+/* Instant Build and Documents draw the saved plan, its banners and the Guided Interview entry from
+   scripts that run after the first paint (the engine bundle is large). Painting the empty shell
+   first made everything below jump down as those arrived. The page body stays invisible until the
+   scripts have run and the device copy is read (plan-storage-ui.js clears data-render); the
+   navigation paints at once, and if a script ever fails the body appears on its own after eight
+   seconds. */
+@keyframes foundry-reveal { to { visibility: visible; } }
+main[data-render="pending"] { visibility: hidden; animation: foundry-reveal 0s 8s forwards; }
+
+/* An edited document that has since been rebuilt from newer answers (documents-page.js). */
+.doc-edit-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(154, 111, 42, 0.28);
+  border-radius: 12px;
+  background: rgba(154, 111, 42, 0.07);
+  font-size: 14px;
+}
+.doc-edit-notice p { margin: 0; flex: 1 1 260px; }

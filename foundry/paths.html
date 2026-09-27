@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <!-- Egress lockdown: see the CSP notes in _headers. This page loads nothing from off this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:11434 http://localhost:11434; font-src 'self' data:; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'none'; manifest-src 'self'; form-action 'none'; frame-src 'none'; base-uri 'none'; object-src 'none'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paths that could work · Foundry · MaterialLogix</title>
+  <meta name="theme-color" content="#f4f0e8" />
+  <link rel="stylesheet" href="./fonts/fonts.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="icon" href="./favicon.png" type="image/png" />
+</head>
+<body class="page-paths">
+  <div class="atmosphere quiet" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <nav class="topnav" aria-label="Primary">
+    <div class="wrap">
+      <a class="brand" href="./index.html" aria-label="MaterialLogix Foundry">
+        <span class="brand-word"><span class="brand-material">Material</span><span class="brand-logix">Logix</span></span>
+        <span class="brand-suffix">Foundry</span>
+      </a>
+      <div class="navlinks">
+        <a href="./index.html">Instant Build</a>
+        <a href="./documents.html">Documents</a>
+        <a href="./help.html">Help</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Paths that could work: shown when the finance model says the plan does not work as
+       structured. Every figure is the plan re-run through the same model on this device; choosing
+       a track rebuilds the whole pack here, and the plan it came from is kept. Nothing is sent. -->
+  <main class="wrap paths-main" data-render="pending">
+    <header class="hero compact-hero">
+      <p class="eyebrow">Foundry · Paths that could work</p>
+      <h1><span class="line">Make the plan work.</span> <em>Then take it to a lender.</em></h1>
+      <p class="lede" id="pathsIntro">Checking this device for your plan…</p>
+    </header>
+
+    <section class="surface paths-section" id="pathsProblem" aria-labelledby="pathsProblemTitle" hidden>
+      <h2 id="pathsProblemTitle">Why it does not work yet</h2>
+      <ul id="pathsProblemList" class="paths-list"></ul>
+    </section>
+
+    <section class="surface paths-section" id="pathsOrigin" aria-labelledby="pathsOriginTitle" hidden>
+      <h2 id="pathsOriginTitle">Built on a track</h2>
+      <p id="pathsOriginText"></p>
+      <button type="button" class="btn ghost" id="pathsRestoreBtn">Go back to my original plan</button>
+    </section>
+
+    <section class="paths-section" id="pathsTracks" aria-labelledby="pathsTracksTitle" hidden>
+      <h2 id="pathsTracksTitle">Paths that could work</h2>
+      <p class="hint">Options to evaluate with an adviser (an SBDC counselor, a SCORE mentor or your accountant), not a promise of funding or of eligibility for any program. Each is your plan with one set of changes, re-run through the same finance model on this device. Paths that work on the model come first.</p>
+      <div id="pathsTrackList" class="paths-cards"></div>
+    </section>
+
+    <section class="surface paths-section" id="pathsLevers" aria-labelledby="pathsLeversTitle" hidden>
+      <h2 id="pathsLeversTitle">One change at a time</h2>
+      <p class="hint">Each change is tried on its own, with the loan re-sized to the new need.</p>
+      <div class="paths-table-wrap"><table class="doc-table paths-table" id="pathsLeverTable"></table></div>
+    </section>
+
+    <section class="surface paths-section" id="pathsFunding" aria-labelledby="pathsFundingTitle" hidden>
+      <h2 id="pathsFundingTitle">Smaller-dollar funding sources</h2>
+      <ul id="pathsFundingList" class="paths-list"></ul>
+      <p class="hint" id="pathsNotModeled"></p>
+    </section>
+
+    <p class="file-status" id="pathsStatus" role="status" aria-live="polite"></p>
+    <p class="foot"><a href="./documents.html">Back to your documents</a></p>
+  </main>
+
+  <script src="./foundry-engines.js"></script>
+  <script src="./plan-store.js"></script>
+  <script src="./dialog.js"></script>
+  <script src="./paths-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+{
+  "format": "foundry-location-crosswalk",
+  "format_version": 1,
+  "generated_at": "2026-09-25T16:57:42.878Z",
+  "generator": "tools/location-data/build-zip-crosswalk.mjs",
+  "sources": [
+    {
+      "publisher": "U.S. Census Bureau",
+      "title": "2020 Census ZCTA-to-County Relationship File (rel2020, zcta520_county20)",
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_county20_natl.txt",
+      "vintage": "2020 Census geography"
+    },
+    {
+      "publisher": "U.S. Census Bureau",
+      "title": "2025 Gazetteer Files — ZIP Code Tabulation Areas (national)",
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2025_Gazetteer/2025_Gaz_zcta_national.zip",
+      "vintage": "2025 Gazetteer Files"
+    },
+    {
+      "publisher": "U.S. Census Bureau",
+      "title": "2020 Census ZCTA-to-Place Relationship File (rel2020, zcta520_place20)",
+      "url": "https://www2.census.gov/geo/docs/maps-data/data/rel2020/zcta520/tab20_zcta520_place20_natl.txt",
+      "vintage": "2020 Census geography"
+    },
+    {
+      "publisher": "U.S. Census Bureau / OMB",
+      "title": "List 1: Core Based Statistical Areas (CBSAs), Metropolitan Divisions, and Combined Statistical Areas (CSAs)",
+      "url": "https://www2.census.gov/programs-surveys/metro-micro/geographies/reference-files/2023/delineation-files/list1_2023.xlsx",
+      "vintage": "OMB delineations, July 2023"
+    }
+  ],
+  "state_fips_table": "Census/NIST FIPS 5-2 state numeric codes -> USPS abbreviations (static reference table, inlined in the build script)",
+  "counts": {
+    "zctas": 33791,
+    "shards": 896,
+    "multi_county_zctas": 10186,
+    "zctas_with_cbsa": 24734,
+    "zctas_with_centroid": 33791,
+    "zctas_missing_centroid": 0,
+    "zctas_with_place_name": 28808
+  },
+  "shard_bytes_total": 6515589,
+  "notes": [
+    "Keyed by 2020 Census ZCTA (ZIP Code Tabulation Area), which approximates but is not identical to a USPS ZIP code.",
+    "PO-box-only ZIPs, unique ZIPs assigned to a single organization, and some newly-issued ZIPs typically have no ZCTA and so are absent here; callers must fall back to ZIP3/state (never guess a county).",
+    "county share (sh) is land-area share of the ZCTA in that county (AREALAND_PART / total ZCTA land area), rounded to 4 decimals; the primary county (p) is the largest share.",
+    "cb is null when the primary county is not part of any CBSA (rural/non-metro/non-micro county) — this is correct, not missing data.",
+    "pl (place) is a best-effort display name only (largest-land-share Census place overlapping the ZCTA per the ZCTA-to-Place relationship file) and must never be used for jurisdiction/legal determinations — only co/p (county) is authoritative for that."
+  ]
+}
